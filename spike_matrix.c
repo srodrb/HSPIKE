@@ -1,34 +1,39 @@
 #include "spike_matrix.h"
+#include "spike_common.h"
 
 matrix_t* matrix_LoadCSR(const char* filename)
 {
 	// local variables
-	integer_t i;
+	integer_t dtype;
 
-	// TODO: create a proper rutine
 	matrix_t* M = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
+
+	// Open File
+	FILE* f = spike_fopen( filename, "rb");
+
+	// read number of rows
+	spike_fread( &M->n, sizeof(integer_t), 1, f );
 	
-	M->n      = 5;
-	M->nnz    = 5;
-	M->colind = (integer_t*) spike_malloc( ALIGN_INT    , M->nnz , sizeof(integer_t));
-	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT    , M->n +1, sizeof(integer_t));
+	// read number of nnz
+	spike_fread( &M->nnz, sizeof(integer_t), 1, f );
+
+	// read data type, just to check everything is fine
+	spike_fread( &dtype, sizeof(integer_t), 1, f );
+
+	// allocate space for matrix coefficients and load them
 	M->aij    = (complex_t*) spike_malloc( ALIGN_COMPLEX, M->nnz , sizeof(complex_t));
+	spike_fread( &M->aij, sizeof(complex_t), M->nnz, f );
+	
+	// allocate space for matrix indices and load them
+	M->colind = (integer_t*) spike_malloc( ALIGN_INT    , M->nnz , sizeof(integer_t));
+	spike_fread( &M->colind, sizeof(integer_t), M->nnz, f );
+	
+	// allocate space for matrix row pointers and load them
+	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT    , M->n +1, sizeof(integer_t));
+	spike_fread( &M->rowptr, sizeof(integer_t), M->n +1, f );
 
-	//TODO: for now, it simply creates a diagonal matrix
-	for(i=0; i<M->nnz; i++)
-	{
-		M->aij[i] = (complex_t) i;
-	}
 
-	for(i=0; i<M->nnz; i++)
-	{
-		M->colind[i] = (integer_t) i;
-	}
-
-	for(i=0; i<M->n +1; i++)
-	{
-		M->rowptr[i] = (integer_t) i;
-	}
+	spike_fclose(f);
 
 	matrix_Print(M, "\nTest matrix");
 

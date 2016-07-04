@@ -30,7 +30,10 @@ int main(int argc, const char *argv[])
 
 
 	/* ================================= */
-	matrix_t* A = matrix_LoadCSR("test_0.bin");
+	matrix_t* A = matrix_LoadCSR("tridiagonal.bin");
+
+	fprintf(stderr, "Todo bien hasta aqui\n");
+
 
 	sm_schedule_t* schedule = spike_solve_analysis( A, nrhs );	
 

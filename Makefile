@@ -6,7 +6,7 @@ DEFINES =-DSPRECISION -D_ENABLE_TESTING_
 
 TARTGET=main
 OBJS = main.o spike_datatypes.o spike_memory.o spike_matrix.o \
-			 spike_algebra.o spike_analysis.o
+			 spike_algebra.o spike_analysis.o spike_common.o
 
 main:$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
@@ -29,6 +29,8 @@ spike_algebra.o:spike_algebra.c
 spike_analysis.o:spike_analysis.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+spike_common.o:spike_common.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 .PHONY:all run clean
 
