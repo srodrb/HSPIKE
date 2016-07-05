@@ -17,6 +17,7 @@
  */
 #include "spike_memory.h"
 #include "spike_datatypes.h"
+#include <math.h>
 
 /* sparse CSR matrix structure */
 typedef struct

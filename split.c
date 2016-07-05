@@ -90,8 +90,10 @@ int main(int argc, const char *argv[])
 	block_t* lowerblock = block_Extract(A, 5, 10, 4, 5);
 	block_Print( lowerblock, "Lower block");
 
+	compute_bandwidth( A );
 
 	matrix_Deallocate( A );
-	
+
+	fprintf(stderr, "\n");
 	return 0;
 }

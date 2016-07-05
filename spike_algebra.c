@@ -30,9 +30,27 @@ void symbolic_factorization ( matrix_t* A )
 
 void compute_bandwidth( matrix_t* A )
 {
-	//TODO: compute the bandwidth properly
-	A->ku = 1;
-	A->kl = 1;
-	
+	// TODO: es posible calcular el bw mas rapidamente accediendo
+	// solamente a las posiciones extremas de las filas.
+
+
+	integer_t row, col, idx;
+	integer_t ku = 0;
+	integer_t kl = 0;
+
+	for(row = 0; row < A->n; row++)
+	{
+		for(idx = A->rowptr[row]; idx < A->rowptr[row+1]; idx++)
+		{
+			col = A->colind[idx];
+
+			ku = ((row - col) < ku) ? (row - col) : ku;
+			kl = ((col - row) < kl) ? (col - row) : kl;
+		}
+	}
+
+	A->ku = abs(ku);
+	A->kl = abs(kl);
+
 	fprintf(stderr,"\nBandwitdh computed: (upper,lower) (%d,%d)", A->ku, A->kl);
 };

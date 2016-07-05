@@ -32,7 +32,7 @@ matrix_t* matrix_LoadCSR(const char* filename)
 	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT    , M->n +1, sizeof(integer_t));
 	spike_fread( (void*) M->rowptr, sizeof(integer_t), M->n + 1, f );
 
-
+	// close file
 	spike_fclose(f);
 
 
