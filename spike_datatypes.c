@@ -18,7 +18,6 @@
 
 #include "spike_datatypes.h"
 
-const int datatype      = 0;
 const int ALIGN_INT     = 4;
 const int ALIGN_REAL    = 8;
 const int ALIGN_COMPLEX = 8;

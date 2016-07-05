@@ -5,10 +5,10 @@ CLIBS   =
 DEFINES =-DSPRECISION -D_ENABLE_TESTING_
 
 TARTGET=main
-OBJS = main.o spike_datatypes.o spike_memory.o spike_matrix.o \
+OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
 			 spike_algebra.o spike_analysis.o spike_common.o
 
-main:$(OBJS)
+main: main.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 main.o:main.c
@@ -31,6 +31,17 @@ spike_analysis.o:spike_analysis.c
 
 spike_common.o:spike_common.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
+
+# Build tests
+split: split.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+split.o: split.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
 
 .PHONY:all run clean
 

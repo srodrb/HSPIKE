@@ -42,7 +42,7 @@ def export_csr2bin ( M, outputfilename):
     
     
     # eliminamos posibles ceros fruto de la extraccion o la incorrecta creacion de la matriz
-    M.eliminate_zeros()
+    # M.eliminate_zeros()
 
     # flags para los tipos de datos empleados
     DOUBLE_t   = 0
@@ -64,9 +64,10 @@ def export_csr2bin ( M, outputfilename):
     # else:
     # 	nrhs = B.shape[1]
 
-    # print 'Informacion del sistema'
-    # print 'Tipo de coeficientes    : ', type( M.data[0] )
-    # print 'Dimensiones del sistema : ', M.shape
+    print 'Informacion del sistema'
+    print 'Tipo de coeficientes    : ', type( M.data[0] )
+    print 'Dimensiones del sistema : ', M.shape
+    print 'nnz                     : ', M.nnz
     # print 'Numero de RHS           : ', nrhs
 
     # guardamos el numero de filas de la matriz de coeficientes
@@ -106,11 +107,11 @@ def export_csr2bin ( M, outputfilename):
 
 
     # guardamos los inidices de columnas
-    float_array = array('i', M.indices +1 )
+    float_array = array('i', M.indices )
     float_array.tofile(output_file)
 
     # guardamos los indices de punteros a filas
-    float_array = array('i', M.indptr +1 )
+    float_array = array('i', M.indptr )
     float_array.tofile(output_file)
 
     # guardamos el vector B
@@ -132,14 +133,21 @@ def export_csr2bin ( M, outputfilename):
 
 if __name__ == "__main__":
 
+    np.set_printoptions(precision=3, linewidth=200)
+
     if len(sys.argv) < 2 or float(sys.argv[1]) <= 0:
         raise ValueError('Dimension of the system must be supplied, and must be positive!')
 
+    dim = int(sys.argv[1])
 
-    print "Dimension of the system %d" %( float(sys.argv[1]) )
+    A = create_bandedsystem( dim )
+    print "Dimension of the system %d" %( dim )
 
-    A = create_bandedsystem( int(sys.argv[1]) )
+    export_csr2bin( A[0:5,0:5], "Tests/split/block1.bin")
+    export_csr2bin( A[5:10,5:10], "Tests/split/block2.bin")
 
-    export_csr2bin( A, 'tridiagonal.bin' )
+    print A[0:5,0:5].todense()
+
+    print A.todense()
 
     print 'End of the program'

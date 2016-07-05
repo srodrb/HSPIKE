@@ -23,7 +23,7 @@ FILE* spike_fopen( const char* filename, const char* mode)
 
 	if ( f == NULL )
 	{
-		fprintf(stderr, "Cant open %f correctly!\n", filename);
+		fprintf(stderr, "Cant open %s correctly!\n", filename);
 		abort();
 	}
 
@@ -38,8 +38,15 @@ void spike_fclose( FILE* f )
 void spike_fwrite( void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
 	size_t n;
+	
+	if ( stream == NULL )
+	{
+		fprintf(stderr, "Invalid stream\n");
+		abort();
+	}
 
-	if( (n=fwrite(ptr, size, nmemb, stream)) != n )
+
+	if( (n=fwrite(ptr, size, nmemb, stream)) != nmemb )
 	{
 		fprintf(stderr, "Cant write %lu elements of size %lu correctly!\n", nmemb, size);
 		abort();
@@ -49,8 +56,15 @@ void spike_fwrite( void* ptr, size_t size, size_t nmemb, FILE* stream)
 void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
 	size_t n;
+	
+	if ( stream == NULL )
+	{
+		fprintf(stderr, "Invalid stream\n");
+		abort();
+	}
 
-	if( (n=fread(ptr, size, nmemb, stream)) != n )
+
+	if( (n=fread(ptr, size, nmemb, stream)) != nmemb )
 	{
 		fprintf(stderr, "Cant read %lu elements of size %lu correctly!\n", nmemb, size);
 		abort();

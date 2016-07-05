@@ -46,7 +46,7 @@ int main(int argc, const char *argv[])
 		rf = schedule->interval[p].rf;
 
 		// TODO: es interesante calcular el BW localmente
-		matrix_t* Aij = matrix_ExtractBlock(A, r0, rf, r0, rf);
+		matrix_t* Aij = matrix_Extract(A, r0, rf, r0, rf);
 
 		matrix_Deallocate(Aij);
 	}

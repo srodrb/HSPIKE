@@ -20,11 +20,11 @@
 	#define _SPIKE_DATATYPES_H_
 
 		
-	typedef float complex_t;
-	typedef float real_t;
-	typedef int   integer_t;
+	typedef double   complex_t;
+	typedef double   real_t;
+	typedef int      integer_t;
+	typedef int      Error_t;
 	
-	extern const int datatype;	
 	extern const int ALIGN_INT;
 	extern const int ALIGN_REAL;
 	extern const int ALIGN_COMPLEX;

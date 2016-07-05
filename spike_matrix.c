@@ -22,20 +22,19 @@ matrix_t* matrix_LoadCSR(const char* filename)
 
 	// allocate space for matrix coefficients and load them
 	M->aij    = (complex_t*) spike_malloc( ALIGN_COMPLEX, M->nnz , sizeof(complex_t));
-	spike_fread( &M->aij, sizeof(complex_t), M->nnz, f );
-	
+	spike_fread( (void*) M->aij, sizeof(complex_t), M->nnz, f );
+
 	// allocate space for matrix indices and load them
 	M->colind = (integer_t*) spike_malloc( ALIGN_INT    , M->nnz , sizeof(integer_t));
-	spike_fread( &M->colind, sizeof(integer_t), M->nnz, f );
+	spike_fread( (void*) M->colind, sizeof(integer_t), M->nnz, f );
 	
 	// allocate space for matrix row pointers and load them
 	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT    , M->n +1, sizeof(integer_t));
-	spike_fread( &M->rowptr, sizeof(integer_t), M->n +1, f );
+	spike_fread( (void*) M->rowptr, sizeof(integer_t), M->n + 1, f );
 
 
 	spike_fclose(f);
 
-	matrix_Print(M, "\nTest matrix");
 
 	return (M);	
 };
@@ -55,28 +54,30 @@ void matrix_Print(matrix_t* M, const char* msg)
 
 	fprintf(stderr, "\n%s: %s", __FUNCTION__, msg);
 
-	fprintf(stderr, "\n\nMatrix coefficients\n");
-	for(i=0; i<M->nnz; i++)
-		fprintf(stderr, "%.3f ", M->aij[i]); 
+	fprintf(stderr, "\n\n\tMatrix dimension: %d, nnz: %d\n", M->n, M->nnz);
 
-	fprintf(stderr, "\n\nIndices\n");
+	fprintf(stderr, "\n\n\tMatrix coefficients\n");
 	for(i=0; i<M->nnz; i++)
-		fprintf(stderr, "%d ", M->colind[i]); 
+		fprintf(stderr, "\t%.3f ", M->aij[i]); 
+
+	fprintf(stderr, "\n\n\tIndices\n");
+	for(i=0; i<M->nnz; i++)
+		fprintf(stderr, "\t%d ", M->colind[i]); 
 	
-	fprintf(stderr, "\n\nRow pointers\n");
+	fprintf(stderr, "\n\n\tRow pointers\n");
 	for(i=0; i<M->n +1; i++)
-		fprintf(stderr, "%d ", M->rowptr[i]); 
+		fprintf(stderr, "\t%d ", M->rowptr[i]); 
 
 	fprintf(stderr,"\n");
 
 #endif
 };
 
-matrix_t* matrix_ExtractBlock ( matrix_t* M, 
-								const integer_t r0, 
-								const integer_t rf,
-								const integer_t c0,
-								const integer_t cf)
+matrix_t* matrix_Extract (  matrix_t* M, 
+														const integer_t r0, 
+														const integer_t rf,
+														const integer_t c0,
+														const integer_t cf)
 {
 	// TODO: integrar el calculo del BW en la extraccion del bloque
 	// TODO: hacer una version single-pass.
@@ -119,9 +120,6 @@ matrix_t* matrix_ExtractBlock ( matrix_t* M,
 	B->rowptr  = (integer_t*) spike_malloc( ALIGN_INT    , B->n + 1, sizeof(integer_t));
 	B->aij     = (complex_t*) spike_malloc( ALIGN_COMPLEX, nnz     , sizeof(complex_t));
 
-	fprintf(stderr, "\nThe number of nnz elements in the block is %d, " \
-					"number of rows in the block %d", nnz, B->n);
-	
 	// extract elements and correct indices
 	nnz          = 0;
 	rowind       = 1;
@@ -129,11 +127,9 @@ matrix_t* matrix_ExtractBlock ( matrix_t* M,
 
 	for(row=r0; row<rf; row++)
 	{
-		for(idx=M->colind[row]; idx<M->colind[row+1]; idx++)
+		for(idx=M->rowptr[row]; idx<M->rowptr[row+1]; idx++)
 		{
 			col = M->colind[idx];
-
-			fprintf(stderr,"\nRow value %d col value %d", row, col);
 
 			if ((col >= c0) && (col < cf))
 			{
@@ -146,7 +142,129 @@ matrix_t* matrix_ExtractBlock ( matrix_t* M,
 		B->rowptr[rowind++] = nnz;
 	}
 	
-	matrix_Print(B, "Matrix sub-block");
-
 	return (B);
+};
+
+/*
+ * returns 1 if both matrices are equal, 0 otherwise
+ */
+Error_t matrix_AreEqual( matrix_t* A, matrix_t* B )
+{
+	if( A->n != B->n )
+	{
+		fprintf(stderr, "Dimension mismatch\n");
+		return (0);
+	}
+
+	if( A->nnz != B->nnz )
+	{
+		fprintf(stderr, "Number of nnz is not the same\n");
+		return (0);
+	}
+
+	for (integer_t i = 0; i < A->nnz; i++) 
+	{
+		if( A->aij[i] != B->aij[i] )
+		{
+			fprintf(stderr, "%d-th coefficents are not equal\n", i);
+			return (0);
+		}
+	}
+
+	for (integer_t i = 0; i < A->nnz; i++) 
+	{
+		if( A->colind[i] != B->colind[i] )
+		{
+			fprintf(stderr, "%d-th indices are not equal\n", i);
+			return (0);
+		}
+	}
+
+	for (integer_t i = 0; i < A->n+1; i++) 
+	{
+		if( A->rowptr[i] != B->rowptr[i] )
+		{
+			fprintf(stderr, "%d-th row pointers are not equal\n", i);
+			return (0);
+		}
+	}
+
+	return (1);
+};
+
+block_t* block_Extract (  matrix_t* M, 
+													const integer_t r0, 
+													const integer_t rf,
+													const integer_t c0,
+													const integer_t cf)
+{
+	integer_t row, col, idx;
+
+	// allocates the -dense- block
+	block_t* B = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
+
+	B->n   = rf - r0;
+	B->m   = cf - c0;
+	B->aij = (complex_t*) spike_malloc( ALIGN_COMPLEX, B->n * B->m, sizeof(complex_t));
+
+	// extract the elements, correct the indices and insert them into the dense block
+	for(row=r0; row<rf; row++)
+	{
+		for(idx=M->rowptr[row]; idx<M->rowptr[row+1]; idx++)
+		{
+			col = M->colind[idx];
+
+			if ((col >= c0) && (col < cf))
+				B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx];
+		}
+	}
+	
+	return (B);
+};
+
+/* deallocates a block structure */
+void block_Deallocate(block_t* B)
+{
+	spike_nullify( B->aij );
+	spike_nullify( B );
+};
+
+void block_Print( block_t* B, const char* msg )
+{
+	integer_t row, col;
+
+	fprintf(stderr, "\n%s\n", msg);
+
+	for (row = 0; row < B->n; row++) 
+	{
+		fprintf(stderr, "\n\t");
+		
+		for (col = 0; col < B->m; col++) 
+			fprintf(stderr, "%f   ", B->aij[row * B->m + col]);
+		
+	}
+	fprintf(stderr, "\n");
+};
+
+/*
+ * returns 1 if both block are equal, 0 otherwise
+ */
+Error_t block_AreEqual( block_t* A, block_t* B )
+{
+	if( A->n != B->n || A->m != B->m)
+	{
+		fprintf(stderr, "Dimension mismatch\n");
+		return (0);
+	}
+
+	for (integer_t i = 0; i < A->n * A->m; i++) 
+	{
+		if( A->aij[i] != B->aij[i] )
+		{
+			fprintf(stderr, "%d-th coefficents are not equal\n", i);
+			return (0);
+		}
+	}
+
+	return (1);
 };
