@@ -5,7 +5,7 @@ import scipy.io as IO
 import scipy.sparse as sparse
 from array import array
 
-def create_bandedsystem(n):
+def create_tridiagonal(n):
     '''
     Crea un sistema tridiagonal de dimension N
     '''
@@ -24,7 +24,24 @@ def create_bandedsystem(n):
     return (A)
 
 
+def create_banded(n):
+    '''
+    Crea un sistema tridiagonal de dimension N
+    '''
+    np.random.seed(314) # try to make it reproducible
+    
 
+    A = sparse.diags(np.random.rand(n) +1.0, 0) + \
+        sparse.diags(np.random.rand(n-2), 2) + \
+        sparse.diags(np.random.rand(n-3),-3) + \
+        sparse.diags(np.random.rand(n-4),-4)
+
+    A = A.tocsr()
+
+    # create rhs
+    # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
+
+    return (A)
 
 
 def export_csr2bin ( M, outputfilename):
@@ -140,14 +157,10 @@ if __name__ == "__main__":
 
     dim = int(sys.argv[1])
 
-    A = create_bandedsystem( dim )
+    A = create_banded( dim )
     print "Dimension of the system %d" %( dim )
 
-    export_csr2bin( A[0:5,0:5], "Tests/split/block1.bin")
-    export_csr2bin( A[5:10,5:10], "Tests/split/block2.bin")
+    export_csr2bin( A, "Tests/bandwidth/banded.bin")
 
-    print A[0:5,0:5].todense()
-
-    print A.todense()
 
     print 'End of the program'

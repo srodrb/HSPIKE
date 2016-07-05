@@ -40,9 +40,7 @@ int main(int argc, const char *argv[])
 	/* ================================= */
 	Error_t  res = 0;
 
-
-	/* ================================= */
-	matrix_t* A          = matrix_LoadCSR("Tests/split/matrix.bin");
+	matrix_t* A = matrix_LoadCSR("Tests/split/matrix.bin");
 
 
 	// extracts the second block, loads the reference and compares them
@@ -77,6 +75,7 @@ int main(int argc, const char *argv[])
 	}
 
 	// clean up
+	matrix_Deallocate( A );
 	matrix_Deallocate( Block1_ref );
 	matrix_Deallocate( Block2_ref );
 	matrix_Deallocate( Block1 );
@@ -84,15 +83,10 @@ int main(int argc, const char *argv[])
 
 	fprintf(stderr, "\nTest result: PASSED.\n");
 	
-	block_t* upperblock = block_Extract(A, 0, 5, 5, 6);
-	block_Print( upperblock, "Upper block");
+	matrix_t* B = matrix_LoadCSR("Tests/bandwidth/banded.bin");
+	compute_bandwidth( B );
+	matrix_Deallocate( B );
 
-	block_t* lowerblock = block_Extract(A, 5, 10, 4, 5);
-	block_Print( lowerblock, "Lower block");
-
-	compute_bandwidth( A );
-
-	matrix_Deallocate( A );
 
 	fprintf(stderr, "\n");
 	return 0;

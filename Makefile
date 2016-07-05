@@ -34,13 +34,19 @@ spike_common.o:spike_common.c
 
 
 
-# Build tests
+# split test
 split: split.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 split.o: split.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+# bandwidth test
+bandwidth: bandwidth.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+bandwidth.o: bandwidth.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 
 .PHONY:all run clean
