@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  icc
  *
- *         Author:  Samuel Rodriguez Bernabeu 
+ *         Author:  Samuel Rodriguez Bernabeu
  *   Organization:  Barcelona Supercomputing Center
  *
  * =====================================================================================
@@ -19,16 +19,20 @@
 #ifndef _SPIKE_DATATYPES_H_
 	#define _SPIKE_DATATYPES_H_
 
-		
+
+
 	typedef double   complex_t;
 	typedef double   real_t;
 	typedef int      integer_t;
 	typedef int      Error_t;
-	
-	extern const int ALIGN_INT;
-	extern const int ALIGN_REAL;
-	extern const int ALIGN_COMPLEX;
 
+	extern const integer_t ALIGN_INT;
+	extern const integer_t ALIGN_REAL;
+	extern const integer_t ALIGN_COMPLEX;
+
+	extern const complex_t __unit;
+
+	extern const Error_t SPIKE_SUCCESS;
 
 
 #endif /* end of _SPIKE_DATATYPES_H_ definition */

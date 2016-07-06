@@ -29,6 +29,7 @@ int main(int argc, const char *argv[])
 	integer_t nrhs = 1;
 	integer_t p;
 	Error_t error;
+	char msg[200];
 
 
 	/* ================================= */
@@ -46,18 +47,23 @@ int main(int argc, const char *argv[])
 
 		matrix_t* Aij = matrix_Extract(A, r0, rf, r0, rf);
 
+		sprintf( msg, "%d-th matrix block", p);
+		matrix_Print( Aij, msg);
+
+
 		if ( p == 0 ){
 			fprintf(stderr, "Factorizando primer bloque\n");
 			block_t* Vi   = block_Extract(A, r0, rf, rf, rf + A->ku);
 
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Vi->aij, Aij->n, Vi->m );
 
-
 			block_Deallocate(Vi);
 		}
 		else if ( p == (schedule->p -1)){
 			fprintf(stderr, "Factorizando ultimo bloque\n");
 			block_t* Wi = block_Extract(A, r0, rf, r0 - A->kl, r0);
+
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Wi->aij, Aij->n, Wi->m );
 
 			block_Deallocate( Wi );
 		}
@@ -66,16 +72,12 @@ int main(int argc, const char *argv[])
 			block_t* Vi   = block_Extract(A, r0, rf, rf, rf + A->ku);
 			block_t* Wi = block_Extract(A, r0, rf, r0 - A->kl, r0);
 
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Vi->aij, Aij->n, Vi->m );
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Wi->aij, Aij->n, Wi->m );
+
 			block_Deallocate( Vi);
 			block_Deallocate( Wi);
 		}
-
-
-		char msg[200];
-
-		sprintf( msg, "%d-th matrix block", p);
-
-		matrix_Print( Aij, msg);
 
 		matrix_Deallocate(Aij);
 	}

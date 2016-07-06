@@ -28,8 +28,8 @@ Error_t system_solve ( integer_t* colind,
 										const integer_t nrhs)
 {
 	if ( x == NULL ){
-		fprintf(stderr, "INFO: x vector is not supplied, solution will be stored\
-										 on b vector\n");
+		fprintf(stderr, "INFO: x vector is not supplied, solution will be stored "
+										" on b vector\n");
 	}
 
 

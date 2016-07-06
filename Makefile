@@ -1,5 +1,5 @@
 CC      =icc
-CFLAGS  =-std=c99 -O2
+CFLAGS  =-std=c99 -O2 -g
 CINCS   =
 CLIBS   =
 DEFINES =-DSPRECISION -D_ENABLE_TESTING_
