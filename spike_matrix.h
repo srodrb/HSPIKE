@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  icc
  *
- *         Author:  Samuel Rodriguez Bernabeu 
+ *         Author:  Samuel Rodriguez Bernabeu
  *   Organization:  Barcelona Supercomputing Center
  *
  * =====================================================================================
@@ -28,7 +28,7 @@ typedef struct
 	integer_t ku;
 	integer_t kl;
 	integer_t K;
-	
+
 	integer_t* colind;
 	integer_t* rowptr;
 	complex_t* aij;
@@ -49,8 +49,8 @@ void      matrix_Deallocate (matrix_t* M);
 void      matrix_Print      (matrix_t* M, const char* msg);
 
 /* matrix manipulation routines */
-matrix_t* matrix_Extract (  matrix_t* M, 
-														const integer_t r0, 
+matrix_t* matrix_Extract (  matrix_t* M,
+														const integer_t r0,
 														const integer_t rf,
 														const integer_t c0,
 														const integer_t cf);
@@ -59,8 +59,8 @@ matrix_t* matrix_Extract (  matrix_t* M,
 Error_t matrix_AreEqual( matrix_t* A, matrix_t* B );
 
 /* Extracts a dense block from a sparse matrix */
-block_t* block_Extract (  matrix_t* M, 
-													const integer_t r0, 
+block_t* block_Extract (  matrix_t* M,
+													const integer_t r0,
 													const integer_t rf,
 													const integer_t c0,
 													const integer_t cf);
@@ -69,3 +69,4 @@ block_t* block_Extract (  matrix_t* M,
 void block_Deallocate (block_t* B);
 void block_Print ( block_t* B, const char* msg);
 Error_t block_AreEqual( block_t* A, block_t* B );
+block_t* block_Empty( const integer_t m, const integer_t n);

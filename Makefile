@@ -1,6 +1,6 @@
 CC      =icc
 CFLAGS  =-std=c99 -O2
-CINCS   = 
+CINCS   =
 CLIBS   =
 DEFINES =-DSPRECISION -D_ENABLE_TESTING_
 
@@ -48,6 +48,12 @@ bandwidth: bandwidth.o $(OBJS)
 bandwidth.o: bandwidth.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+# bandwidth test
+reduced: reduced.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+reduced.o: reduced.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 .PHONY:all run clean
 

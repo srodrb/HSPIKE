@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  icc/nvcc/others
  *
- *         Author:  Samuel Rodriguez Bernabeu 
+ *         Author:  Samuel Rodriguez Bernabeu
  *   Organization:  Barcelona Supercomputing Center
  *
  * =====================================================================================
@@ -40,9 +40,16 @@
 	void reorder_rcm ( matrix_t* A, integer_t* colperm );
 
 	/*
-	 * Solves the sparse linear system Ax=b.
+	 * Solves the sparse linear system Ax=b, where A is an sparse CSR matrix.
+	 * if x is NULL, then the solution of the system is stored on B.
 	 */
-	void system_solve( matrix_t* A, complex_t* x, complex_t* b, const integer_t nrhs);
+	 Error_t system_solve (integer_t* colind,
+ 											integer_t* rowptr,
+ 											complex_t* aij,
+ 											complex_t* x,
+ 											complex_t* b,
+ 											const integer_t n,
+ 											const integer_t nrhs);
 
 	/*
 	 * Custom symbolic factorization routine used on the strategy design phase

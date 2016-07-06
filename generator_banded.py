@@ -1,7 +1,7 @@
-import sys                                                                                                                                              
-import numpy as np                                                                                                                                      
-import matplotlib.pylab as plt                                                                                                                          
-import scipy.io as IO                                                                                                                                   
+import sys
+import numpy as np
+import matplotlib.pylab as plt
+import scipy.io as IO
 import scipy.sparse as sparse
 from array import array
 
@@ -10,7 +10,7 @@ def create_tridiagonal(n):
     Crea un sistema tridiagonal de dimension N
     '''
     np.random.seed(314) # try to make it reproducible
-    
+
 
     A = sparse.diags(np.random.rand(n) +1.0, 0) + \
         sparse.diags(np.random.rand(n-1), 1) + \
@@ -29,7 +29,7 @@ def create_banded(n):
     Crea un sistema tridiagonal de dimension N
     '''
     np.random.seed(314) # try to make it reproducible
-    
+
 
     A = sparse.diags(np.random.rand(n) +1.0, 0) + \
         sparse.diags(np.random.rand(n-2), 2) + \
@@ -52,12 +52,12 @@ def export_csr2bin ( M, outputfilename):
     @B: lado derecho del sistema
     '''
     output_file = open( outputfilename, 'wb')
-    
+
     if sparse.isspmatrix_csr( M ) == False:
         print 'Warning, input matrix is not CSR!'
         M = M.tocsr()
-    
-    
+
+
     # eliminamos posibles ceros fruto de la extraccion o la incorrecta creacion de la matriz
     # M.eliminate_zeros()
 
@@ -81,10 +81,10 @@ def export_csr2bin ( M, outputfilename):
     # else:
     # 	nrhs = B.shape[1]
 
-    print 'Informacion del sistema'
-    print 'Tipo de coeficientes    : ', type( M.data[0] )
-    print 'Dimensiones del sistema : ', M.shape
-    print 'nnz                     : ', M.nnz
+    print 'System features'
+    print 'Coefficients datatype   : ', type( M.data[0] )
+    print 'System dimension        : ', M.shape
+    print 'nnz elements            : ', M.nnz
     # print 'Numero de RHS           : ', nrhs
 
     # guardamos el numero de filas de la matriz de coeficientes
@@ -133,20 +133,20 @@ def export_csr2bin ( M, outputfilename):
 
     # guardamos el vector B
     # if datatype == COMPLEX_t:
-    #     float_array = array('d',  np.ravel( B.real, order='F') ) 
+    #     float_array = array('d',  np.ravel( B.real, order='F') )
     #     float_array.tofile(output_file)
 
-    #     float_array = array('d',  np.ravel( B.imag, order='F') ) 
+    #     float_array = array('d',  np.ravel( B.imag, order='F') )
     #     float_array.tofile(output_file)
 
     # else:
-    #     float_array = array('d',  np.ravel( B, order='F') ) 
+    #     float_array = array('d',  np.ravel( B, order='F') )
     #     float_array.tofile(output_file)
 
     # cerramos el fichero
     output_file.close()
-    
-    print 'Sistema exportado correctamente: ', outputfilename
+
+    print 'Linear system was sucessfully exported: ', outputfilename
 
 if __name__ == "__main__":
 
@@ -157,10 +157,9 @@ if __name__ == "__main__":
 
     dim = int(sys.argv[1])
 
-    A = create_banded( dim )
-    print "Dimension of the system %d" %( dim )
+    A = create_tridiagonal( dim )
 
-    export_csr2bin( A, "Tests/bandwidth/banded.bin")
+    export_csr2bin( A, "Tests/dummy/trigiagonal.bin")
 
 
     print 'End of the program'

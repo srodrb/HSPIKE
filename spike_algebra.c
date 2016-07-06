@@ -15,12 +15,27 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
 
 };
 
-
-void system_solve( matrix_t* A, complex_t* x, complex_t* b, const integer_t nrhs)
+/*
+	Instead of using matrix_t structure, here we use the argument list that
+	most back ends support.
+ */
+Error_t system_solve ( integer_t* colind,
+										integer_t* rowptr,
+										complex_t* aij,
+										complex_t* x,
+										complex_t* b,
+										const integer_t n,
+										const integer_t nrhs)
 {
+	if ( x == NULL ){
+		fprintf(stderr, "INFO: x vector is not supplied, solution will be stored\
+										 on b vector\n");
+	}
+
+
 	// solve the system
-	
-	// check for residual	
+
+	// check for residual
 };
 
 void symbolic_factorization ( matrix_t* A )
