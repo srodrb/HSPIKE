@@ -34,7 +34,4 @@
 
 	extern const Error_t SPIKE_SUCCESS;
 
-	typedef enum{ _V_BLOCK_, _W_BLOCK_ } blocktype_t;
-
-
 #endif /* end of _SPIKE_DATATYPES_H_ definition */

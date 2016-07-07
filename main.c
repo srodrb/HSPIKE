@@ -37,6 +37,8 @@ int main(int argc, const char *argv[])
 
 	sm_schedule_t* schedule = spike_solve_analysis( A, nrhs );
 
+	// matrix_t* R = matrix_CreateEmptyReduced(p, n, ku, kl);
+
 	/* ======== FACTORIZATION PHASE ======== */
 	for(p=0; p<schedule->p; p++)
 	{
@@ -52,31 +54,44 @@ int main(int argc, const char *argv[])
 
 
 		if ( p == 0 ){
-			fprintf(stderr, "Factorizando primer bloque\n");
-			block_t* Vi   = block_Extract(A, r0, rf, rf, rf + A->ku);
+			fprintf(stderr, "Factorizando primer bloque...\n");
+			block_t* Bi    = block_Empty( rf - r0, A->ku, (blocktype_t) _V_BLOCK_ );
+			block_t* Vi    = block_Extract(A, r0, rf, rf, rf + A->ku, (blocktype_t) _V_BLOCK_ );
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Vi->aij, Aij->n, Vi->m );
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Bi->aij, Vi->aij, Aij->n, Vi->m );
 
-			block_Deallocate(Vi);
+			block_Deallocate( Vi );
+			block_Deallocate( Bi );
 		}
 		else if ( p == (schedule->p -1)){
-			fprintf(stderr, "Factorizando ultimo bloque\n");
-			block_t* Wi = block_Extract(A, r0, rf, r0 - A->kl, r0);
+			fprintf(stderr, "Factorizando ultimo bloque...\n");
+			block_t* Ci = block_Empty( rf - r0, A->kl, (blocktype_t) _W_BLOCK_ );
+			block_t* Wi = block_Extract(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Wi->aij, Aij->n, Wi->m );
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Ci->aij, Wi->aij, Aij->n, Wi->m );
 
 			block_Deallocate( Wi );
+			block_Deallocate( Ci );
 		}
 		else{
 			fprintf(stderr, "Factorizando bloque numero %d\n", p);
-			block_t* Vi   = block_Extract(A, r0, rf, rf, rf + A->ku);
-			block_t* Wi = block_Extract(A, r0, rf, r0 - A->kl, r0);
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Vi->aij, Aij->n, Vi->m );
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, NULL, Wi->aij, Aij->n, Wi->m );
+			fprintf(stderr, "\tFactorizando bloque derecho...\n");
+			block_t* Bi    = block_Empty( rf - r0, A->ku, (blocktype_t) _V_BLOCK_ );
+			block_t* Vi    = block_Extract(A, r0, rf, rf, rf + A->ku, (blocktype_t) _V_BLOCK_ );
 
-			block_Deallocate( Vi);
-			block_Deallocate( Wi);
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Bi->aij, Vi->aij, Aij->n, Vi->m );
+
+			fprintf(stderr, "\tFactorizando bloque izquierdo...\n");
+			block_t* Ci = block_Empty( rf - r0, A->kl, (blocktype_t) _W_BLOCK_ );
+			block_t* Wi = block_Extract(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
+
+			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Ci->aij, Wi->aij, Aij->n, Wi->m );
+
+			block_Deallocate( Vi );
+			block_Deallocate( Wi );
+			block_Deallocate( Bi );
+			block_Deallocate( Ci );
 		}
 
 		matrix_Deallocate(Aij);

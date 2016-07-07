@@ -21,6 +21,10 @@
 
 	#include "spike_matrix.h"
 
+	#include "mkl_pardiso.h"
+	#include "mkl_types.h"
+	#include "mkl_spblas.h"
+
 	/*
 	 * Uses metis to compute a permutation that minizes the fill-in on the LU factors of A
 	 */

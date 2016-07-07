@@ -1,7 +1,8 @@
 CC      =icc
-CFLAGS  =-std=c99 -O2 -g
-CINCS   =
-CLIBS   =
+CFLAGS  =-qopenmp -std=c99 -O2 -g
+#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+CINCS   =-I${MKLROOT}/include
 DEFINES =-DSPRECISION -D_ENABLE_TESTING_
 
 TARTGET=main
