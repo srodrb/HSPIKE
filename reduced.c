@@ -97,14 +97,14 @@ static Error_t ComputePrevNnzAndRows ( const integer_t p, integer_t* n, integer_
   k = (array) contiene el numero de columnas de cada bloque
   n = (array) contiene el numero de filas de cada bloque
  */
-static matrix_t* matrix_Reduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl )
+static matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl )
 {
-  Error_t error;
-  integer_t i,j,dim, nnz;
+  integer_t dim;
+  integer_t nnz;
 
   ComputePrevNnzAndRows(p, n, ku, kl, &nnz, &dim);
 
-
+  // allocate sparce for the reduced system and initialize it
   matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
   R->n        = dim;
   R->nnz      = nnz;
@@ -160,6 +160,65 @@ static matrix_t* matrix_Reduced( const integer_t p, integer_t *n, integer_t *ku,
   return (R);
 }
 
+/*
+  Adds the elemnts of a block to the reduced system according to the number of
+  partition, and the block type.
+
+  p = number of partition
+  n = list of partition dimensions
+  R = reduced system
+  B = block (spike)
+  type = block location flag
+*/
+static Error_t matrix_FillReduced ( const integer_t part,
+                                      integer_t* n,
+                                      integer_t *ku,
+                                      integer_t* kl,
+                                      matrix_t *R,
+                                      block_t* B,
+                                      blocktype_t type )
+{
+  // initialize blocks
+    integer_t index;
+    integer_t firstrow;
+    integer_t firstcol;
+    integer_t lastcol;
+
+    // locate myself
+    ComputePrevNnzAndRows(part, n, ku, kl, &index, &firstrow);
+
+    // place elements
+    for(integer_t row=firstrow; row < firstrow + n[part]; row++)
+    {
+      // add wi elements
+      if ( type == _V_BLOCK_ && B->m != 0 )
+      {
+        firstcol = firstrow - kl[part];
+        lastcol  = firstrow;
+
+        for(integer_t col=firstcol; col < lastcol; col++) {
+          R->aij[index++] = 2.0;
+        }
+      }
+      else if ( type == _W_BLOCK_ && B->m != 0)
+      {
+        firstcol = firstrow + n[part];
+        lastcol  = firstcol + ku[part];
+
+        for(integer_t col=firstcol; col < lastcol; col++) {
+          R->aij[index++] = 3.0;
+        }
+      }
+      else{
+        fprintf(stderr, "ERROR: not supported block type flag\n");
+        abort();
+      }
+    }
+
+  matrix_PrintAsDense(R, "Assembled reduced system");
+
+  return (SPIKE_SUCCESS);
+}
 
 int main(int argc, const char *argv[])
 {
@@ -169,18 +228,19 @@ int main(int argc, const char *argv[])
 	Error_t  res = 0;
 
   /* Create some synthetic spikes Vi, Wi */
-  block_t *V0 = block_Synthetic( 4, 2, (complex_t) 1.0);
-  block_t *W1 = block_Synthetic( 4, 1, (complex_t) 1.0);
-  block_t *V1 = block_Synthetic( 4, 1, (complex_t) 2.0);
-  block_t *W2 = block_Synthetic( 4, 1, (complex_t) 3.0);
+  block_t *V0 = block_Synthetic( 4, 2, (complex_t) 2.0);
+  block_t *W1 = block_Synthetic( 4, 1, (complex_t) 3.0);
+  block_t *V1 = block_Synthetic( 4, 1, (complex_t) 4.0);
+  block_t *W2 = block_Synthetic( 4, 1, (complex_t) 5.0);
 
   integer_t  p     = 3;
   integer_t  ku[3] = {2, 1, 0};
   integer_t  kl[3] = {0, 1, 1};
   integer_t  n [3] = {4, 4, 4};
 
-  matrix_t* R = matrix_Reduced(p, n, ku, kl);
+  matrix_t* R = matrix_CreateEmptyReduced(p, n, ku, kl);
 
+  res = matrix_FillReduced(1, n, ku, kl, R, V0, (blocktype_t) _V_BLOCK_ );
 
 	block_Deallocate( V0 );
 	block_Deallocate( W1 );
