@@ -18,10 +18,28 @@
 
 #include "spike_datatypes.h"
 
+#ifdef __GNUC__
+  #define __restrict __restrict__
+#else
+  #define __restrict restrict
+#endif
+
 const integer_t ALIGN_INT     = 4;
 const integer_t ALIGN_REAL    = 8;
 const integer_t ALIGN_COMPLEX = 8;
 
-const complex_t __unit = 1.0;
+const complex_t __unit = (complex_t) 1.0;
+const complex_t __zero = (complex_t) 0.0;
+
+const Bool_t True  = 1;
+const Bool_t False = 0;
+
+Bool_t isLessThan( const complex_t a, const complex_t b )
+{
+  if ( a < b )
+    return (True);
+  else
+    return (False);
+};
 
 const Error_t SPIKE_SUCCESS = 1;

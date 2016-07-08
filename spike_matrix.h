@@ -30,9 +30,9 @@ typedef struct
 	integer_t kl;
 	integer_t K;
 
-	integer_t* colind;
-	integer_t* rowptr;
-	complex_t* aij;
+	integer_t* colind; // TODO attribute aligned
+	integer_t* rowptr; // TODO attribute aligned
+	complex_t* aij;    // TODO attribute aligned
 
 } matrix_t;
 
@@ -41,9 +41,9 @@ typedef enum{ _V_BLOCK_, _W_BLOCK_, _RHS_BLOCK_ } blocktype_t;
 
 typedef struct
 {
-	blocktype_t type;
-	integer_t   n;
-	integer_t   m;
+	blocktype_t  type;
+	integer_t    n;
+	integer_t    m;
 	complex_t   *aij;
 
 } block_t;
@@ -54,7 +54,7 @@ void      matrix_Deallocate (matrix_t* M);
 void      matrix_Print      (matrix_t* M, const char* msg);
 
 /* matrix manipulation routines */
-matrix_t* matrix_Extract (  matrix_t* M,
+matrix_t* matrix_ExtractMatrix (  matrix_t* M,
 														const integer_t r0,
 														const integer_t rf,
 														const integer_t c0,
@@ -64,7 +64,7 @@ matrix_t* matrix_Extract (  matrix_t* M,
 Error_t matrix_AreEqual( matrix_t* A, matrix_t* B );
 
 /* Extracts a dense block from a sparse matrix */
-block_t* block_Extract (  matrix_t* M,
+block_t* matrix_ExtractBlock (  matrix_t* M,
 													const integer_t r0,
 													const integer_t rf,
 													const integer_t c0,
@@ -77,14 +77,14 @@ void block_Deallocate (block_t* B);
 void block_Print ( block_t* B, const char* msg);
 Error_t matrix_PrintAsDense( matrix_t* A, const char* msg);
 Error_t block_AreEqual( block_t* A, block_t* B );
-block_t* block_Empty( const integer_t m, const integer_t n, blocktype_t type);
+block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type);
 
 Error_t matrix_FillReduced ( const integer_t part,
                              integer_t     *n,
                              integer_t     *ku,
                              integer_t     *kl,
                              matrix_t      *R,
-                             block_t*      B );
+                             block_t*       B );
 
 matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl );
-Error_t ComputePrevNnzAndRows ( const integer_t p, integer_t* n, integer_t* ku, integer_t *kl, integer_t *nnz, integer_t *rows);
+integer_t ComputePrevNnz ( const integer_t p, integer_t* n, integer_t* ku, integer_t *kl );

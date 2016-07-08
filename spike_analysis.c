@@ -27,16 +27,28 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
 	}
 
 	sm_schedule_t* S = (sm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(sm_schedule_t));
-	S->p = p;
-	S->interval = (interval_t*) spike_malloc(ALIGN_INT, p, sizeof(interval_t));
+	S->p  = p;
+	S->n  = (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
+	S->ku = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
+	S->kl = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
 
-	for(i=0; i<S->p -1; i++)
+	S->n[0] = (integer_t) 0;
+
+	for(i=1; i < S->p; i++)
 	{
-		S->interval[i] = (interval_t) {i*nreg, (i+1)*nreg};
+		S->n[i] = (integer_t) i*nreg;
+	}
+	// remainder element
+	S->n[S->p] = (integer_t) A->n;
+
+	for(integer_t i=0; i < S->p; i++)
+	{
+		S->ku[i] = A->ku;
+		S->kl[i] = A->kl;
 	}
 
-	S->interval[S->p -1] = (interval_t) {(S->p -1)*nreg, A->n};
-
+	S->kl[0]       = (integer_t) 0;
+	S->ku[S->p -1] = (integer_t) 0;
 
 	schedule_Print(S);
 
@@ -45,22 +57,21 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
 
 void schedule_Destroy( sm_schedule_t* S )
 {
-	spike_nullify(S->interval);
+	spike_nullify( S->n  );
+	spike_nullify( S->ku );
+	spike_nullify( S->kl );
+
 	spike_nullify(S);
 };
 
 void schedule_Print (sm_schedule_t* S)
 {
-	// local variables
-	integer_t i;
-
 	// function body
 	fprintf(stderr,"\nNumber of diagonal blocks: %d", S->p);
 
-	for(i=0; i<S->p; i++)
+	for(integer_t i=0; i<S->p; i++)
 	{
-		fprintf(stderr,"\n\t%d-th block goes from %d-th to %d-th row", \
-				i+1, S->interval[i].r0, S->interval[i].rf);
+		fprintf(stderr,"\n\t%d-th block goes from %d-th to %d-th row. ku %d kl %d", i+1, S->n[i], S->n[i+1], S->ku[i], S->kl[i]);
 	}
 
 	fprintf(stderr,"\n\n");

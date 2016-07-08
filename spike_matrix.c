@@ -93,7 +93,12 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
 
   for(integer_t row = 0; row < nrows; row++){
     for(integer_t col = 0; col < ncols; col++){
-      fprintf(stderr, "%.1f  ", D[row * ncols + col]);
+			complex_t value = D[row * ncols + col];
+			if ( isLessThan( value, 0 ) )
+				fprintf(stderr, "%.2f  ", D[row * ncols + col]);
+			else
+				fprintf(stderr, " %.2f  ", D[row * ncols + col]);
+
     }
     fprintf(stderr, "\n");
   }
@@ -103,7 +108,7 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
   return (SPIKE_SUCCESS);
 };
 
-matrix_t* matrix_Extract (  matrix_t* M,
+matrix_t* matrix_ExtractMatrix (  matrix_t* M,
 														const integer_t r0,
 														const integer_t rf,
 														const integer_t c0,
@@ -222,7 +227,7 @@ Error_t matrix_AreEqual( matrix_t* A, matrix_t* B )
 	return (1);
 };
 
-block_t* block_Extract (  matrix_t* M,
+block_t* matrix_ExtractBlock (  matrix_t* M,
 													const integer_t r0,
 													const integer_t rf,
 													const integer_t c0,
@@ -304,7 +309,7 @@ Error_t block_AreEqual( block_t* A, block_t* B )
 	Creates an empty block of dimension n,m.
 	It is intended to create buffers for system_solve call.
 */
-block_t* block_Empty( const integer_t m, const integer_t n, blocktype_t type)
+block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type)
 {
 	block_t* B = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
 	B->type = type;
@@ -324,10 +329,8 @@ block_t* block_Empty( const integer_t m, const integer_t n, blocktype_t type)
  */
 matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl )
 {
-  integer_t dim;
-  integer_t nnz;
-
-  ComputePrevNnzAndRows(p, n, ku, kl, &nnz, &dim);
+  integer_t dim = n[p];
+  integer_t nnz = ComputePrevNnz(p, n, ku, kl );
 
   // allocate sparce for the reduced system and initialize it
   matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
@@ -343,23 +346,18 @@ matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t 
 
   // initialize blocks
   for(integer_t part=0; part < p; part++){
-    integer_t index;
-    integer_t firstrow;
-    integer_t firstcol;
-    integer_t lastcol;
+    integer_t index = ComputePrevNnz(part, n, ku, kl );
 
-    // locate myself
-    ComputePrevNnzAndRows(part, n, ku, kl, &index, &firstrow);
+		fprintf(stderr, "%d-th partition starts at %d-th row and finishes at the %d row\n", part, n[part], n[part+1]);
 
     // place elements
-    for(integer_t row=firstrow; row < firstrow + n[part]; row++)
+    for(integer_t row=n[part]; row < n[part+1]; row++)
     {
       // add wi elements
       if ( kl[part]){
-        firstcol = firstrow - kl[part];
-        lastcol  = firstrow;
-
-        for(integer_t col=firstcol; col < lastcol; col++) { R->colind[index++] = col; }
+        for(integer_t col= (n[part] - kl[part]); col < n[part]; col++) {
+					R->colind[index++] = col;
+				}
       }
 
       // add diagonal element
@@ -368,11 +366,10 @@ matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t 
       index++;
 
       // add vi elements
-      if ( ku[part]){
-        firstcol = firstrow + n[part];
-        lastcol  = firstcol + ku[part];
-
-        for(integer_t col=firstcol; col < lastcol; col++) { R->colind[index++] = col; }
+      if ( ku[part] ){
+        for(integer_t col=n[part+1]; col < (n[part+1] + ku[part]); col++) {
+					R->colind[index++] = col;
+				}
       }
 
       // set rowptr properly
@@ -403,20 +400,18 @@ Error_t matrix_FillReduced ( const integer_t part,
                              block_t*      B )
 {
   // initialize blocks
-    integer_t index;
-    integer_t firstrow;
-    integer_t firstcol;
-    integer_t lastcol;
+    integer_t firstcol, lastcol;
 
     // locate myself
-    ComputePrevNnzAndRows(part, n, ku, kl, &index, &firstrow);
+    integer_t index = ComputePrevNnz (part, n, ku, kl );
+		integer_t firstrow = n[part];
 
     // place elements
-    for(integer_t row=firstrow; row < firstrow + n[part]; row++)
+    for(integer_t row=n[part]; row < n[part +1]; row++)
     {
       // add wi elements
-        firstcol = firstrow - kl[part];
-        lastcol  = firstrow;
+        firstcol = n[part] - kl[part];
+        lastcol  = n[part];
 
         for(integer_t col=firstcol; col < lastcol; col++) {
           if ( B->type == _W_BLOCK_ ) {
@@ -431,8 +426,8 @@ Error_t matrix_FillReduced ( const integer_t part,
 				index++;
 
         // add Vi elements
-        firstcol = firstrow + n[part];
-        lastcol  = firstcol + ku[part];
+        firstcol = n[part+1];
+        lastcol  = n[part+1] + ku[part];
 
         for(integer_t col=firstcol; col < lastcol; col++) {
           if( B->type == _V_BLOCK_ ) {
@@ -459,16 +454,14 @@ Error_t matrix_FillReduced ( const integer_t part,
   nnz = number of nnz elements
   dim = total number of rows in the reduced system
 */
-Error_t ComputePrevNnzAndRows ( const integer_t p, integer_t* n, integer_t* ku, integer_t *kl, integer_t *nnz, integer_t *rows)
+integer_t ComputePrevNnz ( const integer_t p, integer_t* n, integer_t* ku, integer_t *kl )
 {
-  *nnz = 0;
-  *rows = 0;
+  integer_t nnz  = 0;
 
   for(integer_t part = 0; part < p; part++)
   {
-    *nnz += n[part] * (ku[part] + kl[part] +1);
-    *rows += n[part];
+    nnz += (n[part+1] - n[part]) * (ku[part] + kl[part] +1);
   }
 
-  return (SPIKE_SUCCESS);
+	return (nnz);
 };

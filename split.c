@@ -44,9 +44,9 @@ int main(int argc, const char *argv[])
 
 
 	// extracts the second block, loads the reference and compares them
-	matrix_t* Block1     = matrix_Extract(A, 0,  5, 0,  5);
+	matrix_t* Block1     = matrix_ExtractMatrix(A, 0,  5, 0,  5);
   matrix_t* Block1_ref = matrix_LoadCSR("Tests/split/block1.bin");
-	
+
 	matrix_Print(Block1_ref, "First block (reference)");
 	matrix_Print(Block1    , "First block (created)");
 
@@ -57,15 +57,15 @@ int main(int argc, const char *argv[])
 		fprintf(stderr, "Test FAILED for first block, matrices are not equal\n");
 		exit(-1);
 	}
-	
+
 
 	// extracts the second block, loads the reference and compares both
-	matrix_t* Block2     = matrix_Extract(A, 5, 10, 5, 10);
+	matrix_t* Block2     = matrix_ExtractMatrix(A, 5, 10, 5, 10);
 	matrix_t* Block2_ref = matrix_LoadCSR("Tests/split/block2.bin");
-	
+
 	matrix_Print(Block2_ref, "Second block (reference)");
 	matrix_Print(Block2    , "Second block (created)");
-	
+
 	res = matrix_AreEqual( Block2_ref, Block2 );
 
 	if ( res == 0 )
@@ -82,7 +82,7 @@ int main(int argc, const char *argv[])
 	matrix_Deallocate( Block2 );
 
 	fprintf(stderr, "\nTest result: PASSED.\n");
-	
+
 	matrix_t* B = matrix_LoadCSR("Tests/bandwidth/banded.bin");
 	compute_bandwidth( B );
 	matrix_Deallocate( B );

@@ -56,7 +56,7 @@ int main(int argc, const char *argv[])
   integer_t  p     = 3;
   integer_t  ku[3] = {2, 1, 0};
   integer_t  kl[3] = {0, 1, 1};
-  integer_t  n [3] = {4, 4, 4};
+  integer_t  n [4] = {0, 4, 8, 12};
 
   matrix_t* R = matrix_CreateEmptyReduced(p, n, ku, kl);
 

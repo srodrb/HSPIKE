@@ -115,14 +115,34 @@ Error_t system_solve ( integer_t *colind, // ja
 	iparm[11] = 0;
 	uplo = "non-transposed";
 
-			printf ("\n\nSolving %s system...\n", uplo);
-			PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
-							 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, b, x, &error);
-			if ( error != 0 )
-			{
-					printf ("\nERROR during solution: %d", error);
-					exit (3);
-			}
+	printf ("\n\nSolving %s system...\n", uplo);
+	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, b, x, &error);
+	if ( error != 0 )
+	{
+			printf ("\nERROR during solution: %d", error);
+			exit (3);
+	}
+
+	#ifdef _ENABLE_TESTING_
+	fprintf(stderr, "\nTESTING INFO: Solution of the system, solved by Intel PARDISO\n\n");
+
+	for(integer_t row = 0; row < n; row++ ){
+		for(integer_t col = 0; col < nrhs; col++ ){
+			fprintf(stderr, "%f  ", x[row * n + col]);
+		}
+		fprintf(stderr, "\n");
+	}
+
+	fprintf(stderr, "\nTESTING INFO: RHS of the system, solved by Intel PARDISO\n\n");
+
+	for(integer_t row = 0; row < n; row++ ){
+		for(integer_t col = 0; col < nrhs; col++ ){
+			fprintf(stderr, "%f  ", b[row * n + col]);
+		}
+		fprintf(stderr, "\n");
+	}
+	#endif
 
 
 // Compute residual
@@ -137,10 +157,11 @@ Error_t system_solve ( integer_t *colind, // ja
 	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
 					 &n, &ddum, rowptr, colind, &idum, &nrhs,
 					 iparm, &msglvl, &ddum, &ddum, &error);
-	return 0;
+
 	// solve the system
 
 	// check for residual
+	return (SPIKE_SUCCESS);
 };
 
 void symbolic_factorization ( matrix_t* A )

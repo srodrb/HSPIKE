@@ -21,20 +21,21 @@
 
 	#include "spike_algebra.h"
 
-	typedef struct
-	{
-		integer_t r0; /* first row */
-		integer_t rf; /* last row  */
-
-	} interval_t;
-
 	/*
 	 * Shared memory version of the schedule structure
+	 * n: (array, size p+1) dimensions of the blocks
+	 * ku: (array, size p) upper bandwidth of the blocks
+	 * kl: (array, size p) lower bandwidth of the blocks
+	 *
+	 * size(n)=(p+1) because we would like to formulate lopps in a natural fashion.
 	 */
 	typedef struct
 	{
 		integer_t p;
-		interval_t *interval; 
+
+		integer_t *n;
+		integer_t *ku;
+		integer_t *kl;
 
 	} sm_schedule_t;
 
