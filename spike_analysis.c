@@ -47,9 +47,6 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
 		S->kl[i] = A->kl;
 	}
 
-	S->kl[0]       = (integer_t) 0;
-	S->ku[S->p -1] = (integer_t) 0;
-
 	schedule_Print(S);
 
 	return (S);

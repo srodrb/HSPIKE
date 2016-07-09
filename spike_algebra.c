@@ -22,10 +22,10 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
 Error_t system_solve ( integer_t *colind, // ja
 										   integer_t *rowptr, // ia
 										   complex_t *aij,
-										   complex_t* x,
-										   complex_t* b,
-										   integer_t n,
-										   integer_t nrhs)
+										   complex_t *x,
+										   complex_t *b,
+										   integer_t  n,
+										   integer_t  nrhs)
 {
 	if ( x == NULL ){
 		fprintf(stderr, "INFO: x vector is not supplied, solution will be stored "
@@ -66,13 +66,13 @@ Error_t system_solve ( integer_t *colind, // ja
 	iparm[14] = 0;        /* Not in use */
 	iparm[15] = 0;        /* Not in use */
 	iparm[16] = 0;        /* Not in use */
-	iparm[17] = -1;       /* Output: Number of nonzeros in the factor LU */
-	iparm[18] = -1;       /* Output: Mflops for LU factorization */
+	iparm[17] = -1;       /* Output: Number of nonzeros in the factor LU, -1 shows it */
+	iparm[18] = -1;       /* Output: Mflops for LU factorization, -1 shows it */
 	iparm[19] = 0;        /* Output: Numbers of CG Iterations */
 	iparm[34] = 1;        /* Pardiso use C-style indexing for ia and ja arrays */
 	maxfct = 1;           /* Maximum number of numerical factorizations. */
 	mnum = 1;         /* Which factorization to use. */
-	msglvl = 1;           /* Print statistical information in file */
+	msglvl = 0;           /* Print statistical information in file */
 	error = 0;            /* Initialize error flag */
 /* -------------------------------------------------------------------- */
 /* .. Initialize the internal solver memory pointer. This is only */
@@ -123,27 +123,6 @@ Error_t system_solve ( integer_t *colind, // ja
 			printf ("\nERROR during solution: %d", error);
 			exit (3);
 	}
-
-	#ifdef _ENABLE_TESTING_
-	fprintf(stderr, "\nTESTING INFO: Solution of the system, solved by Intel PARDISO\n\n");
-
-	for(integer_t row = 0; row < n; row++ ){
-		for(integer_t col = 0; col < nrhs; col++ ){
-			fprintf(stderr, "%f  ", x[row * n + col]);
-		}
-		fprintf(stderr, "\n");
-	}
-
-	fprintf(stderr, "\nTESTING INFO: RHS of the system, solved by Intel PARDISO\n\n");
-
-	for(integer_t row = 0; row < n; row++ ){
-		for(integer_t col = 0; col < nrhs; col++ ){
-			fprintf(stderr, "%f  ", b[row * n + col]);
-		}
-		fprintf(stderr, "\n");
-	}
-	#endif
-
 
 // Compute residual
 

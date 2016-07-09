@@ -23,7 +23,7 @@
 
 int main(int argc, const char *argv[])
 {
-	fprintf(stderr, "\nShared Memory Spike Solver.");
+	fprintf(stderr, "\nShared Memory Spike Solver.\n");
 
 	/* ================================= */
 	integer_t nrhs = 1;
@@ -51,8 +51,8 @@ int main(int argc, const char *argv[])
 
 		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 
-		sprintf( msg, "%d-th matrix block", p);
-		matrix_Print( Aij, msg);
+		// sprintf( msg, "%d-th matrix block", p);
+		// matrix_Print( Aij, msg);
 
 
 		if ( p == 0 ){
@@ -60,14 +60,12 @@ int main(int argc, const char *argv[])
 			block_t* Vi    = block_Empty( rf - r0, A->ku, (blocktype_t) _V_BLOCK_ );
 			block_t* Bi    = matrix_ExtractBlock(A, r0, rf, rf, rf + A->ku, (blocktype_t) _V_BLOCK_ );
 
-			block_Print( Vi, "Vi block" );
-			block_Print( Bi, "Bi block" );
-
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
 
-			block_Print( Vi, NULL );
+			sprintf( msg, "%d-th partition, Vi block", p);
+			block_Print( Vi, msg );
 
-			error = matrix_FillReduced( p, schedule->n, schedule->ku, schedule->kl, R, Vi );
+			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Vi );
 
 			block_Deallocate( Vi );
 			block_Deallocate( Bi );
@@ -78,9 +76,10 @@ int main(int argc, const char *argv[])
 			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
 
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
-			error = matrix_FillReduced( p, schedule->n, schedule->ku, schedule->kl, R, Wi );
+			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Wi );
 
-			block_Print( Wi, NULL );
+			sprintf( msg, "%d-th partition, Wi block", p);
+			block_Print( Wi, msg );
 
 			block_Deallocate( Wi );
 			block_Deallocate( Ci );
@@ -93,17 +92,20 @@ int main(int argc, const char *argv[])
 			block_t* Bi    = matrix_ExtractBlock(A, r0, rf, rf, rf + A->ku, (blocktype_t) _V_BLOCK_ );
 
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
-			error = matrix_FillReduced( p, schedule->n, schedule->ku, schedule->kl, R, Vi );
+			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Vi );
 
 			fprintf(stderr, "\tFactorizando bloque izquierdo...\n");
 			block_t* Wi = block_Empty( rf - r0, A->kl, (blocktype_t) _W_BLOCK_ );
 			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
 
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
-			error = matrix_FillReduced( p, schedule->n, schedule->ku, schedule->kl, R, Wi );
+			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Wi );
 
-			block_Print( Wi, NULL );
-			block_Print( Vi, NULL );
+			sprintf( msg, "%d-th partition, Wi block", p);
+			block_Print( Wi, msg );
+
+			sprintf( msg, "%d-th partition, Vi block", p);
+			block_Print( Vi, msg );
 
 			block_Deallocate( Vi );
 			block_Deallocate( Wi );
@@ -114,6 +116,12 @@ int main(int argc, const char *argv[])
 		matrix_Deallocate(Aij);
 	}
 
+	// ahora resolvemos el sistema reducido
+	// solve_system();
+
+	// recuperamos la solucion del sistema original
+
+	matrix_PrintAsDense( R, "Reduced system");
 
 	schedule_Destroy(schedule);
 	matrix_Deallocate( A );

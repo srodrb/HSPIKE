@@ -99,6 +99,7 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
 {
   const integer_t nrows = A->n;
   const integer_t ncols = A->n;
+	complex_t value;
 
   complex_t *D = (complex_t*) spike_malloc( ALIGN_COMPLEX, ncols * nrows, sizeof(complex_t));
 
@@ -115,11 +116,12 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
 
   for(integer_t row = 0; row < nrows; row++){
     for(integer_t col = 0; col < ncols; col++){
-			complex_t value = D[row * ncols + col];
+			value = D[row * ncols + col];
+
 			if ( isLessThan( value, 0 ) )
-				fprintf(stderr, "%.2f  ", D[row * ncols + col]);
+				fprintf(stderr, "%.5f  ", value);
 			else
-				fprintf(stderr, " %.2f  ", D[row * ncols + col]);
+				fprintf(stderr, " %.5f  ", value);
 
     }
     fprintf(stderr, "\n");
@@ -284,16 +286,21 @@ void block_Deallocate(block_t* B)
 void block_Print( block_t* B, const char* msg )
 {
 	integer_t row, col;
+	complex_t value;
 
 	fprintf(stderr, "\n%s\n", msg);
 
 	for (row = 0; row < B->n; row++)
 	{
 		fprintf(stderr, "\n\t");
+		for (col = 0; col < B->m; col++) {
+			value = B->aij[row * B->m + col];
 
-		for (col = 0; col < B->m; col++)
-			fprintf(stderr, "%f   ", B->aij[row * B->m + col]);
-
+			if ( isLessThan( value, 0 ) )
+				fprintf(stderr, "%.5f  ", value);
+			else
+				fprintf(stderr, " %.5f  ", value);
+		}
 	}
 	fprintf(stderr, "\n");
 };
@@ -376,7 +383,9 @@ matrix_t* matrix_CreateEmptyReduced( const integer_t TotalPartitions, integer_t 
 		GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
 
 		/* ------------- top spike elements ---------------- */
-		fprintf(stderr, "\tTop part goes from %d to %d\n", nr[p], nr[p] + ku[p] );
+#ifdef _DEBUG_MATRIX_
+		fprintf(stderr, "\tPartition %d, top part covers from %d to %d\n", p, nr[p], nr[p] + ku[p] );
+#endif
 
 		for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
 			if ( p > 0 )// add Wi elements
@@ -405,7 +414,9 @@ matrix_t* matrix_CreateEmptyReduced( const integer_t TotalPartitions, integer_t 
 		}
 
 		/* ------------- Bottom spike elements ---------------- */
-		fprintf(stderr, "\tBottom part goes from %d to %d\n", nr[p] +ku[p], nr[p+1] );
+#ifdef _DEBUG_MATRIX_
+		fprintf(stderr, "\tPartition %d, bottom part covers from %d to %d\n", p, nr[p] +ku[p], nr[p+1] );
+#endif
 
 		for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
 			if ( p > 0 )// add Wi elements
@@ -436,8 +447,6 @@ matrix_t* matrix_CreateEmptyReduced( const integer_t TotalPartitions, integer_t 
 
 	// clean up
 	spike_nullify( nr );
-
-	matrix_PrintAsDense(R, "Assembled reduced system");
 
   return (R);
 }
@@ -514,44 +523,83 @@ Error_t matrix_FillReduced ( const integer_t TotalPartitions,
 	GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
 
 	/* ------------- top spike elements ---------------- */
-	fprintf(stderr, "\tTop part goes from %d to %d\n", nr[p], nr[p] + ku[p] );
+#ifdef _DEBUG_MATRIX_
+	fprintf(stderr, "\tTop part covers from %d to %d\n", nr[p], nr[p] + ku[p] );
+#endif
 
 	for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
 		if ( p > 0 )// add Wi elements
-		for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
-			R->aij[nnz++] = 3.3;
-		}
+			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+				integer_t wi_row = row - nr[p];
+				integer_t wi_col = col - (nr[p] - kl[p]);
+
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding WI TOP element from row %d, col %d\n", wi_row, wi_col);
+#endif
+
+				if ( B->type == _W_BLOCK_ )
+					R->aij[nnz++] = B->aij[wi_row*kl[p] + wi_col];
+				else
+					nnz++;
+			}
 
 		nnz++;// add diagonal element
 
-		// add Wi elements
 		if ( p < (TotalPartitions - 1)) // add Vi elements
-		for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
-			R->aij[nnz++] = 2.2;
-		}
+			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+				integer_t vi_row = row - nr[p];
+				integer_t vi_col = col - nr[p+1];
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding VI TOP element from row %d, col %d\n", vi_row, vi_col);
+#endif
+				if ( B->type == _V_BLOCK_ )
+					R->aij[nnz++] = B->aij[vi_row*kl[p] + vi_col];
+				else
+					nnz++;
+			}
 	}
 
 	/* ------------- Bottom spike elements ---------------- */
-	fprintf(stderr, "\tBottom part goes from %d to %d\n", nr[p] +ku[p], nr[p+1] );
+#ifdef _DEBUG_MATRIX_
+	fprintf(stderr, "\tBottom part covers from %d to %d\n", nr[p] +ku[p], nr[p+1] );
+#endif
 
 	for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
 		if ( p > 0 )// add Wi elements
-		for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
-			R->aij[nnz++] = 4.4;
-		}
+			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+				integer_t wi_row = (n[p+1] - n[p]) - kl[p] + (row - (nr[p] + ku[p]));
+				integer_t wi_col = col - (nr[p] - kl[p]);
+
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding WI BOTTOM element from row %d, col %d\n", wi_row, wi_col);
+#endif
+				if ( B->type == _W_BLOCK_ )
+					R->aij[nnz++] = B->aij[wi_row*kl[p] + wi_col];
+				else
+					nnz++;
+			}
 
 		nnz++; // add diagonal element
 
-		// add Wi elements
+
 		if ( p < (TotalPartitions - 1)) // add Vi elements
-		for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
-			R->aij[nnz++] = 5.5;
-		}
+			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+				integer_t vi_row = (n[p+1] -n[p]) - kl[p] + (row - (nr[p] + ku[p]));
+				integer_t vi_col = col - nr[p+1];
+
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding VI BOTTOM element from row %d, col %d\n", vi_row, vi_col);
+#endif
+
+				if (B->type == _V_BLOCK_)
+					R->aij[nnz++] = B->aij[vi_row*kl[p] + vi_col];
+				else
+					nnz++;
+			}
 	}
 
 	// clean up
 	spike_nullify( nr );
 
-	matrix_PrintAsDense(R, "Assembled reduced system");
   return (SPIKE_SUCCESS);
 };
