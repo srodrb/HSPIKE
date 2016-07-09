@@ -50,6 +50,7 @@ typedef struct
 
 
 matrix_t* matrix_LoadCSR    (const char* filename);
+static matrix_t* matrix_CreateEmpty( const integer_t n, const integer_t nnz );
 void      matrix_Deallocate (matrix_t* M);
 void      matrix_Print      (matrix_t* M, const char* msg);
 
@@ -79,7 +80,8 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg);
 Error_t block_AreEqual( block_t* A, block_t* B );
 block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type);
 
-Error_t matrix_FillReduced ( const integer_t part,
+Error_t matrix_FillReduced ( const integer_t TotalPartitions,
+														 const integer_t CurrentPartition,
                              integer_t     *n,
                              integer_t     *ku,
                              integer_t     *kl,
@@ -87,4 +89,5 @@ Error_t matrix_FillReduced ( const integer_t part,
                              block_t*       B );
 
 matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl );
-integer_t ComputePrevNnz ( const integer_t p, integer_t* n, integer_t* ku, integer_t *kl );
+Error_t GetNnzAndRowsUpToPartition ( const integer_t TotalPartitions, const integer_t CurrentPartition, integer_t *ku, integer_t *kl, integer_t *nnz, integer_t *FirstBlockRow );
+static integer_t* ComputeReducedSytemDimensions( integer_t partitions, integer_t *ku, integer_t *kl);

@@ -39,6 +39,28 @@ matrix_t* matrix_LoadCSR(const char* filename)
 	return (M);
 };
 
+/*
+	Creates an empty CSR sparse matriz of dimension n and nnz elements
+*/
+static matrix_t* matrix_CreateEmpty( const integer_t n, const integer_t nnz )
+{
+	matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
+	R->n        = n;
+	R->nnz      = nnz;
+	R->ku       = 0;
+	R->kl       = 0;
+	R->K        = 0;
+	R->colind   = (integer_t*) spike_malloc( ALIGN_INT    , R->nnz, sizeof(integer_t));
+	R->rowptr   = (integer_t*) spike_malloc( ALIGN_INT    , R->n+1, sizeof(integer_t));
+	R->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->nnz, sizeof(complex_t));
+
+	memset( (void*) R->colind, 0, (R->nnz) * sizeof(integer_t));
+	memset( (void*) R->rowptr, 0, (R->n+1) * sizeof(integer_t));
+	memset( (void*) R->aij   , 0, (R->nnz) * sizeof(complex_t));
+
+	return (R);
+}
+
 void matrix_Deallocate (matrix_t* M)
 {
 	spike_nullify ( M->colind );
@@ -147,13 +169,7 @@ matrix_t* matrix_ExtractMatrix (  matrix_t* M,
 	}
 
 	// allocate matrix space
-	matrix_t* B = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
-
-	B->n       = rf - r0;
-	B->nnz     = nnz;
-	B->colind  = (integer_t*) spike_malloc( ALIGN_INT    , nnz     , sizeof(integer_t));
-	B->rowptr  = (integer_t*) spike_malloc( ALIGN_INT    , B->n + 1, sizeof(integer_t));
-	B->aij     = (complex_t*) spike_malloc( ALIGN_COMPLEX, nnz     , sizeof(complex_t));
+	matrix_t* B = matrix_CreateEmpty( rf - r0, nnz );
 
 	// extract elements and correct indices
 	nnz          = 0;
@@ -323,126 +339,108 @@ block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type)
 };
 
 /*
+	Computes an array, similar to R->n that gives the number of rows per block.
+ */
+static integer_t* ComputeReducedSytemDimensions( integer_t partitions, integer_t *ku, integer_t *kl)
+{
+	integer_t* nr = (integer_t*) spike_malloc( ALIGN_INT, partitions + 1, sizeof(integer_t));
+	memset( (void*) nr, 0, (partitions +1) * sizeof(integer_t));
+
+	for(integer_t i=0; i < partitions; i++) {
+		nr[i+1] = nr[i] + (ku[i] + kl[i]);
+	}
+
+	return (nr);
+}
+
+/*
   p = numero de particiones que lo originan
   k = (array) contiene el numero de columnas de cada bloque
   n = (array) contiene el numero de filas de cada bloque
  */
-matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl )
+matrix_t* matrix_CreateEmptyReduced( const integer_t TotalPartitions, integer_t *n, integer_t *ku, integer_t *kl )
 {
-  integer_t dim = n[p];
-  integer_t nnz = ComputePrevNnz(p, n, ku, kl );
+	// local variables
+	integer_t nnz, rows;
 
-  // allocate sparce for the reduced system and initialize it
-  matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
-  R->n        = dim;
-  R->nnz      = nnz;
-  R->colind   = (integer_t*) spike_malloc( ALIGN_INT    , R->nnz, sizeof(integer_t));
-  R->rowptr   = (integer_t*) spike_malloc( ALIGN_INT    , R->n+1, sizeof(integer_t));
-  R->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->nnz, sizeof(complex_t));
+	// compute matrix dimensions and allocate the structure
+	GetNnzAndRowsUpToPartition(TotalPartitions, TotalPartitions, ku, kl, &nnz, &rows );
+	matrix_t* R = matrix_CreateEmpty( rows, nnz );
 
-  memset( (void*) R->colind, 0, (R->nnz) * sizeof(integer_t));
-  memset( (void*) R->rowptr, 0, (R->n+1) * sizeof(integer_t));
-  memset( (void*) R->aij   , 0, (R->nnz) * sizeof(complex_t));
+	// reduced system dimensions
+	integer_t* nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
 
   // initialize blocks
-  for(integer_t part=0; part < p; part++){
-    integer_t index = ComputePrevNnz(part, n, ku, kl );
+  for(integer_t p=0; p < TotalPartitions; p++)
+	{
+		GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
 
-		fprintf(stderr, "%d-th partition starts at %d-th row and finishes at the %d row\n", part, n[part], n[part+1]);
+		/* ------------- top spike elements ---------------- */
+		fprintf(stderr, "\tTop part goes from %d to %d\n", nr[p], nr[p] + ku[p] );
 
-    // place elements
-    for(integer_t row=n[part]; row < n[part+1]; row++)
-    {
-      // add wi elements
-      if ( kl[part]){
-        for(integer_t col= (n[part] - kl[part]); col < n[part]; col++) {
-					R->colind[index++] = col;
-				}
-      }
+		for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
+			if ( p > 0 )// add Wi elements
+			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+				// R->aij[nnz] = 3.3;
+				R->colind[nnz++] = col;
+			}
 
-      // add diagonal element
-      R->colind[index] = row;
-      R->aij[index]    = (complex_t) __unit;
-      index++;
+			// add diagonal element
+			R->colind[nnz  ] = row;
+			R->aij   [nnz++] = (complex_t) __unit;
 
-      // add vi elements
-      if ( ku[part] ){
-        for(integer_t col=n[part+1]; col < (n[part+1] + ku[part]); col++) {
-					R->colind[index++] = col;
-				}
-      }
+			// add Wi elements
+			if ( p < (TotalPartitions - 1)) // add Vi elements
+			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+				// R->aij[nnz] = 2.2;
+				R->colind[nnz++] = col;
+			}
 
-      // set rowptr properly
-      R->rowptr[row+1] = R->rowptr[row] + (ku[part] + kl[part] +1);
-    }
-  }
+			if ( p == 0 )
+				R->rowptr[row+1] = R->rowptr[row] + (ku[p] +1);
+			else if ( p == (TotalPartitions -1))
+				R->rowptr[row+1] = R->rowptr[row] + (kl[p] +1);
+			else
+				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
+		}
 
-  matrix_PrintAsDense(R, "Assembled reduced system");
+		/* ------------- Bottom spike elements ---------------- */
+		fprintf(stderr, "\tBottom part goes from %d to %d\n", nr[p] +ku[p], nr[p+1] );
+
+		for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
+			if ( p > 0 )// add Wi elements
+			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+				// R->aij[nnz] = 4.4;
+				R->colind[nnz++] = col;
+			}
+
+			// add diagonal element
+			R->colind[nnz  ] = row;
+			R->aij   [nnz++] = (complex_t) __unit;
+
+			// add Wi elements
+			if ( p < (TotalPartitions - 1)) // add Vi elements
+			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+				// R->aij[nnz] = 5.5;
+				R->colind[nnz++] = col;
+			}
+
+			if ( p == 0 )
+				R->rowptr[row+1] = R->rowptr[row] + (ku[p] +1);
+			else if ( p == (TotalPartitions -1))
+				R->rowptr[row+1] = R->rowptr[row] + (kl[p] +1);
+			else
+				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
+		}
+	}
+
+	// clean up
+	spike_nullify( nr );
+
+	matrix_PrintAsDense(R, "Assembled reduced system");
 
   return (R);
 }
-
-/*
-  Adds the elemnts of a block to the reduced system according to the number of
-  partition, and the block type.
-
-  p = number of partition
-  n = list of partition dimensions
-  R = reduced system
-  B = block (spike)
-  type = block location flag
-*/
-Error_t matrix_FillReduced ( const integer_t part,
-                             integer_t     *n,
-                             integer_t     *ku,
-                             integer_t     *kl,
-                             matrix_t      *R,
-                             block_t*      B )
-{
-  // initialize blocks
-    integer_t firstcol, lastcol;
-
-    // locate myself
-    integer_t index = ComputePrevNnz (part, n, ku, kl );
-		integer_t firstrow = n[part];
-
-    // place elements
-    for(integer_t row=n[part]; row < n[part +1]; row++)
-    {
-      // add wi elements
-        firstcol = n[part] - kl[part];
-        lastcol  = n[part];
-
-        for(integer_t col=firstcol; col < lastcol; col++) {
-          if ( B->type == _W_BLOCK_ ) {
-            R->aij[index++] = B->aij[(row-firstrow)*kl[part] + (col - firstcol)];
-          }
-          else  {
-            index++;
-          }
-        }
-
-        // main diagonal element
-				index++;
-
-        // add Vi elements
-        firstcol = n[part+1];
-        lastcol  = n[part+1] + ku[part];
-
-        for(integer_t col=firstcol; col < lastcol; col++) {
-          if( B->type == _V_BLOCK_ ) {
-            R->aij[index++] = B->aij[(row-firstrow)*ku[part] + (col - firstcol)];
-          }
-          else {
-            index++;
-          }
-        }
-    }
-
-  matrix_PrintAsDense(R, "Assembled reduced system");
-
-  return (SPIKE_SUCCESS);
-};
 
 /*
   Computes the number of nnz in the reduced system.
@@ -454,14 +452,106 @@ Error_t matrix_FillReduced ( const integer_t part,
   nnz = number of nnz elements
   dim = total number of rows in the reduced system
 */
-integer_t ComputePrevNnz ( const integer_t p, integer_t* n, integer_t* ku, integer_t *kl )
+Error_t GetNnzAndRowsUpToPartition ( const integer_t TotalPartitions, const integer_t CurrentPartition, integer_t* ku, integer_t *kl, integer_t *nnz, integer_t *FirstBlockRow )
 {
-  integer_t nnz  = 0;
-
-  for(integer_t part = 0; part < p; part++)
+	/* Compute the number of nnz elements up to the actual partition */
+  *nnz      = 0;
+  for(integer_t p = 0; p < CurrentPartition; p++)
   {
-    nnz += (n[part+1] - n[part]) * (ku[part] + kl[part] +1);
+		if ( p == 0 ){
+			*nnz += ku[p] * (ku[p] + kl[p]);
+		}
+		else if ( p == (TotalPartitions -1)) {
+			*nnz += kl[p] * (ku[p] + kl[p]);
+		}
+		else{
+			*nnz += kl[p] * (ku[p] + kl[p]) + ku[p] * (ku[p] + kl[p]);
+		}
+
+		// add diagonal elements
+		*nnz += (ku[p] + kl[p]);
   }
 
-	return (nnz);
+
+	/* Compute the number of rows optionally */
+	if ( FirstBlockRow != NULL ) {
+		*FirstBlockRow = 0;
+
+		for(integer_t p = 0; p < CurrentPartition; p++)
+			*FirstBlockRow += (ku[p] + kl[p]);
+	}
+
+	return (SPIKE_SUCCESS);
+};
+
+
+/*
+  Adds the elemnts of a block to the reduced system according to the number of
+  partition, and the block type.
+
+  p = number of partition
+  n = list of partition dimensions
+  R = reduced system
+  B = block (spike)
+  type = block location flag
+*/
+Error_t matrix_FillReduced ( const integer_t TotalPartitions,
+														 const integer_t CurrentPartition,
+                             integer_t     *n,
+                             integer_t     *ku,
+                             integer_t     *kl,
+                             matrix_t      *R,
+                             block_t*       B )
+{
+	// local variables
+	integer_t nnz, rows;
+	integer_t p = CurrentPartition;
+
+	// reduced system dimensions
+	integer_t* nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
+
+	// initialize blocks
+	GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
+
+	/* ------------- top spike elements ---------------- */
+	fprintf(stderr, "\tTop part goes from %d to %d\n", nr[p], nr[p] + ku[p] );
+
+	for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
+		if ( p > 0 )// add Wi elements
+		for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+			R->aij[nnz++] = 3.3;
+		}
+
+		nnz++;// add diagonal element
+
+		// add Wi elements
+		if ( p < (TotalPartitions - 1)) // add Vi elements
+		for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+			R->aij[nnz++] = 2.2;
+		}
+	}
+
+	/* ------------- Bottom spike elements ---------------- */
+	fprintf(stderr, "\tBottom part goes from %d to %d\n", nr[p] +ku[p], nr[p+1] );
+
+	for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
+		if ( p > 0 )// add Wi elements
+		for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+			R->aij[nnz++] = 4.4;
+		}
+
+		nnz++; // add diagonal element
+
+		// add Wi elements
+		if ( p < (TotalPartitions - 1)) // add Vi elements
+		for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+			R->aij[nnz++] = 5.5;
+		}
+	}
+
+	// clean up
+	spike_nullify( nr );
+
+	matrix_PrintAsDense(R, "Assembled reduced system");
+  return (SPIKE_SUCCESS);
 };
