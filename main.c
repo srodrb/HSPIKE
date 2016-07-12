@@ -21,30 +21,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Error_t SolveOriginalSystem( matrix_t *A, const integer_t nrhs )
+static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 {
 	// local variables
 	double start_t, end_t;
 	Error_t error;
 
-	// create rhs (b) and x vectors
-	complex_t *rhs = (complex_t*) spike_malloc( ALIGN_COMPLEX, A->n * nrhs, sizeof(complex_t));
-	complex_t *x   = (complex_t*) spike_malloc( ALIGN_COMPLEX, A->n * nrhs, sizeof(complex_t));
-
-	// initialize b to one and x to zero
-	for(integer_t i=0; i<(A->n * nrhs); i++ ) {rhs[i] = (complex_t) __unit; }
-	memset((void*) x, 0, A->n * nrhs * sizeof(complex_t));
-
 	fprintf(stderr, "\nSolving original linear system using reference direct solver");
 
 	start_t = GetReferenceTime();
-	error = system_solve( A->colind, A->rowptr, A->aij, x, rhs, A->n, nrhs );
+	error = system_solve( A->colind, A->rowptr, A->aij, x->aij, rhs->aij, A->n, rhs->m );
 	end_t = GetReferenceTime();
 
 	fprintf(stderr, "\nReference direct solver took %.6lf seconds", end_t - start_t );
-
-	spike_nullify (rhs);
-	spike_nullify (x);
 
 	return (SPIKE_SUCCESS);
 };
@@ -53,29 +42,44 @@ int main(int argc, const char *argv[])
 {
 	fprintf(stderr, "\nShared Memory Spike Solver.\n");
 
-	/* ================================= */
+	/* -------------------------------------------------------------------- */
+	/* .. Local variables. */
+	/* -------------------------------------------------------------------- */
 	double start_t, end_t;
-	integer_t nrhs = 1;
-	integer_t p;
+	const integer_t nrhs = 1;
 	Error_t error;
 	char msg[200];
 
 
-	/* ================================= */
+	/* -------------------------------------------------------------------- */
+	/* .. Load and initalize the system Ax=f. */
+	/* -------------------------------------------------------------------- */
 	matrix_t* A = matrix_LoadCSR("Tests/dummy/tridiagonal.bin");
-	// SolveOriginalSystem( A, nrhs);
-	// matrix_Deallocate( A );
-	// return 0;
-	// matrix_PrintAsDense( A, NULL );
+	block_t*  x = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
+	block_t*  f = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 
+	block_InitializeToValue( x, __zero ); // solution of the system
+	block_InitializeToValue( f, __unit ); // rhs of the system
+
+#undef _SOLVE_ONLY_WITH_REF_
+#ifdef _SOLVE_ONLY_WITH_REF_
+	SolveOriginalSystem( A, x, f);
+	matrix_Deallocate( A );
+	block_Deallocate( x );
+	block_Deallocate( f );
+	return 0;
+#endif
+	matrix_PrintAsDense( A, NULL );
 
 	start_t = GetReferenceTime();
 	sm_schedule_t* schedule = spike_solve_analysis( A, nrhs, 4 );
 
 	matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);
 
-	/* ======== FACTORIZATION PHASE ======== */
-	for(p=0; p<schedule->p; p++)
+	/* -------------------------------------------------------------------- */
+	/* .. Factorization Phase. */
+	/* -------------------------------------------------------------------- */
+	for(integer_t p=0; p<schedule->p; p++)
 	{
 		integer_t r0,rf,c0,cf;
 
@@ -120,7 +124,7 @@ int main(int argc, const char *argv[])
 
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
 			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Vi );
-;
+
 			block_t* Wi = block_Empty( rf - r0, A->kl, (blocktype_t) _W_BLOCK_ );
 			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
 
@@ -142,20 +146,34 @@ int main(int argc, const char *argv[])
 		matrix_Deallocate(Aij);
 	}
 
+	/* -------------------------------------------------------------------- */
+	/* .. Solution of the reduced system. */
+	/* -------------------------------------------------------------------- */
+
 	// ahora resolvemos el sistema reducido
 	// solve_system();
 
-	// recuperamos la solucion del sistema original
+	/* -------------------------------------------------------------------- */
+	/* .. Backward substitution phase. */
+	/* -------------------------------------------------------------------- */
 
 	matrix_PrintAsDense( R, "Reduced system");
 
+	/* -------------------------------------------------------------------- */
+	/* .. Clean up. */
+	/* -------------------------------------------------------------------- */
 	schedule_Destroy(schedule);
 	matrix_Deallocate( A );
+	block_Deallocate( x );
+	block_Deallocate( f );
 
 	end_t = GetReferenceTime();
 
 	fprintf(stderr, "\nSPIKE solver took %.6lf seconds", end_t - start_t);
 
+	/* -------------------------------------------------------------------- */
+	/* .. Load and initalize the system Ax=f. */
+	/* -------------------------------------------------------------------- */
 	fprintf(stderr, "\nProgram finished\n");
 
 	return 0;

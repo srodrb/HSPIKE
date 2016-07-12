@@ -353,6 +353,16 @@ block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type)
 	return (B);
 };
 
+Error_t block_InitializeToValue( block_t* B, const complex_t value )
+{
+	complex_t *restrict aij = B->aij;
+
+	for(integer_t i=0; i < (B->n * B->m); i++)
+		aij[i] = value;
+
+	return (SPIKE_SUCCESS);
+};
+
 /*
 	Computes an array, similar to R->n that gives the number of rows per block.
  */

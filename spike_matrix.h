@@ -80,6 +80,7 @@ void block_Print ( block_t* B, const char* msg);
 Error_t matrix_PrintAsDense( matrix_t* A, const char* msg);
 Error_t block_AreEqual( block_t* A, block_t* B );
 block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type);
+Error_t block_InitializeToValue( block_t* B, const complex_t value );
 
 Error_t matrix_FillReduced ( const integer_t TotalPartitions,
 														 const integer_t CurrentPartition,
