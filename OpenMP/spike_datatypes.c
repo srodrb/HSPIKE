@@ -24,19 +24,13 @@
   #define __restrict restrict
 #endif
 
-#if DATATYPE == _DATATYPE_Z_ // double complex
+#if defined (_DATATYPE_Z_) || defined (_DATATYPE_C_)
+  /* complex arithmetic */
   const complex_t __unit = (complex_t) {1.0, 1.0};
   const complex_t __zero = (complex_t) {0.0, 0.0};
 
-#elif DATATYPE == _DATATYPE_C_ // complex float
-  const complex_t __unit = (complex_t) {1.0, 1.0};
-  const complex_t __zero = (complex_t) {0.0, 0.0};
-
-#elif DATATYPE == _DATATYPE_D_ // double precision float
-  const complex_t __unit = (complex_t) 1.0;
-  const complex_t __zero = (complex_t) 0.0;
-
-#else // single precision float
+#else
+  /* real arithmetic */
   const complex_t __unit = (complex_t) 1.0;
   const complex_t __zero = (complex_t) 0.0;
 
@@ -44,11 +38,15 @@
 
 const Bool_t True  = 1;
 const Bool_t False = 0;
+const Error_t SPIKE_SUCCESS = 1;
 
 Bool_t number_IsLessThan( complex_t a, complex_t b )
 {
-  #ifdef 	_COMPLEX_ARITHMETIC_
-    if ( a.real > b.real && a.imag > b.imag) return (True);
+  #if defined (_COMPLEX_ARITHMETIC_)
+    real_t amod = (a.real * a.real) + (a.imag * a.imag);
+    real_t bmod = (b.real * b.real) + (b.imag * b.imag);
+
+    if ( amod < bmod ) return (True);
   #else
     if ( a < b ) return (True);
   #endif
@@ -59,12 +57,13 @@ Bool_t number_IsLessThan( complex_t a, complex_t b )
 Bool_t number_IsEqual( complex_t a, complex_t b )
 {
   #ifdef 	_COMPLEX_ARITHMETIC_
-    if ( a.real == b.real && a.imag == b.imag) return (True);
+    real_t amod = (a.real * a.real) + (a.imag * a.imag);
+    real_t bmod = (b.real * b.real) + (b.imag * b.imag);
+
+    if ( amod == bmod ) return (True);
   #else
     if ( a == b ) return (True);
   #endif
 
   return (False);
-}
-
-const Error_t SPIKE_SUCCESS = 1;
+};

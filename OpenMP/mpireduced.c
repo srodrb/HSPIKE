@@ -1,10 +1,11 @@
 /* *
  * =====================================================================================
  *
- *       Filename:  reduced.c
+ *       Filename:  mpireduced.c
  *
  *    Description:  This test checks the assembly of a reduced system from the
  *                  blocks coming from the solution of V and W blocks.
+ *                  It uses a new implementation of the FillReduced function.
  *
  *        Version:  1.0
  *        Created:  05/07/16 09:59:35
@@ -66,18 +67,25 @@ int main(int argc, const char *argv[])
 
   matrix_t* R = matrix_CreateEmptyReduced(p, n, ku, kl);
 
-  res = matrix_FillReduced(p, 0, n, ku, kl, R, V0 );
-  res = matrix_FillReduced(p, 1, n, ku, kl, R, W1 );
-  res = matrix_FillReduced(p, 1, n, ku, kl, R, V1 );
-  res = matrix_FillReduced(p, 2, n, ku, kl, R, W2 );
+  res = matrix_FillReduced(p, 0, n, ku, kl, R, &V0->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
+  res = matrix_FillReduced(p, 0, n, ku, kl, R, &V0->aij, V->type, (blocklocation_t) _BOTTOM_PART_ );
+
+  res = matrix_FillReduced(p, 1, n, ku, kl, R, &W1->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
+  res = matrix_FillReduced(p, 1, n, ku, kl, R, &W1->aij[], V->type, (blocklocation_t) _BOTTOM_PART_ );
+
+  res = matrix_FillReduced(p, 1, n, ku, kl, R, &V1->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
+  res = matrix_FillReduced(p, 1, n, ku, kl, R, &V1->aij[], V->type, (blocklocation_t) _BOTTOM_PART_ );
+
+  res = matrix_FillReduced(p, 2, n, ku, kl, R, &W2->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
+  res = matrix_FillReduced(p, 2, n, ku, kl, R, &W2->aij[], V->type, (blocklocation_t) _BOTTOM_PART_ );
 
   matrix_PrintAsDense(R, "Assembled reduced system");
 
-	block_Deallocate( V0 );
-	block_Deallocate( W1 );
-	block_Deallocate( V1 );
-	block_Deallocate( W2 );
-  matrix_Deallocate( R );
+	block_Deallocate  ( V0 );
+	block_Deallocate  ( W1 );
+	block_Deallocate  ( V1 );
+	block_Deallocate  ( W2 );
+  matrix_Deallocate ( R  );
 
 
 	fprintf(stderr, "\nTest result: PASSED.\n");
