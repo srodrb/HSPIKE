@@ -25,7 +25,7 @@ int main(int argc, const char *argv[])
 	fprintf(stderr, "\nMATRIX BANDWIDTH TEST.\n\tINFO: Checks the correctness of the matrix envelope computation");
 
 	/* ================================= */
-	matrix_t* A = matrix_LoadCSR("Tests/bandwidth/banded.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/bandwidth/banded.bin");
 
 	compute_bandwidth( A );
 

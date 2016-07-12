@@ -54,7 +54,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	matrix_t* A = matrix_LoadCSR("Tests/dummy/tridiagonal.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 	block_t*  x = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 	block_t*  f = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 
