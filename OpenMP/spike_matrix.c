@@ -121,7 +121,7 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
     for(integer_t col = 0; col < ncols; col++){
 			value = D[row * ncols + col];
 
-			if ( isLessThan( value, 0 ) )
+			if ( number_IsLessThan ( value, __zero ) == True )
 				fprintf(stderr, "%.5f  ", value);
 			else
 				fprintf(stderr, " %.5f  ", value);
@@ -225,7 +225,7 @@ Error_t matrix_AreEqual( matrix_t* A, matrix_t* B )
 
 	for (integer_t i = 0; i < A->nnz; i++)
 	{
-		if( A->aij[i] != B->aij[i] )
+		if( number_IsEqual(A->aij[i],B->aij[i]) == False )
 		{
 			fprintf(stderr, "%d-th coefficents are not equal\n", i);
 			return (0);
@@ -234,7 +234,7 @@ Error_t matrix_AreEqual( matrix_t* A, matrix_t* B )
 
 	for (integer_t i = 0; i < A->nnz; i++)
 	{
-		if( A->colind[i] != B->colind[i] )
+		if( A->colind[i] != B->colind[i]  )
 		{
 			fprintf(stderr, "%d-th indices are not equal\n", i);
 			return (0);
@@ -304,7 +304,7 @@ void block_Print( block_t* B, const char* msg )
 		for (col = 0; col < B->m; col++) {
 			value = B->aij[row * B->m + col];
 
-			if ( isLessThan( value, 0 ) )
+			if ( number_IsLessThan( value, __zero ) == True )
 				fprintf(stderr, "%.5f  ", value);
 			else
 				fprintf(stderr, " %.5f  ", value);
@@ -326,7 +326,7 @@ Error_t block_AreEqual( block_t* A, block_t* B )
 
 	for (integer_t i = 0; i < A->n * A->m; i++)
 	{
-		if( A->aij[i] != B->aij[i] )
+		if( number_IsEqual( A->aij[i], B->aij[i]) == False )
 		{
 			fprintf(stderr, "%d-th coefficents are not equal\n", i);
 			return (0);
@@ -611,6 +611,121 @@ Error_t matrix_FillReduced ( const integer_t TotalPartitions,
 
 				if (B->type == _V_BLOCK_)
 					R->aij[nnz++] = B->aij[vi_row*kl[p] + vi_col];
+				else
+					nnz++;
+			}
+	}
+
+	// clean up
+	spike_nullify( nr );
+
+  return (SPIKE_SUCCESS);
+};
+
+/*
+  Inserts the elements of the block into the reduced linear system.
+
+	TotalPartitions: total number of partitions in which the original system has been divided
+	CurrentPartition: index of the current partition
+	n*
+	ku
+	kl
+	R: reduced system
+	aij: pointer to the first element to insert.
+	BlockType
+	Location:
+*/
+Error_t mpi_matrix_FillReduced ( const integer_t TotalPartitions,
+														 const integer_t CurrentPartition,
+                             integer_t          *n,
+                             integer_t          *ku,
+                             integer_t          *kl,
+                             matrix_t           *R,
+														 complex_t*         aij,
+                             blocktype_t       BlockType,
+													   blocklocation_t    Location )
+{
+	// local variables
+	integer_t nnz, rows;
+	integer_t p = CurrentPartition;
+
+	// reduced system dimensions
+	integer_t* nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
+
+	// initialize blocks
+	GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
+
+	/* ------------- top spike elements ---------------- */
+#ifdef _DEBUG_MATRIX_
+	fprintf(stderr, "\tTop part covers from %d to %d\n", nr[p], nr[p] + ku[p] );
+#endif
+
+	for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
+		if ( p > 0 )// add Wi elements
+			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+				integer_t wi_row = row - nr[p];
+				integer_t wi_col = col - (nr[p] - kl[p]);
+
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding WI TOP element from row %d, col %d\n", wi_row, wi_col);
+#endif
+
+				if ( BlockType == _W_BLOCK_ )
+					R->aij[nnz++] = aij[wi_row*kl[p] + wi_col];
+				else
+					nnz++;
+			}
+
+		nnz++;// add diagonal element
+
+		if ( p < (TotalPartitions - 1)) // add Vi elements
+			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+				integer_t vi_row = row - nr[p];
+				integer_t vi_col = col - nr[p+1];
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding VI TOP element from row %d, col %d\n", vi_row, vi_col);
+#endif
+				if ( BlockType == _V_BLOCK_ )
+					R->aij[nnz++] = aij[vi_row*kl[p] + vi_col];
+				else
+					nnz++;
+			}
+	}
+
+	/* ------------- Bottom spike elements ---------------- */
+#ifdef _DEBUG_MATRIX_
+	fprintf(stderr, "\tBottom part covers from %d to %d\n", nr[p] +ku[p], nr[p+1] );
+#endif
+
+	for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
+		if ( p > 0 )// add Wi elements
+			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
+				integer_t wi_row = (n[p+1] - n[p]) - kl[p] + (row - (nr[p] + ku[p]));
+				integer_t wi_col = col - (nr[p] - kl[p]);
+
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding WI BOTTOM element from row %d, col %d\n", wi_row, wi_col);
+#endif
+				if ( BlockType == _W_BLOCK_ )
+					R->aij[nnz++] = aij[wi_row*kl[p] + wi_col];
+				else
+					nnz++;
+			}
+
+		nnz++; // add diagonal element
+
+
+		if ( p < (TotalPartitions - 1)) // add Vi elements
+			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
+				integer_t vi_row = (n[p+1] -n[p]) - kl[p] + (row - (nr[p] + ku[p]));
+				integer_t vi_col = col - nr[p+1];
+
+#ifdef _DEBUG_MATRIX_
+				fprintf(stderr, "\t\tAdding VI BOTTOM element from row %d, col %d\n", vi_row, vi_col);
+#endif
+
+				if ( BlockType == _V_BLOCK_)
+					R->aij[nnz++] = aij[vi_row*kl[p] + vi_col];
 				else
 					nnz++;
 			}

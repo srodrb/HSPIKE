@@ -19,13 +19,76 @@
 #ifndef _SPIKE_DATATYPES_H_
 	#define _SPIKE_DATATYPES_H_
 
+	#define _DATATYPE_S_ 0
+	#define _DATATYPE_D_ 1
+	#define _DATATYPE_C_ 2
+	#define _DATATYPE_Z_ 3
+
+	#ifdef MPI_VERSION
+		#include <mpi.h>
+	#endif
 
 
-	typedef double   complex_t;
+#if DATATYPE == _DATATYPE_Z_ // double complex
+	#define _COMPLEX_ARITHMETIC_
 	typedef double   real_t;
+
+	typedef struct {
+		real_t real;
+		real_t imag;
+	} complex_number;
+
+	typedef complex_number   complex_t;
+
+	#ifdef MPI_VERSION
+		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
+		#define _MPI_REAL_T_  MPI_DOUBLE
+	#endif
+
+#elif DATATYPE == _DATATYPE_C_ // complex float
+	#define _COMPLEX_ARITHMETIC_
+
+	typedef float   real_t;
+
+	typedef struct {
+		real_t real;
+		real_t imag;
+	} complex_number;
+
+	typedef complex_number   complex_t;
+
+	#ifdef MPI_VERSION
+		#define _MPI_COMPLEX_T_  MPI_FLOAT * 2
+		#define _MPI_REAL_T_  MPI_FLOAT
+	#endif
+
+#elif DATATYPE == _DATATYPE_D_ // double precision float
+	typedef double   real_t;
+	typedef double   complex_t;
+
+	#ifdef MPI_VERSION
+		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
+		#define _MPI_REAL_T_  MPI_DOUBLE
+	#endif
+
+#else // single precision float
+	typedef float   real_t;
+	typedef float   complex_t;
+
+	#ifdef MPI_VERSION
+		#define _MPI_COMPLEX_T_  MPI_FLOAT
+		#define _MPI_REAL_T_  MPI_FLOAT
+	#endif
+
+#endif
+
 	typedef int      integer_t;
 	typedef int      Error_t;
 	typedef int      Bool_t;
+
+	#ifdef MPI_VERSION
+		#define _MPI_INTEGER_T_  MPI_INT
+	#endif
 
 	extern const complex_t __unit;
 	extern const complex_t __zero;
@@ -35,6 +98,7 @@
 
 	extern const Error_t SPIKE_SUCCESS;
 
-	Bool_t isLessThan( const complex_t a, const complex_t b );
+	Bool_t number_IsLessThan( complex_t a, complex_t b );
+	Bool_t number_IsEqual( complex_t a, complex_t b );
 
 #endif /* end of _SPIKE_DATATYPES_H_ definition */

@@ -3,7 +3,7 @@ CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
 #CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 CINCS   =-I${MKLROOT}/include
-DEFINES =-DSPRECISION -D_ENABLE_TESTING_ # -D_DEBUG_MATRIX_
+DEFINES =-DDATATYPE=1 -D_ENABLE_TESTING_ # -D_DEBUG_MATRIX_
 
 TARTGET=main
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \

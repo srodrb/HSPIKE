@@ -38,8 +38,36 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 	return (SPIKE_SUCCESS);
 };
 
+static Error_t CheckDatatype(void)
+{
+	char *datatype;
+	char *mpi_support;
+
+	#ifdef MPI_VERSION
+		mpi_support = "mpi support enabled";
+	#else
+		mpi_support = "mpi support disabled";
+	#endif
+
+	#if DATATYPE == _DATATYPE_Z_ // double complex
+		datatype = "double complex";
+	#elif DATATYPE == _DATATYPE_C_ // complex float
+		datatype = "single complex";
+	#elif DATATYPE == _DATATYPE_D_ // double precision float
+		datatype = "double";
+	#else // single precision float
+		datatype = "single";
+	#endif
+
+	fprintf(stderr, "\n%s: Dtype: %s MPI SUPPORT: %s", __FUNCTION__, datatype, mpi_support );
+
+	return (SPIKE_SUCCESS);
+};
+
 int main(int argc, const char *argv[])
 {
+	CheckDatatype();
+
 	fprintf(stderr, "\nShared Memory Spike Solver.\n");
 
 	/* -------------------------------------------------------------------- */
