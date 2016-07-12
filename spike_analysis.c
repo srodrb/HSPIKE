@@ -1,10 +1,9 @@
 #include "spike_analysis.h"
 
-sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
+sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const integer_t p)
 {
 	// local variables
 	integer_t i;
-	integer_t p = 2; // number of partitions
 	integer_t nreg;  // regular block dimension
 	integer_t nrem;  // irregular block dimension
 
@@ -28,9 +27,11 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
 
 	sm_schedule_t* S = (sm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(sm_schedule_t));
 	S->p  = p;
-	S->n  = (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
-	S->ku = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
-	S->kl = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
+	S->max_n = ( nreg > nrem ) ? nreg : nrem;
+	S->max_m = ( A->ku > A->kl ) ? A->ku : A->kl;
+	S->n     = (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
+	S->ku    = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
+	S->kl    = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
 
 	S->n[0] = (integer_t) 0;
 

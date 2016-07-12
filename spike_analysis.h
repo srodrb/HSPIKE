@@ -33,6 +33,9 @@
 	{
 		integer_t p;
 
+		integer_t max_n; // value of max rows
+		integer_t max_m; // value of max cols
+
 		integer_t *n;
 		integer_t *ku;
 		integer_t *kl;
@@ -49,7 +52,7 @@
 	 * On top of that, we'd like either to reduce the memory
 	 * consumption or solve the system faster.
 	 */
-	sm_schedule_t* spike_solve_analysis ( matrix_t* A, const integer_t nrhs );
+	sm_schedule_t* spike_solve_analysis ( matrix_t* A, const integer_t nrhs, const integer_t p );
 
 	void schedule_Destroy( sm_schedule_t* S );
 

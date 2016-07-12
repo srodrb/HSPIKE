@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     A = create_tridiagonal( dim )
 
-    export_csr2bin( A, "Tests/dummy/trigiagonal.bin")
+    export_csr2bin( A, "Tests/large/tridiagonal.bin")
 
 
     print 'End of the program'

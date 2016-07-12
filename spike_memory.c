@@ -1,8 +1,18 @@
 #include "spike_memory.h"
 
-void* spike_malloc(const int alignment, const int nmemb, const size_t size)
+const int ALIGN_INT     = 64;
+const int ALIGN_REAL    = 64;
+const int ALIGN_COMPLEX = 64;
+
+void* spike_malloc( const int alignment, const int nmemb, const size_t size)
 {
-	void *buffer = malloc( size * nmemb);
+
+#ifdef __INTEL_COMPILER
+	void *buffer = _mm_malloc( size * nmemb, alignment );
+
+#else
+	void *buffer = malloc( size * nmemb );
+#endif
 
 	if ( buffer == NULL )
 	{
@@ -13,15 +23,17 @@ void* spike_malloc(const int alignment, const int nmemb, const size_t size)
 	return (buffer);
 };
 
-void spike_nullify ( void* ptr )
-{
-	free(ptr); ptr = NULL;
-};
 
 void spike_free ( void* ptr )
 {
-	free(ptr);
+	#ifdef __INTEL_COMPILER
+		_mm_free( ptr );
+	#else
+	free ( ptr );
+	#endif
 };
 
-
-
+void spike_nullify ( void* ptr )
+{
+	spike_free(ptr); ptr = NULL;
+};

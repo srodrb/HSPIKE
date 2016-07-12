@@ -3,15 +3,15 @@
  *
  *       Filename:  spike_common.c
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  04/07/16 15:29:21
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -38,7 +38,7 @@ void spike_fclose( FILE* f )
 void spike_fwrite( void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
 	size_t n;
-	
+
 	if ( stream == NULL )
 	{
 		fprintf(stderr, "Invalid stream\n");
@@ -56,7 +56,7 @@ void spike_fwrite( void* ptr, size_t size, size_t nmemb, FILE* stream)
 void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
 	size_t n;
-	
+
 	if ( stream == NULL )
 	{
 		fprintf(stderr, "Invalid stream\n");
@@ -71,3 +71,11 @@ void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream)
 	}
 };
 
+double GetReferenceTime(void)
+{
+	double tseconds = 0.0;
+	struct timeval mytime;
+	gettimeofday( &mytime, (struct timezone*) 0);
+	tseconds = (double) (mytime.tv_sec + mytime.tv_usec * 1.0e-6);
+	return (tseconds);
+};

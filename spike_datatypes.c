@@ -24,9 +24,6 @@
   #define __restrict restrict
 #endif
 
-const integer_t ALIGN_INT     = 4;
-const integer_t ALIGN_REAL    = 8;
-const integer_t ALIGN_COMPLEX = 8;
 
 const complex_t __unit = (complex_t) 1.0;
 const complex_t __zero = (complex_t) 0.0;

@@ -1,5 +1,5 @@
 CC      =icc
-CFLAGS  =-qopenmp -std=c99 -O2 -g
+CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
 #CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 CINCS   =-I${MKLROOT}/include

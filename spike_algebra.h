@@ -25,6 +25,7 @@
 	#include "mkl_types.h"
 	#include "mkl_spblas.h"
 
+
 	/*
 	 * Uses metis to compute a permutation that minizes the fill-in on the LU factors of A
 	 */
@@ -47,13 +48,13 @@
 	 * Solves the sparse linear system Ax=b, where A is an sparse CSR matrix.
 	 * if x is NULL, then the solution of the system is stored on B.
 	 */
-	 Error_t system_solve (integer_t* colind,
- 											integer_t* rowptr,
- 											complex_t* aij,
- 											complex_t* x,
- 											complex_t* b,
- 											const integer_t n,
- 											const integer_t nrhs);
+	 Error_t system_solve ( integer_t *restrict colind, // ja
+	 										    integer_t *restrict rowptr, // ia
+	 										    complex_t *restrict aij,
+	 										    complex_t *restrict x,
+	 										    complex_t *restrict b,
+	 										    integer_t  n,
+	 										    integer_t  nrhs);
 
 	/*
 	 * Custom symbolic factorization routine used on the strategy design phase
@@ -63,6 +64,6 @@
 	/*
 	 * Computes the upper and lower bandwidth of the matrix A.
 	 */
-	void compute_bandwidth( matrix_t* A );
+	Error_t compute_bandwidth( matrix_t* A );
 
 #endif /* end of _SPIKE_ALGEBRA_H_ definition */

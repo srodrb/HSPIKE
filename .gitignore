@@ -1,2 +1,4 @@
 *.swp
+massif.*
+callgrind.*
 Old

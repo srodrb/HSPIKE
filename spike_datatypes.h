@@ -27,10 +27,6 @@
 	typedef int      Error_t;
 	typedef int      Bool_t;
 
-	extern const integer_t ALIGN_INT;
-	extern const integer_t ALIGN_REAL;
-	extern const integer_t ALIGN_COMPLEX;
-
 	extern const complex_t __unit;
 	extern const complex_t __zero;
 

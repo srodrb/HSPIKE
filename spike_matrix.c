@@ -101,6 +101,9 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
   const integer_t ncols = A->n;
 	complex_t value;
 
+	if    (msg) { fprintf(stderr, "\n%s: %s\n\n", __FUNCTION__, msg);}
+	else        { fprintf(stderr, "\n%s\n\n"    , __FUNCTION__ ); }
+
   complex_t *D = (complex_t*) spike_malloc( ALIGN_COMPLEX, ncols * nrows, sizeof(complex_t));
 
   memset( (void*) D, 0, nrows * ncols * sizeof(complex_t));
@@ -138,6 +141,11 @@ matrix_t* matrix_ExtractMatrix (  matrix_t* M,
 														const integer_t c0,
 														const integer_t cf)
 {
+	// complex_t* restrict aij    __attribute__ ((aligned (ALIGN_COMPLEX))) = M->aij;
+	// integer_t* restrict coling __attribute__ ((aligned (ALIGN_INT    ))) = M->colind;
+	// integer_t* restrict rowptr __attribute__ ((aligned (ALIGN_INT    ))) = M->rowptr;
+
+
 	// TODO: integrar el calculo del BW en la extraccion del bloque
 	// TODO: hacer una version single-pass.
 

@@ -10,8 +10,8 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -21,6 +21,9 @@
 
 	#include <stdio.h>
 	#include <stdlib.h>
+	#include <string.h>
+	#include <time.h>
+	#include <sys/time.h>
 
 
 	FILE* spike_fopen( const char* filename, const char* mode);
@@ -30,5 +33,7 @@
 	void spike_fwrite( void* ptr, size_t size, size_t nmemb, FILE* stream);
 
 	void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream);
+
+	double GetReferenceTime(void);
 
 #endif /* end of  _SPIKE_COMMON_H_ definition */

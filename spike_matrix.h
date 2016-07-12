@@ -16,6 +16,7 @@
  * =====================================================================================
  */
 #include "spike_memory.h"
+#include "spike_common.h"
 #include "spike_datatypes.h"
 #include <math.h>
 #include <string.h>
