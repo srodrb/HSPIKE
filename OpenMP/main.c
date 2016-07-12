@@ -38,43 +38,9 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 	return (SPIKE_SUCCESS);
 };
 
-static Error_t CheckDatatype(void)
-{
-	char *datatype;
-	char *mpi_support;
-	char *complex_support;
-
-	#if MPI_VERSION
-		mpi_support = "mpi support enabled";
-	#else
-		mpi_support = "mpi support disabled";
-	#endif
-
-	#if defined (_DATATYPE_Z_) // double complex
-		#define _COMPLEX_ARITHMETIC_
-		datatype = "double complex";
-	#elif defined (_DATATYPE_C_) // complex float
-		#define _COMPLEX_ARITHMETIC_
-		datatype = "single complex";
-	#elif defined (_DATATYPE_D_) // double precision float
-		datatype = "double";
-	#else // single precision float
-		datatype = "single";
-	#endif
-
-	#if defined (_COMPLEX_ARITHMETIC_)
-		complex_support = "complex arithmetic support enabled";
-	#else
-		complex_support = "complex arithmetic support disabled";
-	#endif
-
-	fprintf(stderr, "\n%s: Dtype: %s MPI SUPPORT: %s COMPLEX ARITHMETIC %s", __FUNCTION__, datatype, mpi_support, complex_support );
-
-	return (SPIKE_SUCCESS);
-};
 int main(int argc, const char *argv[])
 {
-	CheckDatatype();
+	CheckPreprocessorMacros();
 
 	fprintf(stderr, "\nShared Memory Spike Solver.\n");
 

@@ -56,6 +56,14 @@ reduced: reduced.o $(OBJS)
 reduced.o: reduced.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+# new reduced system assembly functions
+mpireduced: mpireduced.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+mpireduced.o: mpireduced.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
 .PHONY:all run clean
 
 all:$(TARGET)

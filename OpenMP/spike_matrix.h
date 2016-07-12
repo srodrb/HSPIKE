@@ -39,7 +39,7 @@ typedef struct
 
 /* dense block structure */
 typedef enum{ _V_BLOCK_, _W_BLOCK_, _RHS_BLOCK_ } blocktype_t;
-typedef enum{ _TOP_PART_, _MIDDLE_PART_, _BOTTOM_PART_ } blocklocation_t;
+typedef enum{ _TOP_SECTION_, _MIDDLE_SECTION_, _BOTTOM_SECTION_ } blocklocation_t;
 
 typedef struct
 {
@@ -91,15 +91,15 @@ Error_t matrix_FillReduced ( const integer_t TotalPartitions,
                              matrix_t      *R,
                              block_t*       B );
 
-Error_t mpi_matrix_FillReduced ( const integer_t TotalPartitions,
-														 const integer_t CurrentPartition,
-                            integer_t          *n,
-                            integer_t          *ku,
-                            integer_t          *kl,
-                            matrix_t           *R,
-														 complex_t*         aij,
-                            blocktype_t       BlockType,
-													   blocklocation_t    Location );
+Error_t mpi_matrix_FillReduced (const integer_t TotalPartitions,
+								const integer_t CurrentPartition,
+								integer_t          *n,
+								integer_t          *ku,
+								integer_t          *kl,
+								matrix_t           *R,
+								complex_t          *aij,
+								blocktype_t        BlockType,
+								blocklocation_t    Location );
 
 matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl );
 Error_t GetNnzAndRowsUpToPartition ( const integer_t TotalPartitions, const integer_t CurrentPartition, integer_t *ku, integer_t *kl, integer_t *nnz, integer_t *FirstBlockRow );

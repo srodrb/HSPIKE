@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /*
  * Returns a block initialized to a constant value.
  */
@@ -53,6 +54,7 @@ int main(int argc, const char *argv[])
                   "Creates a reduced system from the synthetic V and W blocks.");
 
 	Error_t  res = 0;
+  integer_t index;
 
   /* Create some synthetic spikes Vi, Wi */
   block_t *V0 = block_Synthetic( 5, 2, (complex_t) 2.0, (blocktype_t) _V_BLOCK_ );
@@ -67,17 +69,21 @@ int main(int argc, const char *argv[])
 
   matrix_t* R = matrix_CreateEmptyReduced(p, n, ku, kl);
 
-  res = matrix_FillReduced(p, 0, n, ku, kl, R, &V0->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
-  res = matrix_FillReduced(p, 0, n, ku, kl, R, &V0->aij, V->type, (blocklocation_t) _BOTTOM_PART_ );
+  index = (V0->n - ku[0]) * V0->m;
+  res = mpi_matrix_FillReduced(p, 0, n, ku, kl, R, &V0->aij[0]    , V0->type, (blocklocation_t) _TOP_SECTION_    );
+  res = mpi_matrix_FillReduced(p, 0, n, ku, kl, R, &V0->aij[index], V0->type, (blocklocation_t) _BOTTOM_SECTION_ );
 
-  res = matrix_FillReduced(p, 1, n, ku, kl, R, &W1->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
-  res = matrix_FillReduced(p, 1, n, ku, kl, R, &W1->aij[], V->type, (blocklocation_t) _BOTTOM_PART_ );
+  index = (W1->n - kl[1]) * W1->m;
+  res = mpi_matrix_FillReduced(p, 1, n, ku, kl, R, &W1->aij[0]    , W1->type, (blocklocation_t) _TOP_SECTION_    );
+  res = mpi_matrix_FillReduced(p, 1, n, ku, kl, R, &W1->aij[index], W1->type, (blocklocation_t) _BOTTOM_SECTION_ );
 
-  res = matrix_FillReduced(p, 1, n, ku, kl, R, &V1->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
-  res = matrix_FillReduced(p, 1, n, ku, kl, R, &V1->aij[], V->type, (blocklocation_t) _BOTTOM_PART_ );
+  index = (V1->n - ku[1]) * V1->m;
+  res = mpi_matrix_FillReduced(p, 1, n, ku, kl, R, &V1->aij[0]    , V1->type, (blocklocation_t) _TOP_SECTION_    );
+  res = mpi_matrix_FillReduced(p, 1, n, ku, kl, R, &V1->aij[index], V1->type, (blocklocation_t) _BOTTOM_SECTION_ );
 
-  res = matrix_FillReduced(p, 2, n, ku, kl, R, &W2->aij[0], V->type, (blocklocation_t) _TOP_PART_    );
-  res = matrix_FillReduced(p, 2, n, ku, kl, R, &W2->aij[], V->type, (blocklocation_t) _BOTTOM_PART_ );
+  index = (W2->n - kl[2]) * W2->m;
+  res = mpi_matrix_FillReduced(p, 2, n, ku, kl, R, &W2->aij[0]    , W2->type, (blocklocation_t) _TOP_SECTION_    );
+  res = mpi_matrix_FillReduced(p, 2, n, ku, kl, R, &W2->aij[index], W2->type, (blocklocation_t) _BOTTOM_SECTION_ );
 
   matrix_PrintAsDense(R, "Assembled reduced system");
 
