@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mpi.h>
+//#include <mpi.h>
 
 static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 {
@@ -43,10 +43,10 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 int main(int argc, char *argv[])
 {
 
-	MPI_Init (&argc, &argv);	
-	int rank, size, master = 0;
-	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
-	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	//MPI_Init (&argc, &argv);	
+	int rank=0, size, master = 0;
+	//MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
+	//MPI_Comm_size (MPI_COMM_WORLD, &size);
 	
 	//printf("Rank %d of %d\n", rank, size);
 
@@ -92,10 +92,13 @@ int main(int argc, char *argv[])
 		/* -------------------------------------------------------------------- */
 		/* .. MPI: Calculating number of bytes to send */
 		/* -------------------------------------------------------------------- */
+		/*
 		sendCount = (5 + R->nnz + R->n + 1)*4;
 		if (_MPI_COMPLEX_T_ == MPI_DOUBLE) sendCount += (R->nnz * _MPI_COUNT_)*8;
 		else if( _MPI_COMPLEX_T_ == MPI_FLOAT) sendCount += (R->nnz * _MPI_COUNT_)*4;
 		printf("Try: %d \n", sendCount);
+		*/
+
 
 	
 
@@ -119,6 +122,6 @@ int main(int argc, char *argv[])
 
 		fprintf(stderr, "\nProgram finished\n");
 	}
-	MPI_Finalize();
+	//MPI_Finalize();
 	return 0;
 }

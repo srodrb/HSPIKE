@@ -19,9 +19,12 @@
 #ifndef _SPIKE_DATATYPES_H_
 	#define _SPIKE_DATATYPES_H_
 
-	#ifdef _MPI_SUPPORT_
+	#undef _COMPLEX_ARITHMETIC_
+
+	#if defined (_MPI_SUPPORT_)
 		#include <mpi.h>
 	#endif
+
 
 
 #if defined (_DATATYPE_Z_) // double complex
@@ -40,7 +43,7 @@
 		#define _MPI_REAL_T_  MPI_DOUBLE
 	#endif
 
-#elif defined (_MPI_SUPPORT_) // complex float
+#elif defined (_DATATYPE_C_) // complex float
 	#define _COMPLEX_ARITHMETIC_
 
 	typedef float   real_t;

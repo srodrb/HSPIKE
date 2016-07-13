@@ -8,10 +8,10 @@ ifeq ($(COMPILER),INTEL)
 	CINCS   =-I${MKLROOT}/include
 else
 	CC      =gcc
-	CFLAGS  =-openmp -std=c99 -g -O2
+	CFLAGS  =-std=c99 -g -O2
 	CLIBS   =
 	CINCS   =
-else
+endif
 
 DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ # -D_DEBUG_MATRIX_
 

@@ -86,7 +86,7 @@ void CheckPreprocessorMacros (void)
 	char *mpi_support;
 	char *complex_support;
 
-	#if MPI_VERSION
+	#if (_MPI_SUPPORT_)
 		mpi_support = "mpi support enabled";
 	#else
 		mpi_support = "mpi support disabled";
@@ -110,5 +110,5 @@ void CheckPreprocessorMacros (void)
 		complex_support = "complex arithmetic support disabled";
 	#endif
 
-	fprintf(stderr, "\n%s: Dtype: %s MPI SUPPORT: %s COMPLEX ARITHMETIC %s", __FUNCTION__, datatype, mpi_support, complex_support );
+	fprintf(stderr, "\n%s: Dtype: %s MPI SUPPORT: %s COMPLEX ARITHMETIC %s\n", __FUNCTION__, datatype, mpi_support, complex_support );
 };
