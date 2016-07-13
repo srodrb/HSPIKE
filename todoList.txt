@@ -1,0 +1,32 @@
+TODO:
+
+- Los bloques cuadrados Vi, Wi pueden extraerse y enviarse como matrices sparse. De esta forma después pueden ensamblarse en los bloques densos una vez estén en los nodos slave. 
+
+- Mientras que se particiona la matriz, los nodos slaves pueden ir reservando la memoria necesaria para los bloques densos Vi, Wi. Cuando éstos llegen tendrán que insertar los elementos en las posiciones correspondientes.
+
+- Para hacer los dos puntos anteriores tengo que desacoplar la funcion ExtractBiCi as matrix. en dos funciones: una sera extract matrix y la otra será FillBlockFromSparse.
+
+- Implementar el ensamblaje el sistema reducido en paralelo ¿podremos hacer las transferencias MPI con seguridad?
+
+- En lugar de contar los elementos para extraer las matrices puedo hacer una estimación de los mismos. Es muy sencillo hacerlo, me voy a pasar poor poco y voy a pagar un precio muy bajo en memoria.
+
+- Tengo que comprobar el coste de almacenar la solución del sistema en el mismo bloque que estoy suministrando para el lado derecho.
+
+- Implementar la operación del cálculo de la solución de forma optimizada.
+
+- Usar mem*() funciones más eficientes. (optimizadas y escalables).
+
+- Hacer una barra de progreso de la solución.
+
+- Calcular el residual de la solución dentro de la llamada al solver directo y para la solución dada por el SPIKE.
+
+- Comprobar (a nivel matemático) si puedo tener valores locales de Kli, Kui. En caso de no ser así, simpllificaría la algoritmia pero tendríamos un buffer algo más grande.
+
+- Definir mensajes de error para los solvers y las funciones y documentarlos.
+
+- Crear las macros para los nombres de las funciones de MKL/BLAS.
+
+- Controlar localmente el error asociado a la solución de los sub-sistemas lineales resueltos con el solver directo.
+
+- Sugerir la implementación de un solver directo con sparse RHS (yo puedo soportarlo?) y de una LU donde sólo almacenemos de forma parcial uno de los factores.
+

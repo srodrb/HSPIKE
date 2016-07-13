@@ -36,4 +36,6 @@
 
 	double GetReferenceTime(void);
 
+	void CheckPreprocessorMacros(void);
+
 #endif /* end of  _SPIKE_COMMON_H_ definition */

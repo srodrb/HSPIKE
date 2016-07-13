@@ -1,9 +1,5 @@
 #include "spike_memory.h"
 
-const int ALIGN_INT     = 64;
-const int ALIGN_REAL    = 64;
-const int ALIGN_COMPLEX = 64;
-
 void* spike_malloc( const int alignment, const int nmemb, const size_t size)
 {
 

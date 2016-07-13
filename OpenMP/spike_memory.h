@@ -22,9 +22,9 @@
 	#include <stdio.h>
 	#include <stdlib.h>
 
-	extern const int ALIGN_INT;
-	extern const int ALIGN_REAL;
-	extern const int ALIGN_COMPLEX;
+	#define ALIGN_INT     (const int) 32
+	#define ALIGN_REAL    (const int) 64
+	#define ALIGN_COMPLEX (const int) 64
 
 	void* spike_malloc    ( const int alignment, const int nmemb, const size_t size);
 	void  spike_free      ( void* ptr );

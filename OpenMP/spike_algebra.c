@@ -20,12 +20,12 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
 	most back ends support.
  */
  Error_t system_solve ( integer_t *restrict colind, // ja
-												integer_t *restrict rowptr, // ia
-												complex_t *restrict aij,
-												complex_t *restrict x,
-												complex_t *restrict b,
-												integer_t  n,
-												integer_t  nrhs)
+						integer_t *restrict rowptr, // ia
+						complex_t *restrict aij,
+						complex_t *restrict x,
+						complex_t *restrict b,
+						integer_t  n,
+						integer_t  nrhs)
 {
 
 #ifdef _INTEL_COMPILER_
@@ -133,11 +133,25 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
 	solve_t = GetReferenceTime() - start_t;
 	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
 
+/*
 // Compute residual
-
+        mkl_dcsrgemv (uplo, &n, a, ia, ja, x, bs);
+        res = 0.0;
+        res0 = 0.0;
+        for ( j = 1; j <= n; j++ )
+        {
+            res += (bs[j - 1] - b[j - 1]) * (bs[j - 1] - b[j - 1]);
+            res0 += b[j - 1] * b[j - 1];
+        }
+        res = sqrt (res) / sqrt (res0);
+        printf ("\nRelative residual = %e", res);
 // Check residual
-
-
+        if ( res > 1e-10 )
+        {
+            printf ("Error: residual is too high!\n");
+            exit (10 + i);
+        }
+*/
 /* -------------------------------------------------------------------- */
 /* .. Termination and release of memory. */
 /* -------------------------------------------------------------------- */

@@ -1,5 +1,7 @@
 *.swp
 massif.*
 callgrind.*
+.tags*
+tags*
 Old
 local

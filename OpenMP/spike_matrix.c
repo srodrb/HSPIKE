@@ -635,18 +635,89 @@ Error_t matrix_FillReduced ( const integer_t TotalPartitions,
 	BlockType
 	Location:
 */
-Error_t mpi_matrix_FillReduced ( const integer_t TotalPartitions,
-														 const integer_t CurrentPartition,
-                             integer_t          *n,
-                             integer_t          *ku,
-                             integer_t          *kl,
-                             matrix_t           *R,
-														 complex_t*         aij,
-                             blocktype_t       BlockType,
-													   blocklocation_t    Location )
+/*
+Error_t mpi_matrix_FillReduced (const integer_t TotalPartitions,
+								const integer_t CurrentPartition,
+								integer_t          *n,
+								integer_t          *ku,
+								integer_t          *kl,
+								matrix_t           *R,
+								complex_t          *aij,
+								blocktype_t        BlockType,
+								blocklocation_t    Location )
 {
 	// local variables
 	integer_t nnz, rows;
+	integer_t BlockAijCount = 0;
+	integer_t p = CurrentPartition;
+
+	// reduced system dimensions
+	integer_t* nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
+
+	// initialize blocks
+	GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
+
+	// ------------- top spike elements ---------------- //
+	if ( Location == _TOP_SECTION_ ) {
+		for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
+			if ( p > 0 && BlockType == _W_BLOCK_ )
+				for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) 
+					R->aij[nnz++] = aij[BlockAijCount++];
+			else
+				nnz += kl[p];
+			
+			nnz++;// add diagonal element
+
+			if ( p < (TotalPartitions -1) &&  BlockType == _V_BLOCK_ )
+				for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++)
+					R->aij[nnz++] = aij[BlockAijCount++];
+			else
+				nnz += ku[p];
+		}
+	}
+
+	// ------------- Bottom spike elements ---------------- //
+	if ( Location == _BOTTOM_SECTION_ ) {
+		for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
+			if ( p > 0  && BlockType == _W_BLOCK_ ) 
+				for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++)
+					R->aij[nnz++] = aij[BlockAijCount++];
+			else
+				nnz += kl[p];
+
+			nnz++; // add diagonal element
+
+
+			if ( p < (TotalPartitions -1) &&  BlockType == _V_BLOCK_ )
+				for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++)
+					R->aij[nnz++] = aij[BlockAijCount++];
+			else
+				nnz += ku[p];
+		}
+	}
+
+	// clean up
+	spike_nullify( nr );
+
+  return (SPIKE_SUCCESS);
+};
+*/
+Error_t mpi_matrix_FillReduced (const integer_t TotalPartitions,
+								const integer_t CurrentPartition,
+								integer_t          *n,
+								integer_t          *ku,
+								integer_t          *kl,
+								matrix_t           *R,
+								complex_t          *aij,
+								blocktype_t        BlockType,
+								blocklocation_t    Location )
+{
+	complex_t *restrict __attribute__ ((aligned (ALIGN_COMPLEX))) Raij = R->aij;
+	complex_t *restrict __attribute__ ((aligned (ALIGN_COMPLEX))) Baij = aij;
+
+	// local variables
+	integer_t nnz, rows;
+	integer_t BlockAijCount = 0;
 	integer_t p = CurrentPartition;
 
 	// reduced system dimensions
@@ -656,79 +727,56 @@ Error_t mpi_matrix_FillReduced ( const integer_t TotalPartitions,
 	GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
 
 	/* ------------- top spike elements ---------------- */
-#ifdef _DEBUG_MATRIX_
-	fprintf(stderr, "\tTop part covers from %d to %d\n", nr[p], nr[p] + ku[p] );
-#endif
-
 	for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
 		if ( p > 0 )// add Wi elements
-			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
-				integer_t wi_row = row - nr[p];
-				integer_t wi_col = col - (nr[p] - kl[p]);
-
-#ifdef _DEBUG_MATRIX_
-				fprintf(stderr, "\t\tAdding WI TOP element from row %d, col %d\n", wi_row, wi_col);
-#endif
-
+			if ( Location == _TOP_SECTION_ )
 				if ( BlockType == _W_BLOCK_ )
-					R->aij[nnz++] = aij[wi_row*kl[p] + wi_col];
-				else
-					nnz++;
-			}
+					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++)
+						Raij[nnz++] = Baij[BlockAijCount++];
+			else
+				nnz += kl[p];
+		else
+			nnz += kl[p];
+			
 
 		nnz++;// add diagonal element
 
 		if ( p < (TotalPartitions - 1)) // add Vi elements
-			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
-				integer_t vi_row = row - nr[p];
-				integer_t vi_col = col - nr[p+1];
-#ifdef _DEBUG_MATRIX_
-				fprintf(stderr, "\t\tAdding VI TOP element from row %d, col %d\n", vi_row, vi_col);
-#endif
+			if ( Location == _TOP_SECTION_ )
 				if ( BlockType == _V_BLOCK_ )
-					R->aij[nnz++] = aij[vi_row*kl[p] + vi_col];
+					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++)
+						Raij[nnz++] = Baij[BlockAijCount++];
 				else
-					nnz++;
-			}
+					nnz += ku[p];
+			else
+				nnz += ku[p];
 	}
 
 	/* ------------- Bottom spike elements ---------------- */
-#ifdef _DEBUG_MATRIX_
-	fprintf(stderr, "\tBottom part covers from %d to %d\n", nr[p] +ku[p], nr[p+1] );
-#endif
-
 	for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
 		if ( p > 0 )// add Wi elements
-			for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) {
-				integer_t wi_row = (n[p+1] - n[p]) - kl[p] + (row - (nr[p] + ku[p]));
-				integer_t wi_col = col - (nr[p] - kl[p]);
-
-#ifdef _DEBUG_MATRIX_
-				fprintf(stderr, "\t\tAdding WI BOTTOM element from row %d, col %d\n", wi_row, wi_col);
-#endif
+			if ( Location == _BOTTOM_SECTION_ )
 				if ( BlockType == _W_BLOCK_ )
-					R->aij[nnz++] = aij[wi_row*kl[p] + wi_col];
+					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) 
+						Raij[nnz++] = Baij[BlockAijCount++];
 				else
-					nnz++;
-			}
+					nnz += kl[p];
+			else
+				nnz += kl[p];
+			
 
 		nnz++; // add diagonal element
 
 
 		if ( p < (TotalPartitions - 1)) // add Vi elements
-			for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) {
-				integer_t vi_row = (n[p+1] -n[p]) - kl[p] + (row - (nr[p] + ku[p]));
-				integer_t vi_col = col - nr[p+1];
-
-#ifdef _DEBUG_MATRIX_
-				fprintf(stderr, "\t\tAdding VI BOTTOM element from row %d, col %d\n", vi_row, vi_col);
-#endif
-
-				if ( BlockType == _V_BLOCK_)
-					R->aij[nnz++] = aij[vi_row*kl[p] + vi_col];
+			if ( Location == _BOTTOM_SECTION_ )
+				if ( BlockType == _V_BLOCK_ )
+					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) 
+						Raij[nnz++] = Baij[BlockAijCount++];
 				else
-					nnz++;
-			}
+					nnz += ku[p];
+			else
+				nnz += ku[p];
 	}
 
 	// clean up
