@@ -15,6 +15,58 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
 
 };
 
+Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
+										integer_t *restrict rowptr,
+										complex_t *restrict aij,
+										complex_t *restrict x,
+										complex_t *restrict b,
+										integer_t n,
+										integer_t nrhs )
+{
+	//
+	// TODO add support for complex norm of vectors
+	// https://software.intel.com/es-es/node/520747#64961E94-92D0-4671-90E6-86995E259A85
+	// cblas_?cabs1
+	//
+	
+	real_t absres = 0.0; /* absolute residual */
+	real_t relres = 0.0; /* relative residual */
+	real_t bnorm  = 0.0;  /* norm of b        */
+
+	complex_t *Ax = (complex_t*) spike_malloc( ALIGN_COMPLEX, n, sizeof(complex_t));
+
+	for( integer_t rhs = 0; rhs < nrhs; rhs++){
+		fprintf(stderr, "\n\tProcessing residual for %dth RHS vector", rhs + 1);
+
+		// set vector to zero
+		memset((void*) Ax, 0, n * sizeof(complex_t));
+
+		/* compute Ax - b */
+		mkl_cspblas_dcsrgemv ( "N", &n, aij, rowptr, colind, &x[rhs * n], Ax);
+
+		/* compute norm of b */
+		bnorm = cblas_dnrm2( n, &b[rhs * n], 1 );
+
+		///* subtracts b to Ax */
+		cblas_daxpy( n, -1.0 , &b[rhs * n], 1, Ax, 1 );
+
+		///* compute the norm of Ax - b */
+		absres = cblas_dnrm2( n, Ax, 1 );
+
+
+		fprintf(stderr, "\n\t\tNorm of rhs vector                    %E", bnorm);
+		fprintf(stderr, "\n\t\tAbsolute residual                     %E", absres);
+		fprintf(stderr, "\n\t\tRelative residual                     %E", absres / bnorm );
+		fprintf(stderr, "\n");
+	}
+
+	/* clean up */
+	spike_nullify( Ax );
+
+	return (SPIKE_SUCCESS);
+};
+
+
 /*
 	Instead of using matrix_t structure, here we use the argument list that
 	most back ends support.
@@ -28,7 +80,7 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
 						integer_t  nrhs)
 {
 
-#ifdef _INTEL_COMPILER_
+#ifdef __INTEL_COMPILER
 /* -------------------------------------------------------------------- */
 /* .. Local variables. */
 /* -------------------------------------------------------------------- */
@@ -152,6 +204,7 @@ void reorder_rcm ( matrix_t* A, integer_t* colperm )
             exit (10 + i);
         }
 */
+    ComputeResidualOfLinearSystem( colind, rowptr, aij, x, b, n, nrhs );
 /* -------------------------------------------------------------------- */
 /* .. Termination and release of memory. */
 /* -------------------------------------------------------------------- */

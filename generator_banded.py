@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pylab as plt
 import scipy.io as IO
 import scipy.sparse as sparse
+import scipy.sparse.linalg as sla
+import scipy.linalg as la
 from array import array
 
 def create_tridiagonal(n):
@@ -22,6 +24,27 @@ def create_tridiagonal(n):
     # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
 
     return (A)
+
+def create_pentadiagonal(n):
+    '''
+    Crea un sistema tridiagonal de dimension N
+    '''
+    np.random.seed(314) # try to make it reproducible
+
+
+    A = sparse.diags(np.random.rand(n) +1.0, 0) + \
+        sparse.diags(np.random.rand(n-1), 1) + \
+        sparse.diags(np.random.rand(n-1),-1) + \
+        sparse.diags(np.random.rand(n-2), 2) + \
+        sparse.diags(np.random.rand(n-2),-2)
+
+    A = A.tocsr()
+
+    # create rhs
+    # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
+
+    return (A)
+
 
 
 def create_banded(n):
@@ -155,11 +178,22 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or float(sys.argv[1]) <= 0:
         raise ValueError('Dimension of the system must be supplied, and must be positive!')
 
-    dim = int(sys.argv[1])
+    dim = 10 # int(sys.argv[1])
 
-    A = create_tridiagonal( dim )
+    A = create_pentadiagonal( dim )
+    export_csr2bin( A, "Tests/pentadiagonal/matrix.bin")
 
-    export_csr2bin( A, "Tests/large/tridiagonal.bin")
+    Block = A[0:5,0:5]
+
+    b        = np.ones(shape=(5,1))
+    LU       = sla.splu( Block.tocsc() );
+    solution = LU.solve(b)
+    print solution
+
+    print 'Norm of b:        %E' %(la.norm(b))
+    print 'Absolute residual %E' %(la.norm( Block*solution - b))
+    print 'Relative residual %E' %(la.norm( Block*solution - b) / la.norm(b))
+
 
 
     print 'End of the program'

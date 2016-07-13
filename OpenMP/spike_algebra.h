@@ -21,10 +21,11 @@
 
 	#include "spike_matrix.h"
 	
-#ifdef _INTEL_COMPILER_
+#ifdef __INTEL_COMPILER
 	#include "mkl_pardiso.h"
 	#include "mkl_types.h"
 	#include "mkl_spblas.h"
+ 	#include "mkl.h"
 #endif
 
 	/*
@@ -56,6 +57,14 @@
 	 										    complex_t *restrict b,
 	 										    integer_t  n,
 	 										    integer_t  nrhs);
+
+	 Error_t ComputeResidualOfLinearSystem (  integer_t *restrict colind,
+										integer_t *restrict rowptr,
+										complex_t *restrict aij,
+										complex_t *restrict x,
+										complex_t *restrict b,
+										integer_t n,
+										integer_t nrhs );
 
 	/*
 	 * Custom symbolic factorization routine used on the strategy design phase

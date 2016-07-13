@@ -1,4 +1,4 @@
-COMPILER=GNU
+COMPILER=INTEL
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
@@ -11,7 +11,7 @@ else
 	CFLAGS  =-openmp -std=c99 -g -O2
 	CLIBS   =
 	CINCS   =
-else
+endif
 
 DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ # -D_DEBUG_MATRIX_
 
@@ -71,6 +71,13 @@ mpireduced: mpireduced.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 mpireduced.o: mpireduced.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+# inner solver solution test for small matrix
+innersolver: innersolvercheck.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+innersolvercheck.o: innersolvercheck.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 

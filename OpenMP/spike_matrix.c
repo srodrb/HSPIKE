@@ -293,23 +293,41 @@ void block_Deallocate(block_t* B)
 
 void block_Print( block_t* B, const char* msg )
 {
-	integer_t row, col;
-	complex_t value;
+	if ( msg ) fprintf(stderr, "\n%s:%s\n\t", __FUNCTION__, msg);
+	else       fprintf(stderr, "\n%s\n\t"   , __FUNCTION__     );
 
-	fprintf(stderr, "\n%s\n", msg);
+	const integer_t nrows = B->n;
+	const integer_t ncols = B->m;
 
-	for (row = 0; row < B->n; row++)
-	{
-		fprintf(stderr, "\n\t");
-		for (col = 0; col < B->m; col++) {
-			value = B->aij[row * B->m + col];
+	for(integer_t row=0; row < nrows; row++){
+		for(integer_t col=0; col < ncols; col++) {
+			complex_t value = B->aij[row + nrows*col];
 
-			if ( number_IsLessThan( value, __zero ) == True )
-				fprintf(stderr, "%.5f  ", value);
+			if ( number_IsLessThan( value, __zero ))
+				fprintf(stderr, "%.3f  ", value);
 			else
-				fprintf(stderr, " %.5f  ", value);
+				fprintf(stderr, " %.3f  ", value);
 		}
+		fprintf(stderr, "\n\t");
 	}
+
+	fprintf(stderr, "\n");
+
+//  -------- memory ordering -----------------
+//	for (row = 0; row < B->n; row++)
+//	{
+//		fprintf(stderr, "\n\t");
+//		for (col = 0; col < B->m; col++) {
+//			value = B->aij[row * B->m + col];
+//
+//			if ( number_IsLessThan( value, __zero ) == True )
+//				fprintf(stderr, "%.5f  ", value);
+//			else
+//				fprintf(stderr, " %.5f  ", value);
+//		}
+//	}
+
+
 	fprintf(stderr, "\n");
 };
 
