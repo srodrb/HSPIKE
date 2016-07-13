@@ -164,10 +164,10 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
 	/* -------------------------------------------------------------------- */
-	schedule_Destroy(schedule);
-	matrix_Deallocate( A );
-	block_Deallocate( x );
-	block_Deallocate( f );
+	schedule_Destroy  (schedule);
+	matrix_Deallocate ( A );
+	block_Deallocate  ( x );
+	block_Deallocate  ( f );
 
 	end_t = GetReferenceTime();
 

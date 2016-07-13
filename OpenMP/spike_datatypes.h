@@ -19,7 +19,7 @@
 #ifndef _SPIKE_DATATYPES_H_
 	#define _SPIKE_DATATYPES_H_
 
-	#ifdef MPI_VERSION
+	#ifdef _MPI_SUPPORT_
 		#include <mpi.h>
 	#endif
 
@@ -35,12 +35,12 @@
 
 	typedef complex_number   complex_t;
 
-	#if defined (MPI_VERSION)
+	#if defined (_MPI_SUPPORT_)
 		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
 		#define _MPI_REAL_T_  MPI_DOUBLE
 	#endif
 
-#elif defined (_DATATYPE_C_) // complex float
+#elif defined (_MPI_SUPPORT_) // complex float
 	#define _COMPLEX_ARITHMETIC_
 
 	typedef float   real_t;
@@ -52,7 +52,7 @@
 
 	typedef complex_number   complex_t;
 
-	#if defined (MPI_VERSION)
+	#if defined (_MPI_SUPPORT_)
 		#define _MPI_COMPLEX_T_  MPI_FLOAT * 2
 		#define _MPI_REAL_T_  MPI_FLOAT
 	#endif
@@ -61,7 +61,7 @@
 	typedef double   real_t;
 	typedef double   complex_t;
 
-	#if defined (MPI_VERSION)
+	#if defined (_MPI_SUPPORT_)
 		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
 		#define _MPI_REAL_T_  MPI_DOUBLE
 	#endif
@@ -70,7 +70,7 @@
 	typedef float   real_t;
 	typedef float   complex_t;
 
-	#if defined (MPI_VERSION)
+	#if defined (_MPI_SUPPORT_)
 		#define _MPI_COMPLEX_T_  MPI_FLOAT
 		#define _MPI_REAL_T_  MPI_FLOAT
 	#endif
@@ -81,7 +81,7 @@
 	typedef int      Error_t;
 	typedef int      Bool_t;
 
-	#if defined (MPI_VERSION)
+	#if defined (_MPI_SUPPORT_)
 		#define _MPI_INTEGER_T_  MPI_INT
 	#endif
 

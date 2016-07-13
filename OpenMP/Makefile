@@ -1,8 +1,18 @@
-CC      =icc
-CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
-#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
-CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
-CINCS   =-I${MKLROOT}/include
+COMPILER=GNU
+
+ifeq ($(COMPILER),INTEL)
+	CC      =icc
+	CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
+	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	CINCS   =-I${MKLROOT}/include
+else
+	CC      =gcc
+	CFLAGS  =-openmp -std=c99 -g -O2
+	CLIBS   =
+	CINCS   =
+else
+
 DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ # -D_DEBUG_MATRIX_
 
 TARTGET=main
