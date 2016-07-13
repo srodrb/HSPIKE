@@ -90,13 +90,12 @@ int main(int argc, char *argv[])
 
 
 		/* -------------------------------------------------------------------- */
-		/* .. Calculating number of bytes to send */
+		/* .. MPI: Calculating number of bytes to send */
 		/* -------------------------------------------------------------------- */
 		sendCount = (5 + R->nnz + R->n + 1)*4;
 		if (_MPI_COMPLEX_T_ == MPI_DOUBLE) sendCount += (R->nnz * _MPI_COUNT_)*8;
 		else if( _MPI_COMPLEX_T_ == MPI_FLOAT) sendCount += (R->nnz * _MPI_COUNT_)*4;
 		printf("Try: %d \n", sendCount);
-
 
 	
 
