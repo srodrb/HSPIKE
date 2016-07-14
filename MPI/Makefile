@@ -13,11 +13,11 @@ else
 	CINCS   =-I../OpenMP
 endif
 
-DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ -D_MPI_SUPPORT_ # -D_DEBUG_MATRIX_
+DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ -D_MPI_SUPPORT_ -D_DEBUG # -D_DEBUG_MATRIX_
 
 TARTGET=main
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
-			 spike_algebra.o spike_analysis.o spike_common.o
+			 spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o
 
 main: main.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
@@ -43,13 +43,15 @@ spike_analysis.o:../OpenMP/spike_analysis.c
 spike_common.o:../OpenMP/spike_common.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+spike_mpi.o:spike_mpi.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 
 # split test
-split: split.o $(OBJS)
+split: mpi_split.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
-split.o: split.c
+mpi_split.o: mpi_split.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 # macros test

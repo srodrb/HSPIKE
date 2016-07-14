@@ -39,8 +39,8 @@
 	typedef complex_number   complex_t;
 
 	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
-		#define _MPI_REAL_T_  MPI_DOUBLE
+		#define _MPI_COMPLEX_T_  MPI_DOUBLE
+		#define _MPI_COUNT_  2
 	#endif
 
 #elif defined (_DATATYPE_C_) // complex float
@@ -56,8 +56,8 @@
 	typedef complex_number   complex_t;
 
 	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_FLOAT * 2
-		#define _MPI_REAL_T_  MPI_FLOAT
+		#define _MPI_COMPLEX_T_  MPI_FLOAT
+		#define _MPI_COUNT_ 2
 	#endif
 
 #elif defined (_DATATYPE_D_) // double precision float
@@ -65,8 +65,8 @@
 	typedef double   complex_t;
 
 	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
-		#define _MPI_REAL_T_  MPI_DOUBLE
+		#define _MPI_COMPLEX_T_  MPI_DOUBLE
+		#define _MPI_COUNT_ 1
 	#endif
 
 #else // single precision float
@@ -75,7 +75,7 @@
 
 	#if defined (_MPI_SUPPORT_)
 		#define _MPI_COMPLEX_T_  MPI_FLOAT
-		#define _MPI_REAL_T_  MPI_FLOAT
+		#define _MPI_COUNT_ 1
 	#endif
 
 #endif

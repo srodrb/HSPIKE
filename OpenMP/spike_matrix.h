@@ -31,9 +31,9 @@ typedef struct
 	integer_t kl;
 	integer_t K;
 
-	integer_t* colind; // TODO attribute aligned
-	integer_t* rowptr; // TODO attribute aligned
-	complex_t* aij;    // TODO attribute aligned
+	integer_t* colind; // TODO attribute aligned (nnz)
+	integer_t* rowptr; // TODO attribute aligned (n + 1)
+	complex_t* aij;    // TODO attribute aligned (nnz)
 
 } matrix_t;
 
@@ -52,7 +52,7 @@ typedef struct
 
 
 matrix_t* matrix_LoadCSR    (const char* filename);
-static matrix_t* matrix_CreateEmpty( const integer_t n, const integer_t nnz );
+matrix_t* matrix_CreateEmpty( const integer_t n, const integer_t nnz );
 void      matrix_Deallocate (matrix_t* M);
 void      matrix_Print      (matrix_t* M, const char* msg);
 

@@ -18,10 +18,11 @@
 
 #include "spike_analysis.h"
 #include "spike_datatypes.h"
+#include "spike_mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <mpi.h>
+#include <mpi.h>
 
 static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 {
@@ -43,12 +44,11 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 int main(int argc, char *argv[])
 {
 
-	//MPI_Init (&argc, &argv);	
-	int rank=0, size, master = 0;
-	//MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
-	//MPI_Comm_size (MPI_COMM_WORLD, &size);
-	
-	//printf("Rank %d of %d\n", rank, size);
+	MPI_Init (&argc, &argv);	
+	int rank, size, master = 0;
+	MPI_Status  status;
+	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
+	MPI_Comm_size (MPI_COMM_WORLD, &size);
 
 	if (rank == master) fprintf(stderr, "\nShared Memory Spike Solver.\n");
 
@@ -82,25 +82,11 @@ int main(int argc, char *argv[])
 	
 	sm_schedule_t* schedule;
 	int sendCount;
-	if(rank == master){
-		matrix_PrintAsDense( A, NULL );
+	if(rank == master){ //MASTER
+		//matrix_PrintAsDense( A, NULL );
 		start_t = GetReferenceTime();
-		schedule = spike_solve_analysis( A, nrhs, size);
-		matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);
-
-
-		/* -------------------------------------------------------------------- */
-		/* .. MPI: Calculating number of bytes to send */
-		/* -------------------------------------------------------------------- */
-		/*
-		sendCount = (5 + R->nnz + R->n + 1)*4;
-		if (_MPI_COMPLEX_T_ == MPI_DOUBLE) sendCount += (R->nnz * _MPI_COUNT_)*8;
-		else if( _MPI_COMPLEX_T_ == MPI_FLOAT) sendCount += (R->nnz * _MPI_COUNT_)*4;
-		printf("Try: %d \n", sendCount);
-		*/
-
-
-	
+		schedule = spike_solve_analysis( A, nrhs, size-1); //Number of partitions
+		matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);	
 
 		/* -------------------------------------------------------------------- */
 		/* .. Factorization Phase. */
@@ -113,15 +99,25 @@ int main(int argc, char *argv[])
 			rf = schedule->n[p+1];
 
 			matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
+			
+			//MPI
+			debug("Sending MSG", rank);		
+			sendAij (Aij, p+1);
+			//End MPI
 
 			//sprintf( msg, "%d-th matrix block", p);
-			//matrix_Print( Aij, msg);
+			//matrix_Print( Aij, NULL);
 
 			matrix_Deallocate(Aij);
 		}
 
 		fprintf(stderr, "\nProgram finished\n");
 	}
-	//MPI_Finalize();
+	else{ //slaves
+		matrix_t* Aij = recvAij (master);
+		//matrix_Print( Aij, NULL);
+	}
+	MPI_Finalize();
 	return 0;
+
 }
