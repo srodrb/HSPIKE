@@ -51,6 +51,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/matrix.bin");
 	matrix_PrintAsDense(A, "Test matrix");
+	
 	/* -------------------------------------------------------------------- */
 	/* .. Single RHS case */
 	/* -------------------------------------------------------------------- */
@@ -81,8 +82,8 @@ int main(int argc, const char *argv[])
 	block_InitializeToValue( b2, __unit ); // rhs of the system
 
 	for(integer_t i=0; i < (A->n * nrhs); i++ ){
-		if (i < A->n ) b2->aij[i] =  1.0;
-		else           b2->aij[i] = -1.0;
+		if   (i < A->n ) b2->aij[i] =  1.0;
+		else             b2->aij[i] = -1.0;
 	}
 
 	block_Print( b2, "RHS of the test");
@@ -102,14 +103,13 @@ int main(int argc, const char *argv[])
 	compute_bandwidth(A);
 	nrhs = A->ku;
 	matrix_t* Aij = matrix_ExtractMatrix(A, 0, 5, 0, 5);
-	
-	block_t* x3    = block_Empty( 5, nrhs, (blocktype_t) _V_BLOCK_ );
-	block_t* b3    = matrix_ExtractBlock(A, 0, 5, 5, 5 + nrhs, (blocktype_t) _V_BLOCK_ );
+	block_t* x3   = block_Empty( 5, nrhs, (blocktype_t) _V_BLOCK_ );
+	block_t* b3   = matrix_ExtractBlock(A, 0, 5, 5, 5 + nrhs, (blocktype_t) _V_BLOCK_ );
 
 	block_InitializeToValue( x3, __zero ); // solution of the system
 	block_Print( b3, "RHS extracted from the matrix");
 
-	CheckInnerSolverSolution( A, x3, b3);
+	CheckInnerSolverSolution( Aij, x3, b3);
 	
 	block_Deallocate ( x3 );
 	block_Deallocate ( b3 );

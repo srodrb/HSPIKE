@@ -18,8 +18,11 @@
 #include "spike_memory.h"
 #include "spike_common.h"
 #include "spike_datatypes.h"
-#include <math.h>
+#include "mkl.h"
 #include <string.h>
+
+
+ #define _MAX_PRINT_DIMENSION_ 25
 
 /* sparse CSR matrix structure */
 typedef struct
@@ -39,68 +42,98 @@ typedef struct
 
 /* dense block structure */
 typedef enum{ _V_BLOCK_, _W_BLOCK_, _RHS_BLOCK_ } blocktype_t;
-typedef enum{ _TOP_SECTION_, _MIDDLE_SECTION_, _BOTTOM_SECTION_ } blocklocation_t;
+typedef enum{ _TOP_SECTION_, _CENTRAL_SECTION_, _BOTTOM_SECTION_, _WHOLE_SECTION_ } blocksection_t;
 
 typedef struct
 {
-	blocktype_t  type;
-	integer_t    n;
-	integer_t    m;
-	complex_t   *aij;
+	blocktype_t     type;
+	blocksection_t  section;
+	integer_t       n;
+	integer_t       m;
+	integer_t       ku;
+	integer_t       kl;
+	complex_t       *aij;
 
 } block_t;
 
+/* -------------------------------------------------------------------- */
+/* .. Functions affecting sparse CSR matrix structure                   */
+/* -------------------------------------------------------------------- */
 
-matrix_t* matrix_LoadCSR    (const char* filename);
-static matrix_t* matrix_CreateEmpty( const integer_t n, const integer_t nnz );
-void      matrix_Deallocate (matrix_t* M);
-void      matrix_Print      (matrix_t* M, const char* msg);
+matrix_t*         matrix_LoadCSR                (const char* filename);
 
-/* matrix manipulation routines */
-matrix_t* matrix_ExtractMatrix (  matrix_t* M,
-														const integer_t r0,
-														const integer_t rf,
-														const integer_t c0,
-														const integer_t cf);
-
-/* compares two CSR sparse matrices */
-Error_t matrix_AreEqual( matrix_t* A, matrix_t* B );
-
-/* Extracts a dense block from a sparse matrix */
-block_t* matrix_ExtractBlock (  matrix_t* M,
-													const integer_t r0,
-													const integer_t rf,
-													const integer_t c0,
-													const integer_t cf,
-												  blocktype_t type
-												);
+matrix_t*         matrix_CreateEmptyMatrix      (const integer_t n, const integer_t nnz );
 
 
-void block_Deallocate (block_t* B);
-void block_Print ( block_t* B, const char* msg);
-Error_t matrix_PrintAsDense( matrix_t* A, const char* msg);
-Error_t block_AreEqual( block_t* A, block_t* B );
-block_t* block_Empty( const integer_t n, const integer_t m, blocktype_t type);
-Error_t block_InitializeToValue( block_t* B, const complex_t value );
+Error_t           matrix_Deallocate             (matrix_t* M);
 
-Error_t matrix_FillReduced ( const integer_t TotalPartitions,
-														 const integer_t CurrentPartition,
-                             integer_t     *n,
-                             integer_t     *ku,
-                             integer_t     *kl,
-                             matrix_t      *R,
-                             block_t*       B );
+Bool_t            matrix_AreEqual               (matrix_t* A, matrix_t* B );
 
-Error_t mpi_matrix_FillReduced (const integer_t TotalPartitions,
-								const integer_t CurrentPartition,
-								integer_t          *n,
-								integer_t          *ku,
-								integer_t          *kl,
-								matrix_t           *R,
-								complex_t          *aij,
-								blocktype_t        BlockType,
-								blocklocation_t    Location );
+Error_t           matrix_PrintAsSparse          (matrix_t* M, const char* msg);
 
-matrix_t* matrix_CreateEmptyReduced( const integer_t p, integer_t *n, integer_t *ku, integer_t *kl );
-Error_t GetNnzAndRowsUpToPartition ( const integer_t TotalPartitions, const integer_t CurrentPartition, integer_t *ku, integer_t *kl, integer_t *nnz, integer_t *FirstBlockRow );
-static integer_t* ComputeReducedSytemDimensions( integer_t partitions, integer_t *ku, integer_t *kl);
+Error_t           matrix_PrintAsDense           (matrix_t* A, const char* msg);
+
+block_t*          matrix_ExtractBlock 		   (matrix_t* M,
+								            	const integer_t r0,
+								            	const integer_t rf,
+								            	const integer_t c0,
+								            	const integer_t cf,
+								            	blocktype_t type);
+
+matrix_t*         matrix_ExtractMatrix 		   (matrix_t* M,
+												const integer_t r0,
+												const integer_t rf,
+												const integer_t c0,
+												const integer_t cf );
+
+/* -------------------------------------------------------------------- */
+/* .. Functions affecting block structures.                             */
+/* -------------------------------------------------------------------- */
+
+block_t*          block_CreateEmptyBlock       (const integer_t n, 
+												const integer_t m, 
+												const integer_t ku, 
+												const integer_t kl, 
+												blocktype_t type,
+												blocksection_t section);
+
+Error_t           block_InitializeToValue       ( block_t* B, const complex_t value );
+
+Error_t           block_Print                   ( block_t* B, const char* msg);
+
+Error_t           block_Deallocate              ( block_t* B);
+
+Bool_t            block_AreEqual                ( block_t* A, block_t* B );
+
+static Error_t    block_Transpose               ( block_t* B );
+
+block_t*          block_ExtractBlock            ( block_t* B, blocksection_t section );
+
+
+
+/* -------------------------------------------------------------------- */
+/* .. Functions for reduced sytem assembly.                             */
+/* -------------------------------------------------------------------- */
+matrix_t*         matrix_CreateEmptyReducedSystem  (const integer_t TotalPartitions, 
+													integer_t *n, 
+													integer_t *ku, 
+													integer_t *kl );
+
+static integer_t* ComputeReducedSytemDimensions	   (integer_t partitions, 
+													integer_t *ku, 
+													integer_t *kl);
+
+static Error_t    GetNnzAndRowsUpToPartition       (const integer_t TotalPartitions, 
+													const integer_t CurrentPartition, 
+													integer_t *ku, integer_t *kl, 
+													integer_t *nnz, 
+													integer_t *FirstBlockRow );
+
+Error_t           matrix_AddBlockToReducedSystem   (const integer_t TotalPartitions,
+													const integer_t CurrentPartition,
+													integer_t          *n,
+													integer_t          *ku,
+													integer_t          *kl,
+													matrix_t           *R,
+													block_t            *B);
+

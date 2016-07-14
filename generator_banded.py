@@ -178,21 +178,25 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or float(sys.argv[1]) <= 0:
         raise ValueError('Dimension of the system must be supplied, and must be positive!')
 
-    dim = 10 # int(sys.argv[1])
+    dim = 20000 #int(sys.argv[1])
 
     A = create_pentadiagonal( dim )
-    export_csr2bin( A, "Tests/pentadiagonal/matrix.bin")
+    export_csr2bin( A, "Tests/pentadiagonal/large.bin")
 
-    Block = A[0:5,0:5]
-
-    b        = np.ones(shape=(5,1))
-    LU       = sla.splu( Block.tocsc() );
-    solution = LU.solve(b)
-    print solution
-
-    print 'Norm of b:        %E' %(la.norm(b))
-    print 'Absolute residual %E' %(la.norm( Block*solution - b))
-    print 'Relative residual %E' %(la.norm( Block*solution - b) / la.norm(b))
+    #Block = A[0:5,0:5]
+#
+#    #b        = A[0:5,5:7].todense()
+#
+#    #print 'RHS of the linear system is:'
+#    #print b
+#
+#    #LU       = sla.splu( Block.tocsc() );
+#    #solution = LU.solve(b)
+#    #print solution
+#
+#    #print 'Norm of b:        %E' %(la.norm(b))
+#    #print 'Absolute residual %E' %(la.norm( Block*solution - b))
+    #print 'Relative residual %E' %(la.norm( Block*solution - b) / la.norm(b))
 
 
 

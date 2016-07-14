@@ -56,7 +56,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	block_t*  x = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 	block_t*  f = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 
@@ -74,7 +74,7 @@ int main(int argc, const char *argv[])
 	matrix_PrintAsDense( A, NULL );
 
 	start_t = GetReferenceTime();
-	sm_schedule_t* schedule = spike_solve_analysis( A, nrhs, 4 );
+	sm_schedule_t* schedule = spike_solve_analysis( A, nrhs, 2 );
 
 	matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);
 
@@ -99,8 +99,8 @@ int main(int argc, const char *argv[])
 
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
 
-			//sprintf( msg, "%d-th partition, Vi block", p);
-			//block_Print( Vi, msg );
+			sprintf( msg, "%d-th partition, Vi block", p);
+			block_Print( Vi, msg );
 
 			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Vi );
 
@@ -114,8 +114,8 @@ int main(int argc, const char *argv[])
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
 			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Wi );
 
-			//sprintf( msg, "%d-th partition, Wi block", p);
-			//block_Print( Wi, msg );
+			sprintf( msg, "%d-th partition, Wi block", p);
+			block_Print( Wi, msg );
 
 			block_Deallocate( Wi );
 			block_Deallocate( Ci );
@@ -133,11 +133,11 @@ int main(int argc, const char *argv[])
 			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
 			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Wi );
 
-			//sprintf( msg, "%d-th partition, Wi block", p);
-			//block_Print( Wi, msg );
+			sprintf( msg, "%d-th partition, Wi block", p);
+			block_Print( Wi, msg );
 
-			//sprintf( msg, "%d-th partition, Vi block", p);
-			//block_Print( Vi, msg );
+			sprintf( msg, "%d-th partition, Vi block", p);
+			block_Print( Vi, msg );
 
 			block_Deallocate( Vi );
 			block_Deallocate( Wi );

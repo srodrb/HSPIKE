@@ -1,0 +1,8 @@
+ % python generator_banded.py 10
+Datatype is double
+System features
+Coefficients datatype   :  <type 'numpy.float64'>
+System dimension        :  (20000, 20000)
+nnz elements            :  99994
+Linear system was sucessfully exported:  Tests/pentadiagonal/large.bin
+End of the program
