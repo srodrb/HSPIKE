@@ -49,7 +49,7 @@ matrix_t* matrix_LoadCSR(const char* filename)
 /*
 	Creates an empty CSR sparse matriz of dimension n and nnz elements
 */
-matrix_t* matrix_CreateEmptyMatrix(const integer_t n, const integer_t nnz )
+matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const integer_t nnz )
 {
 	matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
 	R->n        = n;

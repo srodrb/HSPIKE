@@ -19,9 +19,12 @@
 #ifndef _SPIKE_DATATYPES_H_
 	#define _SPIKE_DATATYPES_H_
 
-	#ifdef _MPI_SUPPORT_
+	#undef _COMPLEX_ARITHMETIC_
+
+	#if defined (_MPI_SUPPORT_)
 		#include <mpi.h>
 	#endif
+
 
 
 #if defined (_DATATYPE_Z_) // double complex
@@ -36,11 +39,11 @@
 	typedef complex_number   complex_t;
 
 	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
-		#define _MPI_REAL_T_  MPI_DOUBLE
+		#define _MPI_COMPLEX_T_  MPI_DOUBLE
+		#define _MPI_COUNT_  2
 	#endif
 
-#elif defined (_MPI_SUPPORT_) // complex float
+#elif defined (_DATATYPE_C_) // complex float
 	#define _COMPLEX_ARITHMETIC_
 
 	typedef float   real_t;
@@ -53,8 +56,8 @@
 	typedef complex_number   complex_t;
 
 	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_FLOAT * 2
-		#define _MPI_REAL_T_  MPI_FLOAT
+		#define _MPI_COMPLEX_T_  MPI_FLOAT
+		#define _MPI_COUNT_ 2
 	#endif
 
 #elif defined (_DATATYPE_D_) // double precision float
@@ -62,8 +65,8 @@
 	typedef double   complex_t;
 
 	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_DOUBLE * 2
-		#define _MPI_REAL_T_  MPI_DOUBLE
+		#define _MPI_COMPLEX_T_  MPI_DOUBLE
+		#define _MPI_COUNT_ 1
 	#endif
 
 #else // single precision float
@@ -72,7 +75,7 @@
 
 	#if defined (_MPI_SUPPORT_)
 		#define _MPI_COMPLEX_T_  MPI_FLOAT
-		#define _MPI_REAL_T_  MPI_FLOAT
+		#define _MPI_COUNT_ 1
 	#endif
 
 #endif

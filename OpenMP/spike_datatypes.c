@@ -56,7 +56,7 @@ Bool_t number_IsLessThan( complex_t a, complex_t b )
 
 Bool_t number_IsEqual( complex_t a, complex_t b )
 {
-  #ifdef 	_COMPLEX_ARITHMETIC_
+  #if defined (_COMPLEX_ARITHMETIC_)
     real_t amod = (a.real * a.real) + (a.imag * a.imag);
     real_t bmod = (b.real * b.real) + (b.imag * b.imag);
 

@@ -8,7 +8,7 @@ ifeq ($(COMPILER),INTEL)
 	CINCS   =-I${MKLROOT}/include
 else
 	CC      =gcc
-	CFLAGS  =-openmp -std=c99 -g -O2
+	CFLAGS  =-std=c99 -g -O2
 	CLIBS   =
 	CINCS   =
 endif
