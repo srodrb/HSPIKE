@@ -56,9 +56,12 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	block_t*  x = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
-	block_t*  f = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
+	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+
+	// Compute matrix bandwidth
+
+	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
 	block_InitializeToValue( x, __zero ); // solution of the system
 	block_InitializeToValue( f, __unit ); // rhs of the system
@@ -74,19 +77,19 @@ int main(int argc, const char *argv[])
 	matrix_PrintAsDense( A, NULL );
 
 	start_t = GetReferenceTime();
-	sm_schedule_t* schedule = spike_solve_analysis( A, nrhs, 2 );
+	sm_schedule_t* S = spike_solve_analysis( A, nrhs, 2 );
 
-	matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);
+	matrix_t* R = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
 
 	/* -------------------------------------------------------------------- */
 	/* .. Factorization Phase. */
 	/* -------------------------------------------------------------------- */
-	for(integer_t p=0; p<schedule->p; p++)
+	for(integer_t p=0; p < S->p; p++)
 	{
 		integer_t r0,rf,c0,cf;
 
-		r0 = schedule->n[p];
-		rf = schedule->n[p+1];
+		r0 = S->n[p];
+		rf = S->n[p+1];
 
 		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 
@@ -94,55 +97,79 @@ int main(int argc, const char *argv[])
 		// matrix_Print( Aij, msg);
 
 		if ( p == 0 ){
-			block_t* Vi    = block_Empty( rf - r0, A->ku, (blocktype_t) _V_BLOCK_ );
-			block_t* Bi    = matrix_ExtractBlock(A, r0, rf, rf, rf + A->ku, (blocktype_t) _V_BLOCK_ );
+			block_t* Vi    = block_CreateEmptyBlock( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Bi    = matrix_ExtractBlock   ( A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
+			system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
 
-			sprintf( msg, "%d-th partition, Vi block", p);
-			block_Print( Vi, msg );
+			block_t* Vit = block_ExtractBlock( Vi, _TOP_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Vit );
 
-			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Vi );
+			block_t* Vib = block_ExtractBlock( Vi, _BOTTOM_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Vib );
 
-			block_Deallocate( Vi );
+
 			block_Deallocate( Bi );
+			block_Deallocate( Vi );
+			block_Deallocate( Vit);
+			block_Deallocate( Vib);
 		}
-		else if ( p == (schedule->p -1)){
-			block_t* Wi = block_Empty( rf - r0, A->kl, (blocktype_t) _W_BLOCK_ );
-			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
+		else if ( p == ( S->p -1)){
+			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
-			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Wi );
+			system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
 
+			block_t* Wit = block_ExtractBlock( Wi, _TOP_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Wit );
+
+			block_t* Wib = block_ExtractBlock( Wi, _BOTTOM_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Wib );
+			
 			sprintf( msg, "%d-th partition, Wi block", p);
 			block_Print( Wi, msg );
 
-			block_Deallocate( Wi );
 			block_Deallocate( Ci );
+			block_Deallocate( Wi );
+			block_Deallocate( Wit);
+			block_Deallocate( Wib);
 		}
 		else{
-			block_t* Vi    = block_Empty( rf - r0, A->ku, (blocktype_t) _V_BLOCK_ );
-			block_t* Bi    = matrix_ExtractBlock(A, r0, rf, rf, rf + A->ku, (blocktype_t) _V_BLOCK_ );
+			block_t* Vi    = block_CreateEmptyBlock( rf - r0, A->ku, _V_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Bi    = matrix_ExtractBlock   (A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
-			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Vi );
+			system_solve( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m );
 
-			block_t* Wi = block_Empty( rf - r0, A->kl, (blocktype_t) _W_BLOCK_ );
-			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, (blocktype_t) _W_BLOCK_ );
+			block_t* Vit = block_ExtractBlock( Vi, _TOP_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Vit );
 
-			error = system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
-			error = matrix_FillReduced( schedule->p, p, schedule->n, schedule->ku, schedule->kl, R, Wi );
+			block_t* Vib = block_ExtractBlock( Vi, _BOTTOM_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Vib );
 
+
+			block_Deallocate( Bi );
+			block_Deallocate( Vi );
+			block_Deallocate( Vit);
+			block_Deallocate( Vib);
+
+			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );
+
+			system_solve( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m );
+
+			block_t* Wit = block_ExtractBlock( Wi, _TOP_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Wit );
+
+			block_t* Wib = block_ExtractBlock( Wi, _BOTTOM_SECTION_ );
+			matrix_AddBlockToReducedSystem( S->p, p, S->ku, S->kl, R, Wib );
+			
 			sprintf( msg, "%d-th partition, Wi block", p);
 			block_Print( Wi, msg );
 
-			sprintf( msg, "%d-th partition, Vi block", p);
-			block_Print( Vi, msg );
-
-			block_Deallocate( Vi );
-			block_Deallocate( Wi );
-			block_Deallocate( Bi );
 			block_Deallocate( Ci );
+			block_Deallocate( Wi );
+			block_Deallocate( Wit);
+			block_Deallocate( Wib);
 		}
 
 		matrix_Deallocate(Aij);
@@ -164,7 +191,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
 	/* -------------------------------------------------------------------- */
-	schedule_Destroy  (schedule);
+	schedule_Destroy  ( S );
 	matrix_Deallocate ( A );
 	block_Deallocate  ( x );
 	block_Deallocate  ( f );
