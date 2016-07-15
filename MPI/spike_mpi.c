@@ -15,19 +15,7 @@
  *
  * =====================================================================================
  */
-
-#include "spike_matrix.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <mpi.h>
-
-#ifdef NDEBUG
-	#define debug(M, ...)
-#else		
-	#define debug(M,rank, ...) my_debug(__FILE__, __LINE__, __func__, M, rank, __VA_ARGS__)
-#endif
+#include "spike_mpi.h"
 
 /* -------------------------------------------------------------------- */
 /* .. MPI: Send Aij to Slaves.
@@ -42,6 +30,7 @@ void sendAij (matrix_t *Aij, integer_t p){
 	//printf("Sended\n");
 };
 
+
 /* -------------------------------------------------------------------- */
 /* .. MPI: Recv Aij From master
 /* -------------------------------------------------------------------- */
@@ -52,7 +41,7 @@ matrix_t* recvAij (integer_t master){
 
 	MPI_Recv(t, 5, MPI_INT, master, 0, MPI_COMM_WORLD, &status);
 
-	matrix_t* Aij = matrix_CreateEmpty( t[0], t[1] );
+	matrix_t* Aij = matrix_CreateEmptyMatrix( t[0], t[1] );
 	Aij->ku = t[2];
 	Aij->kl = t[3];
 	Aij->K  = t[4];
@@ -67,21 +56,42 @@ matrix_t* recvAij (integer_t master){
 	return Aij;
 }
 
-void debug_mpi(char *file, int line, const char *func, const char *fmt, int rank, ...){
+void sendBlock (block_t *b, integer_t p){
+	MPI_Send(&b, 6,                      MPI_INT, 	     p, 0, MPI_COMM_WORLD);
+	MPI_Send(b->aij,  (b->m)*(b->n)*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD);
+	
+	
+}
+block_t* recvBlock (integer_t p){
+
+	int t[6];
+	MPI_Status  status;
+
+	MPI_Recv(t, 6, 	     MPI_INT, 	     p, 0, MPI_COMM_WORLD, &status);
+
+	block_t *b = block_CreateEmptyBlock(t[4], t[5], t[0], t[1], t[2], t[3]);
+	debug ("Recived %d, %d, %d, %d, %d, %d", t[4], t[5], t[0], t[1], t[2], t[3]);
+	
+	MPI_Recv(b->aij, (b->n)*(b->m)*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD, &status);
+	return b;
+	
+}
+
+void my_debug(char *file, integer_t line, const char *func, const char *fmt, ...){
 
 	FILE *fp;
-	char fpName[50];
-	strcpy(fpName, "Slave");
-	strcat(fpName, (char)rank+45);
-	strcat(fpName, ".info");	
-	
+	integer_t rank;
+	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+	char fpName[20];
+	sprintf(fpName, "Mpi_Debug%d.log", rank);
 	fp = fopen (fpName, "a");
+	//fprintf(fp, "DEBUG %s:%d:%s\n",file, line, func);
 
 	va_list args;
 	va_start(args, fmt);
-	fprintf(fp, "DEBUG Slave %d in %s:%d:%s:", rank, file, line, func);
+	fprintf(fp, "DEBUG %s:%d:%s:", file, line, func);
 	vfprintf(fp, fmt, args);
 	va_end(args);
-
+	
 	fclose (fp);
 }

@@ -65,28 +65,15 @@ int main(int argc, char *argv[])
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
 	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
-	block_t*  x = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
-	block_t*  f = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 
-	block_InitializeToValue( x, __zero ); // solution of the system
-	block_InitializeToValue( f, __unit ); // rhs of the system
-
-#undef _SOLVE_ONLY_WITH_REF_
-#ifdef _SOLVE_ONLY_WITH_REF_
-	SolveOriginalSystem( A, x, f);
-	matrix_Deallocate( A );
-	block_Deallocate( x );
-	block_Deallocate( f );
-	return 0;
-#endif
-	
 	sm_schedule_t* schedule;
+
 	int sendCount;
 	if(rank == master){ //MASTER
 		//matrix_PrintAsDense( A, NULL );
 		start_t = GetReferenceTime();
 		schedule = spike_solve_analysis( A, nrhs, size-1); //Number of partitions
-		matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);	
+		matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);	
 
 		/* -------------------------------------------------------------------- */
 		/* .. Factorization Phase. */
@@ -101,7 +88,7 @@ int main(int argc, char *argv[])
 			matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 			
 			//MPI
-			debug("Sending MSG", rank);		
+			debug("Master Sending matrix Aij to %d\n", p+1);
 			sendAij (Aij, p+1);
 			//End MPI
 
@@ -114,6 +101,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "\nProgram finished\n");
 	}
 	else{ //slaves
+		debug("Slave Reciving Matrix Aij from Master\n");
 		matrix_t* Aij = recvAij (master);
 		//matrix_Print( Aij, NULL);
 	}
