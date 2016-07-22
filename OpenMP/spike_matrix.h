@@ -142,6 +142,10 @@
 													block_t            *RHS,
 													block_t            *B);
 
+	Error_t           block_AddBlockToRHS          (block_t* x, block_t* xi,
+		const integer_t n0,
+		const integer_t nf);
+
 
 	/* -------------------------------------------------------------------- */
 	/* .. Functions for reduced sytem assembly.                             */

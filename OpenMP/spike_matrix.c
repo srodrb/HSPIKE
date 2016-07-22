@@ -686,7 +686,18 @@ Error_t block_AddTipTOReducedRHS   (const integer_t CurrentPartition,
 	return (SPIKE_SUCCESS);
 };
 
+/*
+	This function inserts a block into another block, both in column-major layout.
 
+	It is intended to insert the solution xi into the RHS x at the end of the algorithm.
+ */
+Error_t block_AddBlockToRHS (block_t *x, block_t* xi, const integer_t n0, const integer_t nf)
+{
+	for(integer_t col=0; col < x->m; col++)
+     	memcpy((void*) &x->aij[col * x->n + n0], (const void*) xi->aij, (nf - n0) * sizeof(complex_t));
+
+	return (SPIKE_SUCCESS);
+};
 
 /* -------------------------------------------------------------------- */
 /* .. Functions for reduced sytem assembly.                             */

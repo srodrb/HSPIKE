@@ -234,10 +234,11 @@ int main(int argc, const char *argv[])
 		fprintf(stderr, "Processing backward solution for the %d-th block\n", p);
 
 		/* compute the limits of the blocks */
-		const integer_t obs = S->n[p];        	/* original system starting row */
-		const integer_t obe = S->n[p+1];	  	/* original system ending row   */
-		const integer_t rbs = S->r[p];		  	/* reduceed system starting row */
-		const integer_t rbe = S->r[p+1];		/* reduced system ending row    */
+		const integer_t obs = S->n[p];        		/* original system starting row */
+		const integer_t obe = S->n[p+1];	  		/* original system ending row   */
+		const integer_t rbs = S->r[p];		  		/* reduceed system starting row */
+		const integer_t rbe = S->r[p+1];			/* reduced system ending row    */
+		const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
 
 		/* allocate pardiso configuration parameters */
 		MKL_INT pardiso_conf[64];
@@ -262,35 +263,21 @@ int main(int argc, const char *argv[])
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
 			block_Print( xt_next, "xt(i+1) dende sub-block");
 
-// 			void cblas_sgemm (const CBLAS_LAYOUT Layout, 
-// 				const CBLAS_TRANSPOSE transa, 
-// 				const CBLAS_TRANSPOSE transb, 
-// 				const MKL_INT m, 
-// 				const MKL_INT n, 
-// 				const MKL_INT k, 
-// 				const float alpha, 
-// 				const float *a, 
-// 				const MKL_INT lda, 
-// 				const float *b, 
-// 				const MKL_INT ldb, 
-// 				const float beta, 
-// 				float *c, 
-// 				const MKL_INT ldc);
-
 			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
 			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
+			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
 			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
-				2,    /* m - number of rows of A    */
-				nrhs, /* n - number of columns of B */
-				2,    /* k - number of columns of A */
-				-1.0, /* alpha */
-				Bi->aij, /* A block */
-				2,    /* lda - first dimension of A */
-				xt_next->aij, /* B block */
-				2,    /* ldb - first dimension of B */
-				1.0, /* beta */
-				&fi->aij[3], /* C block */
-				5 ); /* ldc - first dimension of C */
+				Bi->n,    						/* m - number of rows of A    */
+				xt_next->m, 					/* n - number of columns of B */
+				Bi->m,    						/* k - number of columns of A */
+				-1.0, 							/* alpha                      */
+				Bi->aij, 						/* A block                    */
+				Bi->n,    						/* lda - first dimension of A */
+				xt_next->aij, 					/* B block                    */
+				xt_next->n,    					/* ldb - first dimension of B */
+				1.0, 							/* beta                       */
+				&fi->aij[ni - S->ku[p]], 		/* C block                    */
+				ni ); 					 		/* ldc - first dimension of C */
 
 			block_Print( fi, "Fi result");
 
@@ -298,58 +285,107 @@ int main(int argc, const char *argv[])
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
 			block_Print( xi, "Final solution of the block");
 
-
-
-			// block_t* xit = block_CreateEmptyBlock  ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
-
-
-
-			// directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
-
 			block_Deallocate ( Bi );
 			block_Deallocate ( xt_next); 
 		}
 		else if ( p == ( S->p -1)){
 
-			// block_t* Ci  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );			
-			// block_t* xb_prev = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
+			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );
+			block_Print( Ci, "Dense Ci sub-block (last partition)");
 			
-			// block_t* xit = block_CreateEmptyBlock  ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
+			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
+			block_Print( xb_prev, "xt(i+1) dende sub-block (last partition)");  
 
-			// directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
+			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
+			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
+			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+				Ci->n,    						/* m - number of rows of A    */
+				xb_prev->m, 					/* n - number of columns of B */
+				Ci->m,    						/* k - number of columns of A */
+				-1.0, 							/* alpha                      */
+				Ci->aij, 						/* A block                    */
+				Ci->n,    						/* lda - first dimension of A */
+				xb_prev->aij, 					/* B block                    */
+				xb_prev->n,    					/* ldb - first dimension of B */
+				1.0, 							/* beta                       */
+				fi->aij, 			 		    /* C block                    */
+				ni );		 					/* ldc - first dimension of C */
 
-//			block_Deallocate ( Ci );
-//			block_Deallocate ( xb_prev);		
+			block_Print( fi, "Fi result (last partition)");
+
+			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+			block_Print( xi, "Final solution of the block (last partition)");
+
+			block_Deallocate ( Ci );
+			block_Deallocate ( xb_prev); 
+		
 		}
 		else{
 
-//			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );			
-//			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
-//			
-//			// block_t* xit = block_CreateEmptyBlock  ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
-//
-//			// directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
-//
-//
-//
-//			block_t* Ci  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
-//			block_t* xb_prev = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
-//			
-//			// block_t* xit = block_CreateEmptyBlock  ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
-//
-//			// directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
-//
-//			block_Deallocate ( Bi );
-//			block_Deallocate ( Ci );
-//			block_Deallocate ( xt_next);			 	
-//			block_Deallocate ( xb_prev);
+			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
+			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
+
+			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
+			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
+			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+				Bi->n,    						/* m - number of rows of A    */
+				xt_next->m, 					/* n - number of columns of B */
+				Bi->m,    						/* k - number of columns of A */
+				-1.0, 							/* alpha                      */
+				Bi->aij, 						/* A block                    */
+				Bi->n,    						/* lda - first dimension of A */
+				xt_next->aij, 					/* B block                    */
+				xt_next->n,    					/* ldb - first dimension of B */
+				1.0, 							/* beta                       */
+				&fi->aij[ni - S->ku[p]], 		/* C block                    */
+				ni ); 					 		/* ldc - first dimension of C */
+
+			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+
+			block_Deallocate ( Bi );
+			block_Deallocate ( xt_next); 
+
+			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );			
+			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
+
+			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
+			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
+			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+				Ci->n,    						/* m - number of rows of A    */
+				xb_prev->m, 					/* n - number of columns of B */
+				Ci->m,    						/* k - number of columns of A */
+				-1.0, 							/* alpha                      */
+				Ci->aij, 						/* A block                    */
+				Ci->n,    						/* lda - first dimension of A */
+				xb_prev->aij, 					/* B block                    */
+				xb_prev->n,    					/* ldb - first dimension of B */
+				1.0, 							/* beta                       */
+				fi->aij, 			 		    /* C block                    */
+				ni );		 					/* ldc - first dimension of C */
+
+			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+			block_Print( xi, "Final solution of the block (middle partition)");
+
+			block_Deallocate ( Ci );
+			block_Deallocate ( xb_prev);
 		}
 
+		block_AddBlockToRHS(x, xi, obs, obe);
+
 		directSolver_CleanUp(NULL,NULL,NULL,NULL,NULL, Aij->n, nrhs, &pardiso_conf);
-		block_Deallocate ( fi );
-		matrix_Deallocate(Aij);
-		
+		block_Deallocate    ( xi );
+		block_Deallocate 	( fi );
+		matrix_Deallocate	( Aij);
+
 	}
+
+	block_Print( x, "Solution of the linear system");
+
+	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, nrhs);
+
 
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
