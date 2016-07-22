@@ -73,26 +73,26 @@ int main(int argc, const char *argv[])
   matrix_t* R = matrix_CreateEmptyReducedSystem ( p, n, ku, kl );
 
 
-  block_t *V0t = block_ExtractBlock( V0, _TOP_SECTION_ );
-  block_t *V0b = block_ExtractBlock( V0, _BOTTOM_SECTION_ );
+  block_t *V0t = block_ExtractTip( V0, _TOP_SECTION_ );
+  block_t *V0b = block_ExtractTip( V0, _BOTTOM_SECTION_ );
   
-  block_t *W1t = block_ExtractBlock( W1, _TOP_SECTION_ );
-  block_t *W1b = block_ExtractBlock( W1, _BOTTOM_SECTION_ );
+  block_t *W1t = block_ExtractTip( W1, _TOP_SECTION_ );
+  block_t *W1b = block_ExtractTip( W1, _BOTTOM_SECTION_ );
   
-  block_t *V1t = block_ExtractBlock( V1, _TOP_SECTION_ );
-  block_t *V1b = block_ExtractBlock( V1, _BOTTOM_SECTION_ );
+  block_t *V1t = block_ExtractTip( V1, _TOP_SECTION_ );
+  block_t *V1b = block_ExtractTip( V1, _BOTTOM_SECTION_ );
   
-  block_t *W2t = block_ExtractBlock( W2, _TOP_SECTION_ );
-  block_t *W2b = block_ExtractBlock( W2, _BOTTOM_SECTION_ );
+  block_t *W2t = block_ExtractTip( W2, _TOP_SECTION_ );
+  block_t *W2b = block_ExtractTip( W2, _BOTTOM_SECTION_ );
 
-  matrix_AddBlockToReducedSystem(p, 0, n, ku, kl, R, V0t );
-  matrix_AddBlockToReducedSystem(p, 0, n, ku, kl, R, V0b );
-  matrix_AddBlockToReducedSystem(p, 1, n, ku, kl, R, W1t );
-  matrix_AddBlockToReducedSystem(p, 1, n, ku, kl, R, W1b );
-  matrix_AddBlockToReducedSystem(p, 1, n, ku, kl, R, V1t );
-  matrix_AddBlockToReducedSystem(p, 1, n, ku, kl, R, V1b );
-  matrix_AddBlockToReducedSystem(p, 2, n, ku, kl, R, W2t );
-  matrix_AddBlockToReducedSystem(p, 2, n, ku, kl, R, W2b );
+  matrix_AddTipToReducedMatrix(p, 0, n, ku, kl, R, V0t );
+  matrix_AddTipToReducedMatrix(p, 0, n, ku, kl, R, V0b );
+  matrix_AddTipToReducedMatrix(p, 1, n, ku, kl, R, W1t );
+  matrix_AddTipToReducedMatrix(p, 1, n, ku, kl, R, W1b );
+  matrix_AddTipToReducedMatrix(p, 1, n, ku, kl, R, V1t );
+  matrix_AddTipToReducedMatrix(p, 1, n, ku, kl, R, V1b );
+  matrix_AddTipToReducedMatrix(p, 2, n, ku, kl, R, W2t );
+  matrix_AddTipToReducedMatrix(p, 2, n, ku, kl, R, W2b );
 
   matrix_PrintAsDense( R, "Reduced system");
 

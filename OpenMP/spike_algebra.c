@@ -79,12 +79,14 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 						integer_t  n,
 						integer_t  nrhs)
 {
+	/* -------------------------------------------------------------------- */
+	/* .. Local variables. */
+	/* -------------------------------------------------------------------- */
+	timer_t start_t;
+	timer_t ordering_t;
+	timer_t factor_t;
+	timer_t solve_t;
 
-#ifdef __INTEL_COMPILER
-/* -------------------------------------------------------------------- */
-/* .. Local variables. */
-/* -------------------------------------------------------------------- */
-	double start_t, factor_t, solve_t;
 	MKL_INT mtype = 11;       /* Real unsymmetric matrix */
 	void *pt[64];       /* Pardiso control parameters. */
 	MKL_INT iparm[64]; /* Pardiso control parameters. */
@@ -93,10 +95,263 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	MKL_INT idum;         /* Integer dummy. */
 	char *uplo;
 
-	if ( x == NULL ){
-		fprintf(stderr, "INFO: x vector is not supplied, solution will be stored "
-										" on b vector\n");
+	/* -------------------------------------------------------------------- */
+	/* .. Setup Pardiso control parameters. */
+	/* -------------------------------------------------------------------- */
+	memset((void*) iparm, 0, 64 * sizeof(MKL_INT));
+
+	iparm[0]  =  1;    /* No solver default */
+	iparm[1]  =  2;    /* Fill-in reordering from METIS */
+	iparm[3]  =  0;    /* No iterative-direct algorithm */
+	iparm[4]  =  0;    /* No user fill-in reducing permutation */
+	iparm[5]  =  0;    /* Write solution into x */
+	iparm[6]  =  0;    /* Not in use */
+	iparm[7]  =  2;    /* Max numbers of iterative refinement steps */
+	iparm[8]  =  0;    /* Not in use */
+	iparm[9]  = 13;    /* Perturb the pivot elements with 1E-13 */
+	iparm[10] =  1;    /* Use nonsymmetric permutation and scaling MPS */
+	iparm[11] =  0;    /* Conjugate transposed/transpose solve */
+	iparm[12] =  1;    /* Maximum weighted matching algorithm is switched-on (default for non-symmetric) */
+	iparm[13] =  0;    /* Output: Number of perturbed pivots */
+	iparm[14] =  0;    /* Not in use */
+	iparm[15] =  0;    /* Not in use */
+	iparm[16] =  0;    /* Not in use */
+	iparm[17] = -1;    /* Output: Number of nonzeros in the factor LU, -1 shows it */
+	iparm[18] = -1;    /* Output: Mflops for LU factorization, -1 shows it */
+	iparm[19] =  0;    /* Output: Numbers of CG Iterations */
+	iparm[34] =  1;    /* Pardiso use C-style indexing for ia and ja arrays */
+	maxfct    =  1;    /* Maximum number of numerical factorizations. */
+	mnum      =  1;    /* Which factorization to use. */
+	msglvl    =  0;    /* Print statistical information in file */
+	error     =  0;    /* Initialize error flag */
+
+	/* -------------------------------------------------------------------- */
+	/* .. Initialize the internal solver memory pointer. This is only */
+	/* necessary for the FIRST call of the PARDISO solver. */
+	/* -------------------------------------------------------------------- */
+	memset((void*) pt, 0, 64 * sizeof(MKL_INT));
+
+	/* -------------------------------------------------------------------- */
+	/* .. Reordering and Symbolic Factorization. This step also allocates */
+	/* all memory that is necessary for the factorization. */
+	/* -------------------------------------------------------------------- */
+	start_t = GetReferenceTime();
+	phase = 11;
+	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
+	if ( error != 0 )
+	{
+			printf ("\nERROR during symbolic factorization: %d", error);
+			exit (1);
 	}
+	ordering_t = GetReferenceTime() - start_t;
+
+	// printf ("\nReordering completed ... ");
+	// printf ("\nNumber of nonzeros in factors = %d", iparm[17]);
+	// printf ("\nNumber of factorization MFLOPS = %d", iparm[18]);
+	fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
+
+	/* -------------------------------------------------------------------- */
+	/* .. Numerical factorization. */
+	/* -------------------------------------------------------------------- */
+	start_t = GetReferenceTime();
+	phase = 22;
+	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
+
+	if ( error != 0 )
+	{
+			printf ("\nERROR during numerical factorization: %d", error);
+			exit (2);
+	}
+	factor_t = GetReferenceTime() - start_t;
+	fprintf(stderr, "\n%s: Numerical factorization time %.6lf", __FUNCTION__, factor_t );
+
+	//printf ("\nFactorization completed ... ");
+
+	/* -------------------------------------------------------------------- */
+	/* .. Back substitution and iterative refinement. */
+	/* -------------------------------------------------------------------- */
+	uplo = "non-transposed";
+	printf ("\n\nSolving %s system...\n", uplo);
+
+	start_t = GetReferenceTime();
+	phase = 33;
+
+	if ( x == NULL ) {
+		PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+			&n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, b, b, &error);
+	}
+	else {
+		PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+			&n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, b, x, &error);
+	
+	}
+	if ( error != 0 )
+	{
+			printf ("\nERROR during solution: %d", error);
+			exit (3);
+	}
+	solve_t = GetReferenceTime() - start_t;
+	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
+
+	/* -------------------------------------------------------------------- */
+	/* .. Compute Residual. */
+	/* -------------------------------------------------------------------- */
+    ComputeResidualOfLinearSystem( colind, rowptr, aij, x, b, n, nrhs );
+
+	/* -------------------------------------------------------------------- */
+	/* .. Termination and release of memory. */
+	/* -------------------------------------------------------------------- */
+	phase = -1;           /* Release internal memory. */
+	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+					 &n, &ddum, rowptr, colind, &idum, &nrhs,
+					 iparm, &msglvl, &ddum, &ddum, &error);
+
+	// solve the system
+
+	// check for residual
+
+	// print some efficiency statistics
+	fprintf(stderr, "\n%s: Factor to solve ratio: %.6f", __FUNCTION__, factor_t / solve_t );
+
+	return (SPIKE_SUCCESS);
+};
+
+
+/*
+	Instead of using matrix_t structure, here we use the argument list that
+	most back ends support.
+
+	This function factorizes the coefficient matrix, keeping the factors
+	in memory for the later resolution of multiple RHS.
+ */
+ Error_t directSolver_Factorize(integer_t *restrict colind, // ja
+								integer_t *restrict rowptr, // ia
+								complex_t *restrict aij,
+								integer_t  n,
+								integer_t  nrhs,
+								void *pt)
+{
+	/* -------------------------------------------------------------------- */
+	/* .. Local variables. */
+	/* -------------------------------------------------------------------- */
+	timer_t start_t;
+	timer_t ordering_t;
+	timer_t factor_t;
+
+	MKL_INT mtype = 11;       	/* Real unsymmetric matrix */
+	MKL_INT iparm[64]; 			/* Pardiso control parameters. */
+	MKL_INT maxfct, mnum, phase, error, msglvl;
+	double ddum;          		/* Double dummy */
+	MKL_INT idum;         		/* Integer dummy. */
+
+	/* -------------------------------------------------------------------- */
+	/* .. Setup Pardiso control parameters. */
+	/* -------------------------------------------------------------------- */
+	memset((void*) iparm, 0, 64 * sizeof(MKL_INT));
+
+	iparm[0]  =  1;    /* No solver default */
+	iparm[1]  =  2;    /* Fill-in reordering from METIS */
+	iparm[3]  =  0;    /* No iterative-direct algorithm */
+	iparm[4]  =  0;    /* No user fill-in reducing permutation */
+	iparm[5]  =  0;    /* Write solution into x */
+	iparm[6]  =  0;    /* Not in use */
+	iparm[7]  =  2;    /* Max numbers of iterative refinement steps */
+	iparm[8]  =  0;    /* Not in use */
+	iparm[9]  = 13;    /* Perturb the pivot elements with 1E-13 */
+	iparm[10] =  1;    /* Use nonsymmetric permutation and scaling MPS */
+	iparm[11] =  0;    /* Conjugate transposed/transpose solve */
+	iparm[12] =  1;    /* Maximum weighted matching algorithm is switched-on (default for non-symmetric) */
+	iparm[13] =  0;    /* Output: Number of perturbed pivots */
+	iparm[14] =  0;    /* Not in use */
+	iparm[15] =  0;    /* Not in use */
+	iparm[16] =  0;    /* Not in use */
+	iparm[17] = -1;    /* Output: Number of nonzeros in the factor LU, -1 shows it */
+	iparm[18] = -1;    /* Output: Mflops for LU factorization, -1 shows it */
+	iparm[19] =  0;    /* Output: Numbers of CG Iterations */
+	iparm[34] =  1;    /* Pardiso use C-style indexing for ia and ja arrays */
+	maxfct    =  1;    /* Maximum number of numerical factorizations. */
+	mnum      =  1;    /* Which factorization to use. */
+	msglvl    =  0;    /* Print statistical information in file */
+	error     =  0;    /* Initialize error flag */
+
+	/* -------------------------------------------------------------------- */
+	/* .. Initialize the internal solver memory pointer. This is only       */
+	/* necessary for the FIRST call of the PARDISO solver.                  */
+	/* -------------------------------------------------------------------- */
+	memset((void*) pt, 0, 64 * sizeof(MKL_INT));
+
+	/* -------------------------------------------------------------------- */
+	/* .. Reordering and Symbolic Factorization. This step also allocates */
+	/* all memory that is necessary for the factorization. */
+	/* -------------------------------------------------------------------- */
+	start_t = GetReferenceTime();
+	phase = 11;
+	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+			&n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
+	if ( error != 0 )
+	{
+			printf ("\nERROR during symbolic factorization: %d", error);
+			exit (1);
+	}
+	ordering_t = GetReferenceTime() - start_t;
+
+	// printf ("\nReordering completed ... ");
+	// printf ("\nNumber of nonzeros in factors = %d", iparm[17]);
+	// printf ("\nNumber of factorization MFLOPS = %d", iparm[18]);
+	fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
+
+
+	/* -------------------------------------------------------------------- */
+	/* .. Numerical factorization. */
+	/* -------------------------------------------------------------------- */
+	start_t = GetReferenceTime();
+	phase = 22;
+	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
+			&n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
+
+	if ( error != 0 )
+	{
+			printf ("\nERROR during numerical factorization: %d", error);
+			exit (2);
+	}
+	factor_t = GetReferenceTime() - start_t;
+	
+	//printf ("\nFactorization completed ... ");
+	fprintf(stderr, "\n%s: Numerical factorization time %.6lf\n", __FUNCTION__, factor_t );
+
+
+	return (SPIKE_SUCCESS);
+};
+
+/*
+	Instead of using matrix_t structure, here we use the argument list that
+	most back ends support.
+
+	This function factorizes uses a prevously computed factorization of the
+	coefficient matrix to compute the solution for a given RHS vector.
+ */
+ Error_t directSolver_ApplyFactorToRHS  ( integer_t *restrict colind, // ja
+						integer_t *restrict rowptr, // ia
+						complex_t *restrict aij,
+						complex_t *restrict x,
+						complex_t *restrict b,
+						integer_t  n,
+						integer_t  nrhs,
+						void *pt)
+{
+/* -------------------------------------------------------------------- */
+/* .. Local variables. */
+/* -------------------------------------------------------------------- */
+	timer_t start_t;
+	timer_t solve_t;
+
+	MKL_INT mtype = 11;  /* Real unsymmetric matrix */
+	MKL_INT maxfct, mnum, phase, error, msglvl;
+	MKL_INT iparm[64]; /* Pardiso control parameters. */
+	double ddum;          /* Double dummy */
+	MKL_INT idum;         /* Integer dummy. */
 
 /* -------------------------------------------------------------------- */
 /* .. Setup Pardiso control parameters. */
@@ -129,49 +384,9 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	error     =  0;    /* Initialize error flag */
 
 /* -------------------------------------------------------------------- */
-/* .. Initialize the internal solver memory pointer. This is only */
-/* necessary for the FIRST call of the PARDISO solver. */
-/* -------------------------------------------------------------------- */
-	memset((void*) pt, 0, 64 * sizeof(MKL_INT));
-
-/* -------------------------------------------------------------------- */
-/* .. Reordering and Symbolic Factorization. This step also allocates */
-/* all memory that is necessary for the factorization. */
-/* -------------------------------------------------------------------- */
-	phase = 11;
-	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
-					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
-	if ( error != 0 )
-	{
-			printf ("\nERROR during symbolic factorization: %d", error);
-			exit (1);
-	}
-
-	// printf ("\nReordering completed ... ");
-	// printf ("\nNumber of nonzeros in factors = %d", iparm[17]);
-	// printf ("\nNumber of factorization MFLOPS = %d", iparm[18]);
-/* -------------------------------------------------------------------- */
-/* .. Numerical factorization. */
-/* -------------------------------------------------------------------- */
-	start_t = GetReferenceTime();
-	phase = 22;
-	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
-					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
-
-	if ( error != 0 )
-	{
-			printf ("\nERROR during numerical factorization: %d", error);
-			exit (2);
-	}
-	factor_t = GetReferenceTime() - start_t;
-	fprintf(stderr, "\n%s: Numerical factorization time %.6lf", __FUNCTION__, factor_t );
-
-	//printf ("\nFactorization completed ... ");
-/* -------------------------------------------------------------------- */
 /* .. Back substitution and iterative refinement. */
 /* -------------------------------------------------------------------- */
-	uplo = "non-transposed";
-	printf ("\n\nSolving %s system...\n", uplo);
+	printf ("\n\nBack substitution and iterative refinement...\n");
 
 	start_t = GetReferenceTime();
 	phase = 33;
@@ -185,54 +400,58 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	solve_t = GetReferenceTime() - start_t;
 	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
 
-/*
-// Compute residual
-        mkl_dcsrgemv (uplo, &n, a, ia, ja, x, bs);
-        res = 0.0;
-        res0 = 0.0;
-        for ( j = 1; j <= n; j++ )
-        {
-            res += (bs[j - 1] - b[j - 1]) * (bs[j - 1] - b[j - 1]);
-            res0 += b[j - 1] * b[j - 1];
-        }
-        res = sqrt (res) / sqrt (res0);
-        printf ("\nRelative residual = %e", res);
-// Check residual
-        if ( res > 1e-10 )
-        {
-            printf ("Error: residual is too high!\n");
-            exit (10 + i);
-        }
-*/
+/* -------------------------------------------------------------------- */
+/* .. Compute Residual. */
+/* -------------------------------------------------------------------- */
     ComputeResidualOfLinearSystem( colind, rowptr, aij, x, b, n, nrhs );
+
+/* -------------------------------------------------------------------- */
+/* .. Termination and release of memory. */
+/* -------------------------------------------------------------------- */
+
+	return (SPIKE_SUCCESS);
+};
+
+Error_t directSolver_CleanUp(integer_t *restrict colind, // ja
+						integer_t *restrict rowptr, // ia
+						complex_t *restrict aij,
+						complex_t *restrict x,
+						complex_t *restrict b,
+						integer_t  n,
+						integer_t  nrhs,
+						void *pt)
+
+{
+
+/* -------------------------------------------------------------------- */
+/* .. Local variables. */
+/* -------------------------------------------------------------------- */
+	MKL_INT mtype = 11;       /* Real unsymmetric matrix */
+	MKL_INT iparm[64]; /* Pardiso control parameters. */
+	MKL_INT maxfct, mnum, phase, error, msglvl;
+	double ddum;          /* Double dummy */
+	MKL_INT idum;         /* Integer dummy. */
+
 /* -------------------------------------------------------------------- */
 /* .. Termination and release of memory. */
 /* -------------------------------------------------------------------- */
 	phase = -1;           /* Release internal memory. */
 	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
-					 &n, &ddum, rowptr, colind, &idum, &nrhs,
-					 iparm, &msglvl, &ddum, &ddum, &error);
+			&n, &ddum, rowptr, colind, &idum, &nrhs,
+			iparm, &msglvl, &ddum, &ddum, &error);
 
-	// solve the system
+	fprintf(stderr, "\nPardiso internal memory deallocated\n");
 
-	// check for residual
-
-	// print some efficiency statistics
-	fprintf(stderr, "\n%s: Factor to solve ratio: %.6f", __FUNCTION__, factor_t / solve_t );
-
-#else
-	for(integer_t i=0; i<(n * nrhs); i++)
-		x[i] = (complex_t) 2.0;
-#endif
 	return (SPIKE_SUCCESS);
-};
+}
+
 
 void symbolic_factorization ( matrix_t* A )
 {
 
 };
 
-Error_t compute_bandwidth( matrix_t* A )
+Error_t matrix_ComputeBandwidth( matrix_t* A )
 {
 	// TODO: es posible calcular el bw mas rapidamente accediendo
 	// solamente a las posiciones extremas de las filas.

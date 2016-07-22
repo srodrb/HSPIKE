@@ -80,6 +80,12 @@ innersolver: innersolvercheck.o $(OBJS)
 innersolvercheck.o: innersolvercheck.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+# inner solver solution test for small matrix
+sequential: spike_sequential.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+spike_sequential.o: spike_sequential.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 .PHONY:all run clean
 

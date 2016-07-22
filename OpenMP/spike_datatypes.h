@@ -83,6 +83,7 @@
 	typedef int      integer_t;
 	typedef int      Error_t;
 	typedef int      Bool_t;
+	typedef double   timer_t;
 
 	#if defined (_MPI_SUPPORT_)
 		#define _MPI_INTEGER_T_  MPI_INT

@@ -31,14 +31,15 @@
 	 */
 	typedef struct
 	{
-		integer_t p;
+		integer_t p; /* number of partitions in which the matrix is divided */
 
 		integer_t max_n; // value of max rows
 		integer_t max_m; // value of max cols
 
-		integer_t *n;
-		integer_t *ku;
-		integer_t *kl;
+		integer_t *n;    /* index of last row of each block for the original system */
+		integer_t *r;    /* index of last row of each block for the reduced system */
+		integer_t *ku;   /* upper bandwidth of the block */
+		integer_t *kl;   /* lower bandwidth of the block */
 
 	} sm_schedule_t;
 

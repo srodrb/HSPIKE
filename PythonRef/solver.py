@@ -88,24 +88,47 @@ def performance_analysis(A):
     plt.plot(partitions, memory)
     plt.show()
 
+def create_pentadiagonal(n):
+    '''
+    Crea un sistema tridiagonal de dimension N
+    '''
+    np.random.seed(314) # try to make it reproducible
+
+
+    A = sparse.diags(np.random.rand(n) +1.0, 0) + \
+        sparse.diags(np.random.rand(n-1), 1) + \
+        sparse.diags(np.random.rand(n-1),-1) + \
+        sparse.diags(np.random.rand(n-2), 2) + \
+        sparse.diags(np.random.rand(n-2),-2)
+
+    A = A.tocsr()
+
+    # create rhs
+    # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
+
+    return (A)
 
 if __name__ == '__main__':
+    print 'SPIKE solver'
     np.set_printoptions(precision=4, threshold=100, linewidth=120)
 
     # generamos la semilla del generador de numeros aleatorios
-    np.random.seed(3)
+    np.random.seed(314)
 
     # numero de particiones empleadas en el primer nivel
-    p = 20
-    N = adjust_dimensions(20000, p) #100000
+    p = 2
+    N = adjust_dimensions(10, p) #100000
 
-    A = create_banded_matrix(N, [0, 90, 50, -40, -90])
+    #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
+    create_pentadiagonal(N)
+
     ku, kl = compute_bandwidth(A.copy())
-    nrhs = 100
+    nrhs = 1
 
     print 'dim(A) %d, (ku,kl) = (%d,%d) processes %d' % (A.shape[0], ku, kl, p)
 
-    b = np.random.rand(N*nrhs).reshape(N, nrhs)
+    # b = np.random.rand(N*nrhs).reshape(N, nrhs)
+    b = np.ones(N).reshape(N, nrhs)
     b_superlu = b.copy()
     b_spike = b.copy()
 

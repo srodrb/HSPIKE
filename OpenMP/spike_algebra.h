@@ -57,6 +57,35 @@
 	 										    complex_t *restrict b,
 	 										    integer_t  n,
 	 										    integer_t  nrhs);
+	 
+	 Error_t directSolver_Factorize(integer_t *restrict colind, // ja
+									integer_t *restrict rowptr, // ia
+									complex_t *restrict aij,
+									integer_t  n,
+									integer_t  nrhs,
+									void *pt);
+
+	 Error_t directSolver_ApplyFactorToRHS (integer_t *restrict colind, // ja
+											integer_t *restrict rowptr, // ia
+											complex_t *restrict aij,
+											complex_t *restrict x,
+											complex_t *restrict b,
+											integer_t  n,
+											integer_t  nrhs,
+											void *pt);
+
+	//Error_t directSolver_CleanUp (void *pt);
+
+	Error_t directSolver_CleanUp(integer_t *restrict colind, // ja
+						integer_t *restrict rowptr, // ia
+						complex_t *restrict aij,
+						complex_t *restrict x,
+						complex_t *restrict b,
+						integer_t  n,
+						integer_t  nrhs,
+						void *pt);
+
+
 
 	 Error_t ComputeResidualOfLinearSystem (  integer_t *restrict colind,
 										integer_t *restrict rowptr,
@@ -64,7 +93,7 @@
 										complex_t *restrict x,
 										complex_t *restrict b,
 										integer_t n,
-										integer_t nrhs );
+										integer_t nrhs);
 
 	/*
 	 * Custom symbolic factorization routine used on the strategy design phase
@@ -74,6 +103,6 @@
 	/*
 	 * Computes the upper and lower bandwidth of the matrix A.
 	 */
-	Error_t compute_bandwidth( matrix_t* A );
+	Error_t matrix_ComputeBandwidth( matrix_t* A );
 
 #endif /* end of _SPIKE_ALGEBRA_H_ definition */

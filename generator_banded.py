@@ -181,7 +181,7 @@ if __name__ == "__main__":
     dim = 20000 #int(sys.argv[1])
 
     A = create_pentadiagonal( dim )
-    export_csr2bin( A, "Tests/pentadiagonal/large.bin")
+    export_csr2bin( A, "Tests/spike/small.bin")
 
     #Block = A[0:5,0:5]
 #

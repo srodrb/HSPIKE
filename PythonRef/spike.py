@@ -1,23 +1,7 @@
-import cProfile
 from timeit import default_timer as timer
 import scipy.sparse.linalg as sla
 from numpy import zeros, empty, empty_like
 from scipy.sparse import eye, isspmatrix_csc
-
-
-def do_cprofile(func):
-    def profiled_func(*args, **kwargs):
-        profile = cProfile.Profile()
-        try:
-            profile.enable()
-            result = func(*args, **kwargs)
-            profile.disable()
-            return result
-        finally:
-            profile.print_stats()
-    return profiled_func
-
-
 
 def spike_naive(A, f, ku, kl, partitions):
     '''
@@ -416,7 +400,6 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
     return (x, total_nnz)
 
 
-@profile
 def spike_core(A, f, ku, kl, partitions, fully_implicit=True):
     '''
     A: matriz sparse de entrada
