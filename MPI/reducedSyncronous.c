@@ -51,7 +51,7 @@ static block_t* block_Synthetic(const integer_t n,
     }
   }
 
-  //block_Print ( B, NULL );
+  block_Print ( B, NULL );
 
   return (B);
 };
@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
   MPI_Status  status;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
   MPI_Comm_size (MPI_COMM_WORLD, &size);
-  MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 
   integer_t  p     = size - 1;
   integer_t  ku[3] = {2, 1, 1};
@@ -71,13 +70,36 @@ int main(int argc, char *argv[])
   integer_t  n [4] = {0, 5, 10, 15};
 
   if (rank == master){
+		fprintf(stderr, "\nREDUCED SYSTEM ASSEMBLY TEST.\n\tINFO:"
+	  	"Creates a reduced system from the synthetic V and W blocks.");
+		debug("-----------------------");
 
 		matrix_t* R = matrix_CreateEmptyReducedSystem ( p, n, ku, kl );
-
-		R = recvAndAddBlockPacked(ku, n, kl,4*(size-2));
+		block_t *recvB;
+		int i;
+		for(i=1; i<=p; i++){
+			if(i == 1 || i == 3){
+				recvB = recvBlockPacked(i);
+				matrix_AddBlockToReducedSystem(p, i-1, n, ku, kl, R, recvB );
+				recvB = recvBlockPacked(i);
+				matrix_AddBlockToReducedSystem(p, i-1, n, ku, kl, R, recvB );
+				
+			}
+			else{
+				recvB = recvBlockPacked(i);
+				matrix_AddBlockToReducedSystem(p, i-1, n, ku, kl, R, recvB );
+				recvB = recvBlockPacked(i);
+				matrix_AddBlockToReducedSystem(p, i-1, n, ku, kl, R, recvB );
+				recvB = recvBlockPacked(i);
+				matrix_AddBlockToReducedSystem(p, i-1, n, ku, kl, R, recvB );
+				recvB = recvBlockPacked(i);
+				matrix_AddBlockToReducedSystem(p, i-1, n, ku, kl, R, recvB );
+			}
+		}
 		
 		MPI_Barrier(MPI_COMM_WORLD);
-		matrix_PrintAsDense( R, "Reduced system");
+		matrix_PrintAsDense( R, "Reduced system");  
+		sleep(1000);
   		matrix_Deallocate(R);
 		fprintf(stderr, "\nTest result: PASSED.\n");
 		fprintf(stderr, "\n");

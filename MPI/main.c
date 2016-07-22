@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
 	MPI_Status  status;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 
 	if (rank == master) fprintf(stderr, "\nShared Memory Spike Solver.\n");
 
@@ -68,7 +69,6 @@ int main(int argc, char *argv[])
 
 	sm_schedule_t* schedule;
 
-	int sendCount;
 	if(rank == master){ //MASTER
 		//matrix_PrintAsDense( A, NULL );
 		start_t = GetReferenceTime();
@@ -88,12 +88,11 @@ int main(int argc, char *argv[])
 			matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 			
 			//MPI
-			debug("Master Sending matrix Aij to %d\n", p+1);
-			sendAij (Aij, p+1);
+			sendMatrixPacked (Aij, p+1);
 			//End MPI
 
 			//sprintf( msg, "%d-th matrix block", p);
-			//matrix_Print( Aij, NULL);
+			matrix_PrintAsDense( Aij, "Master");
 
 			matrix_Deallocate(Aij);
 		}
@@ -101,9 +100,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "\nProgram finished\n");
 	}
 	else{ //slaves
-		debug("Slave Reciving Matrix Aij from Master\n");
-		matrix_t* Aij = recvAij (master);
-		//matrix_Print( Aij, NULL);
+		matrix_t* Aij = recvMatrixPacked (master);
+		matrix_PrintAsDense( Aij, "Slave");
 	}
 	MPI_Finalize();
 	return 0;
