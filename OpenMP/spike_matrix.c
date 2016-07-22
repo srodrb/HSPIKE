@@ -550,10 +550,16 @@ static Error_t block_Transpose( block_t* B )
 };
 
 /*
-	Extracts a section of the block and returns it as a block. The section
-	to extract is specified by 
+	Extracts a section of the block and returns it as a block. 
+
+	The section to extract is specified by the "section" argument.
+	The memory layout of the output block is specified by the "layout" argument.
+
+	The function assumes that the input block is always stored in column-major ordering,
+	so there is no need to transpose the output block if the output block is requiered
+	to be in column-major ordering 
  */
-block_t* block_ExtractTip ( block_t* B, blocksection_t section )
+block_t* block_ExtractTip ( block_t* B, blocksection_t section, memlayout_t layout )
 {
   block_t*  SubBlock;
   integer_t RowOffset;
@@ -592,7 +598,7 @@ block_t* block_ExtractTip ( block_t* B, blocksection_t section )
 	column-major ordering.
 	It does not make sense to transpose a column vector neither.
   */
-  if ( section != _CENTRAL_SECTION_ && B->m > 1 ) 
+  if ( layout == _ROWMAJOR_ && B->m > 1 ) 
   	block_Transpose( SubBlock );
   
   return (SubBlock);    

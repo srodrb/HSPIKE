@@ -48,7 +48,7 @@ int main(int argc, const char *argv[])
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
 	double start_t, end_t;
-	const integer_t nrhs = 1;
+	const integer_t nrhs = 2;
 	Error_t error;
 	char msg[200];
 
@@ -120,8 +120,8 @@ int main(int argc, const char *argv[])
 		directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, yi->aij, fi->aij, Aij->n, nrhs, &pardiso_conf );
 
 		/* Extract the tips of the yi block */
-		block_t* yit = block_ExtractTip( yi, _TOP_SECTION_ );
-		block_t* yib = block_ExtractTip( yi, _BOTTOM_SECTION_ );
+		block_t* yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
+		block_t* yib = block_ExtractTip( yi, _BOTTOM_SECTION_, _COLMAJOR_ );
 
 		/* Add the tips of the yi block to the reduced RHS */
 		block_AddTipTOReducedRHS( p, S->ku, S->kl, xr, yit );
@@ -139,10 +139,10 @@ int main(int argc, const char *argv[])
 
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
 
-			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_ );
+			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
 
-			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_ );
+			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
 
 			block_Deallocate( Bi );
@@ -156,10 +156,10 @@ int main(int argc, const char *argv[])
 
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m, &pardiso_conf );
 
-			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_ );
+			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
 
-			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_ );
+			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
 			
 			sprintf( msg, "%d-th partition, Wi block", p);
@@ -176,10 +176,10 @@ int main(int argc, const char *argv[])
 
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
 
-			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_ );
+			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
 
-			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_ );
+			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
 
 			block_Deallocate( Bi );
@@ -192,10 +192,10 @@ int main(int argc, const char *argv[])
 
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m, &pardiso_conf );
 
-			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_ );
+			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
 
-			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_ );
+			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
 			
 			sprintf( msg, "%d-th partition, Wi block", p);
@@ -246,6 +246,9 @@ int main(int argc, const char *argv[])
 		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe);
 		directSolver_Factorize( Aij->colind, Aij->rowptr, Aij->aij, Aij->n, nrhs, &pardiso_conf);
 
+		/* extract xi sub-block */
+		block_t*  xi  = block_ExtractBlock(x, obs, obe );
+
 		/* extract fi sub-block */
 		block_t*  fi  = block_ExtractBlock(f, obs, obe );
 		block_Print ( fi, "Dense fi sub-block");
@@ -258,6 +261,44 @@ int main(int argc, const char *argv[])
 			
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
 			block_Print( xt_next, "xt(i+1) dende sub-block");
+
+// 			void cblas_sgemm (const CBLAS_LAYOUT Layout, 
+// 				const CBLAS_TRANSPOSE transa, 
+// 				const CBLAS_TRANSPOSE transb, 
+// 				const MKL_INT m, 
+// 				const MKL_INT n, 
+// 				const MKL_INT k, 
+// 				const float alpha, 
+// 				const float *a, 
+// 				const MKL_INT lda, 
+// 				const float *b, 
+// 				const MKL_INT ldb, 
+// 				const float beta, 
+// 				float *c, 
+// 				const MKL_INT ldc);
+
+			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
+			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
+			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+				2,    /* m - number of rows of A    */
+				nrhs, /* n - number of columns of B */
+				2,    /* k - number of columns of A */
+				-1.0, /* alpha */
+				Bi->aij, /* A block */
+				2,    /* lda - first dimension of A */
+				xt_next->aij, /* B block */
+				2,    /* ldb - first dimension of B */
+				1.0, /* beta */
+				&fi->aij[3], /* C block */
+				5 ); /* ldc - first dimension of C */
+
+			block_Print( fi, "Fi result");
+
+
+			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+			block_Print( xi, "Final solution of the block");
+
+
 
 			// block_t* xit = block_CreateEmptyBlock  ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 
