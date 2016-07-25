@@ -30,7 +30,6 @@
 
 	#define _MAX_PRINT_DIMENSION_ 25
 
- 	typedef enum { _ROWMAJOR_, _COLMAJOR_ } memlayout_t;
  	typedef enum { _C_BLOCK_, _DIAG_BLOCK_, _B_BLOCK_ } matrixtype_t;
 
 	/* -------------------------------------------------------------------- */

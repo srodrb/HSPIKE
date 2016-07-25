@@ -24,7 +24,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	nreg = (A->n / p);
 	nrem = (A->n % p == 0) ? A->n/p : A->n - (A->n/p * (p-1));
 
-	fprintf(stderr, "\nRegular block dimension %d, remainder %d", nreg, nrem);
+	fprintf(stderr, "\nRegular block dimension "_I_", remainder "_I_, nreg, nrem);
 
 	if ( nreg != nrem )
 	{
@@ -59,10 +59,9 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 
 	// remainder element
 	S->n[S->p] = (integer_t) A->n;
-	S->r[S->p] = (integer_t) A->n;
+	S->r[S->p] = S->r[S->p-1] + S->ku[S->p-1] + S->kl[S->p -1];
 
-
-
+	/* print schedule information */
 	schedule_Print(S);
 
 	return (S);
@@ -79,15 +78,15 @@ void schedule_Destroy( sm_schedule_t* S )
 
 void schedule_Print (sm_schedule_t* S)
 {
-	fprintf(stderr,"\nNumber of diagonal blocks: %d", S->p);
+	fprintf(stderr,"\nNumber of diagonal blocks:" _I_, S->p);
 
 	for(integer_t i=0; i<S->p; i++)
-		fprintf(stderr,"\n\t%d-th block goes from %d-th to %d-th row. ku %d kl %d", i+1, S->n[i], S->n[i+1], S->ku[i], S->kl[i]);
+		fprintf(stderr,"\n\t"_I_"-th block goes from " _I_"-th to " _I_"-th row. ku "_I_" kl "_I_,  i+1, S->n[i], S->n[i+1], S->ku[i], S->kl[i]);
 
 	fprintf(stderr, "\nReduced system dimensions:");
 
 	for(integer_t i=0; i<S->p; i++)
-		fprintf(stderr,"\n\t%d-th block goes from %d-th to %d-th row. ku %d kl %d", i+1, S->r[i], S->r[i+1], S->ku[i], S->kl[i]);
+		fprintf(stderr,"\n\t"_I_"-th block goes from "_I_"-th to "_I_"-th row. ku "_I_" kl "_I_, i+1, S->r[i], S->r[i+1], S->ku[i], S->kl[i]);
 
 
 	fprintf(stderr,"\n\n");

@@ -13,7 +13,8 @@ else
 	CINCS   =
 endif
 
-DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ # -D_DEBUG_MATRIX_
+#DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_
+DEFINES =-D_DATATYPE_Z_ -D_ENABLE_TESTING_
 
 TARTGET=main
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \

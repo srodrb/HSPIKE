@@ -30,6 +30,40 @@
  	#include "mkl.h"
 #endif
 
+ 	/*
+ 		Depending on the back-end, the nature of the coeffient matrix is specified
+ 		differently. In general, each backend has a predefined list of integer values
+ 		to identify each type of matrix.
+
+ 		Here we support some of them.
+ 	 */
+ 	#ifdef __INTEL_MKL__
+		#ifndef _COMPLEX_ARITHMETIC_
+			#define MTYPE_STRUC_SYMM    1	/* Real and structurally symmetric         	*/
+			#define MTYPE_POSDEF  	    2	/* Real and symmetric positive definite    	*/
+			#define MTYPE_SYMM_INDEF   -2	/* Real and symmetric indefinite           	*/
+			#define MTYPE_GEN_NOSYMM   11	/* Real and nonsymmetric matrix 			*/
+		#else
+			#define MTYPE_STRUC_SYMM   3	/* Complex and structurally symmetric      	*/
+			#define MTYPE_HERM_POSDEF  4	/* Complex and Hermitian positive definite 	*/
+			#define MTYPE_HERM_INDEF  -4	/* Complex and Hermitian indefinite 		*/
+			#define MTYPE_SYMM         6	/* Complex and symmetric matrix 			*/
+			#define MTYPE_GEN_NOSYMM  13	/* Complex and nonsymmetric matrix 			*/
+	 	#endif
+ 	#endif
+
+
+ 	/*
+ 		These macros are intended to build the name of the linear algebra backends
+ 		according to the datatype being used.
+ 	 */
+	#define CAT_I(a,b,c) a##b##c
+	#define CAT(a,b,c)   CAT_I(a,b,c)
+	#define CALL_LA_KERNEL(lib,prec,call) CAT(lib,prec,call)
+
+ 	typedef enum { _TRANSPOSE_, _CONJTRANSPOSE_, _NOTRANSPOSE_} transpose_t;
+ 	typedef enum { _ROWMAJOR_, _COLMAJOR_ }   memlayout_t;
+
 	/*
 	 * Uses metis to compute a permutation that minizes the fill-in on the LU factors of A
 	 */
@@ -125,6 +159,28 @@
 	 * Custom symbolic factorization routine used on the strategy design phase
 	 */
 	void symbolic_factorization ( void );
+
+	/*
+		Interface for general matrix-matrix multiplication
+	*/
+	Error_t gemm   (const memlayout_t layout, 
+					const transpose_t transpose_a, 
+					const transpose_t transpose_b, 
+					const integer_t m, 
+					const integer_t n, 
+					const integer_t k,
+					const complex_t alpha,
+					complex_t *restrict a,
+					const integer_t lda,
+					complex_t *restrict b,
+					const integer_t ldb,
+					const complex_t beta,
+					complex_t *restrict c,
+					const integer_t ldc);
+
+	real_t nrm2(const integer_t n, complex_t *restrict x, const integer_t incx);
+
+	Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, const integer_t incx, complex_t *restrict y, const integer_t incy);
 
 
 #endif /* end of _SPIKE_ALGEBRA_H_ definition */

@@ -56,8 +56,8 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.z");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 	// Compute matrix bandwidth
@@ -65,8 +65,8 @@ int main(int argc, const char *argv[])
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
-	block_InitializeToValue( x, __zero ); // solution of the system
-	block_InitializeToValue( f, __unit ); // rhs of the system
+	block_InitializeToValue( x, __zero  ); // solution of the system
+	block_InitializeToValue( f, __punit ); // rhs of the system
 
 #undef _SOLVE_ONLY_WITH_REF_
 #ifdef _SOLVE_ONLY_WITH_REF_
@@ -92,12 +92,10 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	for(integer_t p=0; p < S->p; p++)
 	{
-		fprintf(stderr, "Solving %d-th block\n", p);
+		fprintf(stderr, "Solving "_I_"-th block\n", p);
 		
 		const integer_t r0 = S->n[p];
 		const integer_t rf = S->n[p+1];
-
-
 
 		/* allocate pardiso configuration parameters */
 		// void *pardiso_conf = (void*) spike_malloc( ALIGN_INT, 64, sizeof(integer_t));
@@ -226,7 +224,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	for(integer_t p=0; p < S->p; p++)
 	{
-		fprintf(stderr, "Processing backward solution for the %d-th block\n", p);
+		fprintf(stderr, "Processing backward solution for the "_I_"-th block\n", p);
 
 		/* compute the limits of the blocks */
 		const integer_t obs = S->n[p];        		/* original system starting row */
@@ -253,17 +251,17 @@ int main(int argc, const char *argv[])
 			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
 
-			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
-			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi using cblas_?gemm*/
+			gemm( _COLMAJOR_, _NOTRANSPOSE_, _NOTRANSPOSE_,
 				Bi->n,    						/* m - number of rows of A    */
 				xt_next->m, 					/* n - number of columns of B */
 				Bi->m,    						/* k - number of columns of A */
-				-1.0, 							/* alpha                      */
+				__nunit, 						/* alpha                      */
 				Bi->aij, 						/* A block                    */
 				Bi->n,    						/* lda - first dimension of A */
 				xt_next->aij, 					/* B block                    */
 				xt_next->n,    					/* ldb - first dimension of B */
-				1.0, 							/* beta                       */
+				__punit, 						/* beta                       */
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
 
@@ -277,17 +275,17 @@ int main(int argc, const char *argv[])
 			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );
 			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
 
-			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
-			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi using cblas_?gemm*/
+			gemm( _COLMAJOR_, _NOTRANSPOSE_, _NOTRANSPOSE_,
 				Ci->n,    						/* m - number of rows of A    */
 				xb_prev->m, 					/* n - number of columns of B */
 				Ci->m,    						/* k - number of columns of A */
-				-1.0, 							/* alpha                      */
+				__nunit,						/* alpha                      */
 				Ci->aij, 						/* A block                    */
 				Ci->n,    						/* lda - first dimension of A */
 				xb_prev->aij, 					/* B block                    */
 				xb_prev->n,    					/* ldb - first dimension of B */
-				1.0, 							/* beta                       */
+				__punit,						/* beta                       */
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
@@ -302,17 +300,17 @@ int main(int argc, const char *argv[])
 			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
 
-			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
-			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi using cblas_?gemm*/
+			gemm( _COLMAJOR_, _NOTRANSPOSE_, _NOTRANSPOSE_,
 				Bi->n,    						/* m - number of rows of A    */
 				xt_next->m, 					/* n - number of columns of B */
 				Bi->m,    						/* k - number of columns of A */
-				-1.0, 							/* alpha                      */
+				__nunit,						/* alpha                      */
 				Bi->aij, 						/* A block                    */
 				Bi->n,    						/* lda - first dimension of A */
 				xt_next->aij, 					/* B block                    */
 				xt_next->n,    					/* ldb - first dimension of B */
-				1.0, 							/* beta                       */
+				__punit,						/* beta                       */
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
 
@@ -324,17 +322,17 @@ int main(int argc, const char *argv[])
 			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );			
 			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
 
-			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
-			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi using cblas_?gemm*/
+			gemm( _COLMAJOR_, _NOTRANSPOSE_, _NOTRANSPOSE_,
 				Ci->n,    						/* m - number of rows of A    */
 				xb_prev->m, 					/* n - number of columns of B */
 				Ci->m,    						/* k - number of columns of A */
-				-1.0, 							/* alpha                      */
+				__nunit,						/* alpha                      */
 				Ci->aij, 						/* A block                    */
 				Ci->n,    						/* lda - first dimension of A */
 				xb_prev->aij, 					/* B block                    */
 				xb_prev->n,    					/* ldb - first dimension of B */
-				1.0, 							/* beta                       */
+				__punit,						/* beta                       */
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
