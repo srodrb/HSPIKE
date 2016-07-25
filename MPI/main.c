@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 			matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 			
 			//MPI
-			sendMatrixPacked (Aij, p+1);
+			IsendMatrix(Aij, p+1);
 			//End MPI
 
 			//sprintf( msg, "%d-th matrix block", p);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "\nProgram finished\n");
 	}
 	else{ //slaves
-		matrix_t* Aij = recvMatrixPacked (master);
+		matrix_t* Aij = recvMatrix(master);
 		matrix_PrintAsDense( Aij, "Slave");
 	}
 	MPI_Finalize();
