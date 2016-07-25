@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
 	MPI_Status  status;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 
 	if (rank == master) fprintf(stderr, "\nShared Memory Spike Solver.\n");
 
@@ -65,28 +66,14 @@ int main(int argc, char *argv[])
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
 	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
-	block_t*  x = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
-	block_t*  f = block_Empty( A->n, nrhs, (blocktype_t) _RHS_BLOCK_ );
 
-	block_InitializeToValue( x, __zero ); // solution of the system
-	block_InitializeToValue( f, __unit ); // rhs of the system
-
-#undef _SOLVE_ONLY_WITH_REF_
-#ifdef _SOLVE_ONLY_WITH_REF_
-	SolveOriginalSystem( A, x, f);
-	matrix_Deallocate( A );
-	block_Deallocate( x );
-	block_Deallocate( f );
-	return 0;
-#endif
-	
 	sm_schedule_t* schedule;
-	int sendCount;
+
 	if(rank == master){ //MASTER
 		//matrix_PrintAsDense( A, NULL );
 		start_t = GetReferenceTime();
 		schedule = spike_solve_analysis( A, nrhs, size-1); //Number of partitions
-		matrix_t* R = matrix_CreateEmptyReduced( schedule->p, schedule->n, schedule->ku, schedule->kl);	
+		matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);	
 
 		/* -------------------------------------------------------------------- */
 		/* .. Factorization Phase. */
@@ -101,12 +88,11 @@ int main(int argc, char *argv[])
 			matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 			
 			//MPI
-			debug("Sending MSG", rank);		
-			sendAij (Aij, p+1);
+			sendMatrixPacked (Aij, p+1);
 			//End MPI
 
 			//sprintf( msg, "%d-th matrix block", p);
-			//matrix_Print( Aij, NULL);
+			matrix_PrintAsDense( Aij, "Master");
 
 			matrix_Deallocate(Aij);
 		}
@@ -114,8 +100,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "\nProgram finished\n");
 	}
 	else{ //slaves
-		matrix_t* Aij = recvAij (master);
-		//matrix_Print( Aij, NULL);
+		matrix_t* Aij = recvMatrixPacked (master);
+		matrix_PrintAsDense( Aij, "Slave");
 	}
 	MPI_Finalize();
 	return 0;

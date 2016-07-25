@@ -1,7 +1,7 @@
-COMPILER=GNU
+COMPILER=INTEL
 
 ifeq ($(COMPILER),INTEL)
-	CC      =icc
+	CC      =mpiicc
 	CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
 	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
@@ -52,6 +52,13 @@ split: mpi_split.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 mpi_split.o: mpi_split.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+# bandwidth test
+reduced: reduced.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+reduced.o: reduced.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 # macros test

@@ -29,8 +29,7 @@
  * =====================================================================================
  */
 
-//#include "spike_analysis.h"
-#include "spike_mpi.c"
+#include "spike_mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
 
