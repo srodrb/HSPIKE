@@ -361,7 +361,9 @@ int main(int argc, const char *argv[])
 	block_Print( x, "Solution of the linear system");
 
 	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, nrhs);
-	// SolveOriginalSystem( A, x, f);
+	
+	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
+	SolveOriginalSystem( A, x, f);
 
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
