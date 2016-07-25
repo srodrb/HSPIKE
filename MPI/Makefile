@@ -55,6 +55,13 @@ mpi_split.o: mpi_split.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 # bandwidth test
+generalTest: generalTest.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+generalTest.o: generalTest.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+# bandwidth test
 reduced: reduced.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 

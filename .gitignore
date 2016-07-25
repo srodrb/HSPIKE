@@ -7,4 +7,5 @@ tags*
 Old
 local
 todolist.txt
-Resources
+*.log
+MPI/Examples_MPI

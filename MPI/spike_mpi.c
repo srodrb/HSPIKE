@@ -140,7 +140,6 @@ void sendBlock (block_t *b, integer_t p){
 
 	MPI_CheckCall(MPI_Send(b, 6, MPI_INT, p, 0, MPI_COMM_WORLD));
 	MPI_CheckCall(MPI_Send(b->aij,  sendCount, _MPI_COMPLEX_T_, p, 1, MPI_COMM_WORLD));
-	block_Print(b, "Sent Block");
 
 }
 
@@ -155,7 +154,6 @@ void sendBlockPacked (block_t *b, integer_t p){
 	char *buff = (char*) malloc(buffSize*sizeof(char));
 	
 	integer_t position = 0;
-	debug("Sending Block Info: n:%d, m:%d, ku:%d, kl:%d, type:%d, section:%d", b->n, b->m, b->ku, b->kl, b->type, b->section);
 	MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
@@ -174,7 +172,6 @@ block_t* recvBlock (integer_t p){
 	MPI_CheckCall(MPI_Recv(t, 6, MPI_INT, p, 0, MPI_COMM_WORLD, &status));
 	
 	block_t *b = block_CreateEmptyBlock(t[2], t[3], t[4], t[5], t[0], t[1]);
-	debug("Recived Info: n:%d, m:%d, ku:%d, kl:%d, type:%d, section:%d", b->n, b->m, b->ku, b->kl, b->type, b->section);
 	recvCount = (b->n)*(b->m)*_MPI_COUNT_;
 	
 	MPI_CheckCall(MPI_Recv(b->aij, recvCount, _MPI_COMPLEX_T_, p, 1, MPI_COMM_WORLD, &status));
@@ -195,13 +192,11 @@ block_t* recvBlockPacked (integer_t p){
 	MPI_Probe(p, 0, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
 	char* buff = (char*)malloc(sizeof(char) * buffSize);
-	//char buff[500];
-	debug("BuffSize %d From %d", buffSize, status.MPI_SOURCE);
 
 	MPI_Recv(buff, buffSize, MPI_PACKED, p, 0, MPI_COMM_WORLD, &status);
 
 	MPI_Unpack(buff, buffSize, &position, t, 6, MPI_INT, MPI_COMM_WORLD);
-	debug("Recived Block Info: n:%d, m:%d, ku:%d, kl:%d, type:%d, section:%d", t[2], t[3], t[4], t[5], t[0], t[1]);
+
 	block_t *b = block_CreateEmptyBlock(t[2], t[3], t[4], t[5], t[0], t[1]);
 	integer_t recvCount = (b->n)*(b->m)*_MPI_COUNT_;
 	MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD);
@@ -209,7 +204,7 @@ block_t* recvBlockPacked (integer_t p){
 }
 
 /* -------------------------------------------------------------------- */
-/* .. Function for recive block_t from all process in Asyncronous way,
+/* .. Function for recive block_t from all workers in Asyncronous way,
 /* .. The sending process must send the block with sendBlockPacked function.
 /* -------------------------------------------------------------------- */
 matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, integer_t numBlocks){
@@ -270,7 +265,7 @@ matrix_t* recvAndAddBlock(integer_t *ku, integer_t *n, integer_t *kl){
 		MPI_CheckCall(MPI_Irecv(&recvInfo[i-2][0], 6, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &request[i-2]));
 		//debug("i: %d, recvInfo[%d], p:%d", i, i-2, i/4+1);
 	}
-	debug("------------------------------------------");
+	debug("-------------------------------------------------------------");
 	int k, recvCount;
 	for(i=0; i<buffSize; i++){
 		MPI_Waitany(buffSize, request, &index, &status);
