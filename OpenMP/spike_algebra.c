@@ -404,7 +404,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	iparm[4]  =  0;    /* No user fill-in reducing permutation */
 	iparm[5]  =  0;    /* Write solution into x */
 	iparm[6]  =  0;    /* Not in use */
-	iparm[7]  =  2;    /* Max numbers of iterative refinement steps */
+	iparm[7]  =  3;    /* Max numbers of iterative refinement steps */
 	iparm[8]  =  0;    /* Not in use */
 	iparm[9]  = 13;    /* Perturb the pivot elements with 1E-13 */
 	iparm[10] =  1;    /* Use nonsymmetric permutation and scaling MPS */
@@ -525,7 +525,7 @@ Error_t gemm   (const memlayout_t layout,
 		CBLAS_LAYOUT transa = (transpose_a == _TRANSPOSE_) ? CblasTrans    : CblasNoTrans;
 		CBLAS_LAYOUT transb = (transpose_b == _TRANSPOSE_) ? CblasTrans    : CblasNoTrans;
 
-		al(cblas_,_PPREF_,gemm)( Layout, transa, transb,
+		CALL_LA_KERNEL(cblas_,_PPREF_,gemm)( Layout, transa, transb,
 			m,    						/* m - number of rows of A    */
 			n, 							/* n - number of columns of B */
 			k,    						/* k - number of columns of A */

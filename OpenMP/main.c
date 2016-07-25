@@ -48,7 +48,7 @@ int main(int argc, const char *argv[])
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
 	timer_t start_t, end_t;
-	const integer_t nrhs = 1;
+	const integer_t nrhs = 2;
 	Error_t error;
 	char msg[200];
 
