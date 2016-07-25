@@ -43,6 +43,8 @@
 		#define _MPI_COUNT_  2
 	#endif
 
+	#define F "%.3lf %.3lf"
+
 #elif defined (_DATATYPE_C_) // complex float
 	#define _COMPLEX_ARITHMETIC_
 
@@ -60,6 +62,8 @@
 		#define _MPI_COUNT_ 2
 	#endif
 
+	#define F "%.3f %.3f"
+
 #elif defined (_DATATYPE_D_) // double precision float
 	typedef double   real_t;
 	typedef double   complex_t;
@@ -68,6 +72,8 @@
 		#define _MPI_COMPLEX_T_  MPI_DOUBLE
 		#define _MPI_COUNT_ 1
 	#endif
+
+	#define F "%.3lf"
 
 #else // single precision float
 	typedef float   real_t;
@@ -78,11 +84,16 @@
 		#define _MPI_COUNT_ 1
 	#endif
 
+	#define F "%.3f"
+
 #endif
 
 	typedef int      integer_t;
 	typedef int      Error_t;
 	typedef int      Bool_t;
+	typedef double   timer_t;
+
+	#define I "%d"
 
 	#if defined (_MPI_SUPPORT_)
 		#define _MPI_INTEGER_T_  MPI_INT

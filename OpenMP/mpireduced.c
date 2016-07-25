@@ -76,7 +76,7 @@ int main(int argc, const char *argv[])
   // block_t *V1 = block_Synthetic( 5, 1, ku[2], kl[2], 4.0, _V_BLOCK_, _WHOLE_SECTION_ );
   // block_t *W2 = block_Synthetic( 5, 1, ku[3], kl[3], 5.0, _W_BLOCK_, _WHOLE_SECTION_ );
 
-  block_t *V_upper = block_ExtractBlock( V0, _TOP_SECTION_ );
+  block_t *V_upper = block_ExtractTip( V0, _TOP_SECTION_ );
   return 0;
 
 /*

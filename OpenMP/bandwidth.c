@@ -27,7 +27,7 @@ int main(int argc, const char *argv[])
 	/* ================================= */
 	matrix_t* A = matrix_LoadCSR("../Tests/bandwidth/banded.bin");
 
-	compute_bandwidth( A );
+	matrix_ComputeBandwidth( A );
 
 	if ( A->ku != 2 )
 	{

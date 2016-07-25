@@ -56,7 +56,6 @@ matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const integer_t nnz )
 	R->nnz      = nnz;
 	R->ku       = 0;
 	R->kl       = 0;
-	R->K        = 0;
 	R->colind   = (integer_t*) spike_malloc( ALIGN_INT    , R->nnz, sizeof(integer_t));
 	R->rowptr   = (integer_t*) spike_malloc( ALIGN_INT    , R->n+1, sizeof(integer_t));
 	R->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->nnz, sizeof(complex_t));
@@ -241,8 +240,8 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 			col = M->colind[idx];
 
 			if ((col >= c0) && (col < cf)){
-				//B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx]; // CSR
 				B->aij[ (row -r0) + (col - c0)*B->n] = M->aij[idx]; // CSC
+				//B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx]; // CSR
 			}
 		}
 	}
@@ -320,6 +319,10 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 
 		B->rowptr[rowind++] = nnz;
 	}
+
+	/* compute the bandwidth of the sub-block */	
+	matrix_ComputeBandwidth( B->n, B->colind, B->rowptr, B->aij, &B->ku, &B->kl );
+
 
 	return (B);
 };
@@ -551,46 +554,150 @@ static Error_t block_Transpose( block_t* B )
 };
 
 /*
-	Extracts a section of the block and returns it as a block. The section
-	to extract is specified by 
+	Extracts a section of the block and returns it as a block. 
+
+	The section to extract is specified by the "section" argument.
+	The memory layout of the output block is specified by the "layout" argument.
+
+	The function assumes that the input block is always stored in column-major ordering,
+	so there is no need to transpose the output block if the output block is requiered
+	to be in column-major ordering 
  */
-block_t* block_ExtractBlock ( block_t* B, blocksection_t section )
+block_t* block_ExtractTip ( block_t* B, blocksection_t section, memlayout_t layout )
 {
-  block_t* SubBlock;
+  block_t*  SubBlock;
   integer_t RowOffset;
   integer_t ChunkSize;
 
-  if      ( section == _TOP_SECTION_ ){
-    RowOffset = 0;
-    ChunkSize = B->ku;
-  }
-  else if ( section == _BOTTOM_SECTION_ ){    
-    RowOffset = B->n - B->kl;
-    ChunkSize = B->kl;
-  }
-  else{
-    RowOffset = B->ku;
-    ChunkSize = B->n - (B->ku + B->kl); 
-  }
+  switch ( section ){
+  	case _TOP_SECTION_ : {
+	    RowOffset = 0;
+	    ChunkSize = B->ku;
+  		break;
+  	}
+  	case _BOTTOM_SECTION_ : {
+	    RowOffset = B->n - B->kl;
+	    ChunkSize = B->kl;
+  		break;
+  	}
+  	case _CENTRAL_SECTION_ : {
+	    RowOffset = B->ku;
+	    ChunkSize = B->n - (B->ku + B->kl); 
+  		break;
+  	}
+  	default: {
+  		fprintf(stderr, "\n%s: ERROR: unrecognized block section value", __FUNCTION__ );
+  		abort();
+  	}
+  } /* end of switch statement */
   
   SubBlock = block_CreateEmptyBlock( ChunkSize, B->m, B->ku, B->kl, B->type, section );
   
   for(integer_t col=0; col < SubBlock->m; col++)
     memcpy((void*) &SubBlock->aij[col * ChunkSize], (const void*) &B->aij[col*B->n + RowOffset], ChunkSize * sizeof(complex_t));
 
-
-  if ( section != _CENTRAL_SECTION_ ) 
+  /* 
+  	central section of the block is never transposed, since it is only
+	used as RHS of a linear system and sparse direct solvers require
+	column-major ordering.
+	It does not make sense to transpose a column vector neither.
+  */
+  if ( layout == _ROWMAJOR_ && B->m > 1 ) 
   	block_Transpose( SubBlock );
   
   return (SubBlock);    
 };
 
+/*
+	Extracts a part of a given block.
+	The extracted block starts at the n0-th row and ends at the nf-th row.
+	Since we are not interested in extracting certain columns of a block, it goes
+	through all the width of the block.
+ */
+block_t* block_ExtractBlock (block_t* B, const integer_t n0, const integer_t nf )
+{
+	block_t* SubBlock = block_CreateEmptyBlock( nf - n0, B->m, 0, 0, B->type, _WHOLE_SECTION_ );
+
+	/* copy the elements from the reference block copying them to the subblock */
+	for(integer_t col=0; col < SubBlock->m; col++)
+    	memcpy((void*) &SubBlock->aij[col * SubBlock->n], (const void*) &B->aij[col*B->n + n0], SubBlock->n * sizeof(complex_t));
 
 
+	return (SubBlock);
+};
 
+/*
+	Sets the values of upper (kl) and lower (kl) bandwidth to a block.
 
+	Some times it is not possible to specify these values at the moment of the block
+	creation, for example when partitioning f into fi blocks, because the bandwidth
+	of the matrix is not known until the matrix goes through the analysis process.
+	Hence, this function it used to set these values.
+ */
+Error_t block_SetBandwidthValues  (block_t* B, const integer_t ku, const integer_t kl)
+{
+	B->ku = ku;
+	B->kl = kl;
 
+	return (SPIKE_SUCCESS);
+};
 
+/*
+	Creates a reduced RHS for the reduced sytem.
+ */
+block_t* block_CreateReducedRHS (const integer_t TotalPartitions,
+								integer_t *ku,
+								integer_t *kl,
+								const integer_t nrhs)
+{
+	integer_t nrows = 0;
+
+	for(integer_t i=0; i < TotalPartitions; i++) nrows += (ku[i] + kl[i]);
+
+	block_t* B = block_CreateEmptyBlock( nrows, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_);
+
+	return (B);
+};
+
+Error_t block_AddTipTOReducedRHS   (const integer_t CurrentPartition,
+									integer_t          *ku,
+									integer_t          *kl,
+									block_t            *RHS,
+									block_t            *B)
+{
+	/* check dimensions */
+	if ( RHS->m != B->m ) {
+		fprintf(stderr, "Dimension mismatch!\n");
+		abort();
+	}
+
+	/* compute the row at which the previous parition ends */
+	integer_t row = 0;
+
+	for(integer_t i=0; i < CurrentPartition; i++ ) row += (ku[i] + kl[i]);
+
+	/* for bottom tips, we have to increase further the counter */
+	if ( B->section == _BOTTOM_SECTION_ ) row += ku[CurrentPartition];
+
+	/* copy the elements from the reference block copying them to the subblock */
+	for(integer_t col=0; col < B->m; col++)
+     	memcpy((void*) &RHS->aij[col * RHS->n + row], (const void*) &B->aij[col*B->n], B->n * sizeof(complex_t));
+
+	return (SPIKE_SUCCESS);
+};
+
+/*
+	This function inserts a block into another block, both in column-major layout.
+
+	It is intended to insert the solution xi into the RHS x at the end of the algorithm.
+ */
+Error_t block_AddBlockToRHS (block_t *x, block_t* xi, const integer_t n0, const integer_t nf)
+{
+	for(integer_t col=0; col < x->m; col++)
+     	memcpy((void*) &x->aij[col * x->n + n0], (const void*) xi->aij, (nf - n0) * sizeof(complex_t));
+
+	return (SPIKE_SUCCESS);
+};
 
 /* -------------------------------------------------------------------- */
 /* .. Functions for reduced sytem assembly.                             */
@@ -660,7 +767,7 @@ static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions,
 	return (SPIKE_SUCCESS);
 };
 
-Error_t matrix_AddBlockToReducedSystem (const integer_t TotalPartitions,
+Error_t matrix_AddTipToReducedMatrix (const integer_t TotalPartitions,
 										const integer_t CurrentPartition,
 										integer_t          *n,
 										integer_t          *ku,
@@ -740,4 +847,82 @@ Error_t matrix_AddBlockToReducedSystem (const integer_t TotalPartitions,
 	spike_nullify( nr );
 
   return (SPIKE_SUCCESS);
+};
+
+Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* msg)
+{
+	/* check correctness of dimensions */
+	if ( R->n != Y->n || R->n != Y->m ){
+		if ( X != NULL && (Y->n != X->n || Y->m != X->m ))
+		{
+		fprintf(stderr, "Dimension mismatch\n");
+		abort();
+		}
+	}
+
+	if    (msg) { fprintf(stderr, "\n%s: %s\n\n", __FUNCTION__, msg);}
+	else        { fprintf(stderr, "\n%s\n\n"    , __FUNCTION__ ); }
+
+	if ( R->n > _MAX_PRINT_DIMENSION_ ) {
+		fprintf(stderr, "\n%s: Matrix is too large to print it!", __FUNCTION__ );
+		return (SPIKE_SUCCESS);
+	}
+
+	/* first, we need to convert the sparse matrix R to a dense representation */
+	complex_t *D = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->n * R->n, sizeof(complex_t));
+	memset( (void*) D, 0, R->n * R->n * sizeof(complex_t));
+
+	for(integer_t row = 0; row < R->n; row++){
+		for(integer_t idx = R->rowptr[row]; idx < R->rowptr[row+1]; idx++ ){
+			integer_t col = R->colind[idx];
+			D[ row * R->n + col] = R->aij[idx];
+		}
+	}
+
+	/* display the system nicely */
+	for(integer_t row = 0; row < R->n; row++){
+		/* print coefficient matrix */ 
+		for(integer_t col = 0; col < R->n; col++){
+			complex_t value = D[row * R->n + col];
+
+			if ( number_IsLessThan ( value, __zero ) == True )
+				fprintf(stderr, "%.5f  ", value);
+			else
+				fprintf(stderr, " %.5f  ", value);
+		}
+
+		fprintf(stderr, "\t");
+
+		/* print x block, if needed */
+		if ( X != NULL ){
+			for(integer_t col=0; col < X->m; col++) {
+				complex_t value = X->aij[row + X->n*col];
+	
+			if ( number_IsLessThan( value, __zero ))
+				fprintf(stderr, "%.5f  ", value);
+			else
+				fprintf(stderr, " %.5f  ", value);
+			}
+			fprintf(stderr, "\t");
+		}
+
+		/* print y block */
+		for(integer_t col=0; col < Y->m; col++) {
+		complex_t value = Y->aij[row + Y->n*col];
+
+		if ( number_IsLessThan( value, __zero ))
+			fprintf(stderr, "%.5f  ", value);
+		else
+			fprintf(stderr, " %.5f  ", value);
+		}
+
+		fprintf(stderr, "\n");
+	}	
+
+
+
+	/* clean up and resume */
+	spike_nullify( D );
+
+	return (SPIKE_SUCCESS);
 };

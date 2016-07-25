@@ -84,7 +84,7 @@ int main(int argc, const char *argv[])
 	fprintf(stderr, "\nTest result: PASSED.\n");
 
 	matrix_t* B = matrix_LoadCSR("Tests/bandwidth/banded.bin");
-	compute_bandwidth( B );
+	matrix_ComputeBandwidth( B );
 	matrix_Deallocate( B );
 
 

@@ -2,7 +2,7 @@ COMPILER=INTEL
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
-	CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
+	CFLAGS  =-qopenmp -std=c99 -g -O2 -restrict
 	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CINCS   =-I${MKLROOT}/include
@@ -80,6 +80,12 @@ innersolver: innersolvercheck.o $(OBJS)
 innersolvercheck.o: innersolvercheck.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+# inner solver solution test for small matrix
+sequential: spike_sequential.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+spike_sequential.o: spike_sequential.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 .PHONY:all run clean
 

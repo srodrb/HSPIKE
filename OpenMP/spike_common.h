@@ -24,6 +24,7 @@
 	#include <string.h>
 	#include <time.h>
 	#include <sys/time.h>
+ 	#include "spike_datatypes.h"
 
 
 	FILE* spike_fopen( const char* filename, const char* mode);
@@ -34,7 +35,7 @@
 
 	void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream);
 
-	double GetReferenceTime(void);
+	timer_t GetReferenceTime(void);
 
 	void CheckPreprocessorMacros(void);
 
