@@ -1,18 +1,64 @@
 #include "spike_algebra.h"
 
-void reorder_metis( matrix_t* A, integer_t* colperm )
+Error_t reorder_metis ( const integer_t n,
+						const integer_t nnz,
+						integer_t *restrict colind,
+						integer_t *restrict rowptr,
+						complex_t *restrict aij,
+						integer_t* colperm )
 {
 
 };
 
-void reorder_fieldler( matrix_t* A, integer_t* colperm, integer_t* scale )
+Error_t reorder_fiedler( const integer_t n,
+						integer_t *restrict colind,
+						integer_t *restrict rowptr,
+						complex_t *restrict aij,
+						integer_t *restrict colperm,
+						integer_t *restrict scale )
 {
 
 };
 
-void reorder_rcm ( matrix_t* A, integer_t* colperm )
+Error_t reorder_rcm (const integer_t n,
+					integer_t *restrict colind,
+					integer_t *restrict rowptr,
+					complex_t *restrict aij,
+					integer_t *restrict colperm)
 {
 
+};
+
+Error_t matrix_ComputeBandwidth(const integer_t n,
+								integer_t *restrict colind,
+								integer_t *restrict rowptr,
+								complex_t *restrict aij,
+								integer_t *ku,
+								integer_t *kl )
+{
+	// TODO: es posible calcular el bw mas rapidamente accediendo
+	// solamente a las posiciones extremas de las filas.
+	integer_t row, col, idx;
+	*ku = 0;
+	*kl = 0;
+
+	for(row = 0; row < n; row++)
+	{
+		for(idx = rowptr[row]; idx < rowptr[row+1]; idx++)
+		{
+			col = colind[idx];
+
+			*ku = ((row - col) < *ku) ? (row - col) : *ku;
+			*kl = ((col - row) < *kl) ? (col - row) : *kl;
+		}
+	}
+
+	*ku = abs(*ku);
+	*kl = abs(*kl);
+
+	fprintf(stderr,"\nBandwitdh computed: (upper,lower) (%d,%d)\n", *ku, *kl);
+
+	return (SPIKE_SUCCESS);
 };
 
 Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
@@ -93,7 +139,6 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	MKL_INT maxfct, mnum, phase, error, msglvl;
 	double ddum;          /* Double dummy */
 	MKL_INT idum;         /* Integer dummy. */
-	char *uplo;
 
 	/* -------------------------------------------------------------------- */
 	/* .. Setup Pardiso control parameters. */
@@ -149,7 +194,8 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	// printf ("\nReordering completed ... ");
 	// printf ("\nNumber of nonzeros in factors = %d", iparm[17]);
 	// printf ("\nNumber of factorization MFLOPS = %d", iparm[18]);
-	fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
+	
+	// fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Numerical factorization. */
@@ -165,15 +211,15 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			exit (2);
 	}
 	factor_t = GetReferenceTime() - start_t;
-	fprintf(stderr, "\n%s: Numerical factorization time %.6lf", __FUNCTION__, factor_t );
+	
+	//fprintf(stderr, "\n%s: Numerical factorization time %.6lf", __FUNCTION__, factor_t );
 
 	//printf ("\nFactorization completed ... ");
 
 	/* -------------------------------------------------------------------- */
 	/* .. Back substitution and iterative refinement. */
 	/* -------------------------------------------------------------------- */
-	uplo = "non-transposed";
-	printf ("\n\nSolving %s system...\n", uplo);
+	fprintf (stderr, "\n\nSolving linear system...\n");
 
 	start_t = GetReferenceTime();
 	phase = 33;
@@ -193,7 +239,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			exit (3);
 	}
 	solve_t = GetReferenceTime() - start_t;
-	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
+	// fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Compute Residual. */
@@ -208,12 +254,8 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 					 &n, &ddum, rowptr, colind, &idum, &nrhs,
 					 iparm, &msglvl, &ddum, &ddum, &error);
 
-	// solve the system
-
-	// check for residual
-
-	// print some efficiency statistics
-	fprintf(stderr, "\n%s: Factor to solve ratio: %.6f", __FUNCTION__, factor_t / solve_t );
+	/* print some efficiency statistics */
+	// fprintf(stderr, "\n%s: Factor to solve ratio: %.6f", __FUNCTION__, factor_t / solve_t );
 
 	return (SPIKE_SUCCESS);
 };
@@ -300,7 +342,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	// printf ("\nReordering completed ... ");
 	// printf ("\nNumber of nonzeros in factors = %d", iparm[17]);
 	// printf ("\nNumber of factorization MFLOPS = %d", iparm[18]);
-	fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
+	// fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
 
 
 	/* -------------------------------------------------------------------- */
@@ -319,7 +361,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	factor_t = GetReferenceTime() - start_t;
 	
 	//printf ("\nFactorization completed ... ");
-	fprintf(stderr, "\n%s: Numerical factorization time %.6lf\n", __FUNCTION__, factor_t );
+	// fprintf(stderr, "\n%s: Numerical factorization time %.6lf\n", __FUNCTION__, factor_t );
 
 
 	return (SPIKE_SUCCESS);
@@ -386,7 +428,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 /* -------------------------------------------------------------------- */
 /* .. Back substitution and iterative refinement. */
 /* -------------------------------------------------------------------- */
-	printf ("\n\nBack substitution and iterative refinement...\n");
+	// fprintf (stderr, "\n\nBack substitution and iterative refinement...\n");
 
 	start_t = GetReferenceTime();
 	phase = 33;
@@ -398,12 +440,14 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			exit (3);
 	}
 	solve_t = GetReferenceTime() - start_t;
-	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
+	
+	// fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
 
 /* -------------------------------------------------------------------- */
 /* .. Compute Residual. */
 /* -------------------------------------------------------------------- */
-    ComputeResidualOfLinearSystem( colind, rowptr, aij, x, b, n, nrhs );
+    
+    // ComputeResidualOfLinearSystem( colind, rowptr, aij, x, b, n, nrhs );
 
 /* -------------------------------------------------------------------- */
 /* .. Termination and release of memory. */
@@ -440,47 +484,13 @@ Error_t directSolver_CleanUp(integer_t *restrict colind, // ja
 			&n, &ddum, rowptr, colind, &idum, &nrhs,
 			iparm, &msglvl, &ddum, &ddum, &error);
 
-	fprintf(stderr, "\nPardiso internal memory deallocated\n");
-
 	return (SPIKE_SUCCESS);
 }
 
 
-void symbolic_factorization ( matrix_t* A )
+void symbolic_factorization ( void )
 {
 
-};
-
-Error_t matrix_ComputeBandwidth( matrix_t* A )
-{
-	// TODO: es posible calcular el bw mas rapidamente accediendo
-	// solamente a las posiciones extremas de las filas.
-
-	complex_t *restrict aij = A->aij;
-	integer_t *restrict colind = A->colind;
-	integer_t *restrict rowptr = A->rowptr;
-
-	integer_t row, col, idx;
-	integer_t ku = 0;
-	integer_t kl = 0;
-
-	for(row = 0; row < A->n; row++)
-	{
-		for(idx = rowptr[row]; idx < rowptr[row+1]; idx++)
-		{
-			col = colind[idx];
-
-			ku = ((row - col) < ku) ? (row - col) : ku;
-			kl = ((col - row) < kl) ? (col - row) : kl;
-		}
-	}
-
-	A->ku = abs(ku);
-	A->kl = abs(kl);
-
-	fprintf(stderr,"\nBandwitdh computed: (upper,lower) (%d,%d)", A->ku, A->kl);
-
-	return (SPIKE_SUCCESS);
 };
 
 /*

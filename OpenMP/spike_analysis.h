@@ -19,7 +19,7 @@
 #ifndef _SPIKE_ANALYSIS_H_
 	#define _SPIKE_ANALYSIS_H_
 
-	#include "spike_algebra.h"
+	#include "spike_matrix.h"
 
 	/*
 	 * Shared memory version of the schedule structure

@@ -320,6 +320,10 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 		B->rowptr[rowind++] = nnz;
 	}
 
+	/* compute the bandwidth of the sub-block */	
+	matrix_ComputeBandwidth( B->n, B->colind, B->rowptr, B->aij, &B->ku, &B->kl );
+
+
 	return (B);
 };
 
@@ -612,8 +616,6 @@ block_t* block_ExtractTip ( block_t* B, blocksection_t section, memlayout_t layo
  */
 block_t* block_ExtractBlock (block_t* B, const integer_t n0, const integer_t nf )
 {
-	fprintf(stderr, "%s: limits (%d,%d)\n", __FUNCTION__, n0, nf );
-
 	block_t* SubBlock = block_CreateEmptyBlock( nf - n0, B->m, 0, 0, B->type, _WHOLE_SECTION_ );
 
 	/* copy the elements from the reference block copying them to the subblock */
@@ -653,8 +655,6 @@ block_t* block_CreateReducedRHS (const integer_t TotalPartitions,
 	for(integer_t i=0; i < TotalPartitions; i++) nrows += (ku[i] + kl[i]);
 
 	block_t* B = block_CreateEmptyBlock( nrows, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_);
-
-	fprintf(stderr, "Reduced RHS dimensions: (%d,%d)\n", B->n, B->m);
 
 	return (B);
 };

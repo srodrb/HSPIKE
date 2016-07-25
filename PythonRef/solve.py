@@ -338,6 +338,12 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
     end_t = timer()
     print 'Factorization and solve time for the reduced system %.5f' % (end_t - start_t)
     
+    print 'RHS of the reduced system'
+    print yr
+
+    print 'Solution of the reduced system'
+    print xred
+
 
     # -------------------------------------------- Back assembly stage
     #
@@ -374,18 +380,38 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
                 fl = f[bs:be, :].copy()
                 fl[blockdim-kl:blockdim, :] -= A[be-kl:be, be:be+ku].dot(x[be:be+ku, :])
 
+                print 'Bi block'
+                print A[be-kl:be, be:be+ku].todense()
+
+                print 'x2 top'
+                print x[be:be+ku, :]
+
+                print 'fi (i=0 block'
+                print fl
+
                 x[bs+ku:be-kl, :] = Ai[p].solve(fl)[ku:blockdim-kl, :]
+
+                print 'Solution of the sub-block'
+                print x[bs:be, :]
+
             elif p is (partitions - 1):
                 fl = f[bs:be, :].copy()
                 fl[0:ku, :] -= A[bs:bs+kl, bs-kl:bs].dot(x[bs-kl:bs, :])
 
                 x[bs+ku:be-kl, :] = Ai[p].solve(fl)[ku:blockdim-kl, :]
+
+                print 'Solution of the last sub-block'
+                print x[bs:be, :]
             else:
                 fl = f[bs:be, :].copy()
                 fl[blockdim-kl:blockdim, :] -= A[be-kl:be, be:be+ku].dot(x[be:be+ku, :])
                 fl[0:ku, :] -= A[bs:bs+kl, bs-kl:bs].dot(x[bs-kl:bs, :])
 
                 x[bs+ku:be-kl, :] = Ai[p].solve(fl)[ku:blockdim-kl, :]
+
+                print 'Solution of the central sub-block'
+                print x[bs:be, :]
+
     else:
         for p in range(partitions):
             bs = p * blockdim  # big system starting point
@@ -548,12 +574,12 @@ if __name__ == '__main__':
     A = create_pentadiagonal(N)
     export_csr2bin( A, "../Tests/spike/penta_15.bin")
 
-    nrhs = 1
+    nrhs = 2
 
     print 'dim(A) %d, (ku,kl) = (%d,%d) processes %d' % (A.shape[0], 2, 2, p)
 
     # b = np.random.rand(N*nrhs).reshape(N, nrhs)
-    b = np.ones(N).reshape(N, nrhs)
+    b = np.ones(N*nrhs).reshape(N, nrhs)
     b_superlu = b.copy()
     b_spike = b.copy()
 

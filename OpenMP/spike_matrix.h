@@ -24,6 +24,7 @@
 	#include "spike_memory.h"
 	#include "spike_common.h"
 	#include "spike_datatypes.h"
+ 	#include "spike_algebra.h"
 	#include "mkl.h"
 	#include <string.h>
 

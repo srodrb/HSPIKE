@@ -19,7 +19,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	// TODO: create a symbolic factorization routine
 	// design a solve strategy
 
-	matrix_ComputeBandwidth( A );
+	matrix_ComputeBandwidth( A->n, A->colind, A->rowptr, A->aij, &A->ku, &A->kl );
 
 	nreg = (A->n / p);
 	nrem = (A->n % p == 0) ? A->n/p : A->n - (A->n/p * (p-1));

@@ -47,8 +47,8 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
-	double start_t, end_t;
-	const integer_t nrhs = 2;
+	timer_t start_t, end_t;
+	const integer_t nrhs = 1;
 	Error_t error;
 	char msg[200];
 
@@ -56,8 +56,8 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
-	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 	// Compute matrix bandwidth
@@ -96,6 +96,8 @@ int main(int argc, const char *argv[])
 		
 		const integer_t r0 = S->n[p];
 		const integer_t rf = S->n[p+1];
+
+
 
 		/* allocate pardiso configuration parameters */
 		// void *pardiso_conf = (void*) spike_malloc( ALIGN_INT, 64, sizeof(integer_t));
@@ -162,9 +164,6 @@ int main(int argc, const char *argv[])
 			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
 			
-			sprintf( msg, "%d-th partition, Wi block", p);
-			block_Print( Wi, msg );
-
 			block_Deallocate( Ci );
 			block_Deallocate( Wi );
 			block_Deallocate( Wit);
@@ -197,9 +196,6 @@ int main(int argc, const char *argv[])
 
 			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
-			
-			sprintf( msg, "%d-th partition, Wi block", p);
-			block_Print( Wi, msg );
 
 			block_Deallocate( Ci );
 			block_Deallocate( Wi );
@@ -207,20 +203,19 @@ int main(int argc, const char *argv[])
 			block_Deallocate( Wib);
 		}
 
-		directSolver_CleanUp(NULL,NULL,NULL,NULL,NULL, Aij->n, nrhs, &pardiso_conf);
+		directSolver_CleanUp(NULL, NULL, NULL, NULL, NULL, Aij->n, nrhs, &pardiso_conf);
 
-		matrix_Deallocate(Aij); fprintf(stderr, "Fin del programa");
+		matrix_Deallocate(Aij); 
 	}
 
 	/* -------------------------------------------------------------------- */
-	/* .. Solution of the reduced system. */
+	/* .. Solution of the reduced system.                                   */
 	/* -------------------------------------------------------------------- */
 
 	block_t* yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );  
-	reduced_PrintAsDense( R, yr, xr, "Reduced system");
+	fprintf(stderr, "\nSolving reduced linear system\n");
 	system_solve ( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, xr->m);
 
-	block_Print( yr, "Solution of the reduced system");
 
 	/* Free some memory, yr and R are not needed anymore */
 	block_Deallocate ( xr );
@@ -252,20 +247,13 @@ int main(int argc, const char *argv[])
 
 		/* extract fi sub-block */
 		block_t*  fi  = block_ExtractBlock(f, obs, obe );
-		block_Print ( fi, "Dense fi sub-block");
 			
-		/* Compute the solution depending on the partition */
 		if ( p == 0 ){
 
 			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
-			block_Print( Bi, "Dense Bi sub-block");
-			
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
-			block_Print( xt_next, "xt(i+1) dende sub-block");
 
-			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
-			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
-			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
 			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
 				Bi->n,    						/* m - number of rows of A    */
 				xt_next->m, 					/* n - number of columns of B */
@@ -279,11 +267,7 @@ int main(int argc, const char *argv[])
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
 
-			block_Print( fi, "Fi result");
-
-
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
-			block_Print( xi, "Final solution of the block");
 
 			block_Deallocate ( Bi );
 			block_Deallocate ( xt_next); 
@@ -291,14 +275,9 @@ int main(int argc, const char *argv[])
 		else if ( p == ( S->p -1)){
 
 			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );
-			block_Print( Ci, "Dense Ci sub-block (last partition)");
-			
 			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
-			block_Print( xb_prev, "xt(i+1) dende sub-block (last partition)");  
 
-			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
-			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
-			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
 			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
 				Ci->n,    						/* m - number of rows of A    */
 				xb_prev->m, 					/* n - number of columns of B */
@@ -312,10 +291,7 @@ int main(int argc, const char *argv[])
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
-			block_Print( fi, "Fi result (last partition)");
-
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
-			block_Print( xi, "Final solution of the block (last partition)");
 
 			block_Deallocate ( Ci );
 			block_Deallocate ( xb_prev); 
@@ -326,9 +302,7 @@ int main(int argc, const char *argv[])
 			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
 
-			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
-			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
-			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
 			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
 				Bi->n,    						/* m - number of rows of A    */
 				xt_next->m, 					/* n - number of columns of B */
@@ -350,9 +324,7 @@ int main(int argc, const char *argv[])
 			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );			
 			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
 
-			/* documentation of INTEL's ?gemm; performs C = alpha * A * B + C                    */
-			/* https://software.intel.com/es-es/node/520775#AE8380B9-CAC8-4C57-9AF3-2EAAC6ACFC1B */
-			/* Here we perform xi = -1.0 * Bi * xit  + fi                                        */ 
+			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
 			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
 				Ci->n,    						/* m - number of rows of A    */
 				xb_prev->m, 					/* n - number of columns of B */
@@ -367,7 +339,6 @@ int main(int argc, const char *argv[])
 				ni );		 					/* ldc - first dimension of C */
 
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
-			block_Print( xi, "Final solution of the block (middle partition)");
 
 			block_Deallocate ( Ci );
 			block_Deallocate ( xb_prev);
@@ -381,26 +352,27 @@ int main(int argc, const char *argv[])
 		matrix_Deallocate	( Aij);
 
 	}
+	schedule_Destroy  ( S );
+	block_Deallocate  ( yr);
+	
+	end_t = GetReferenceTime();
 
+	fprintf(stderr, "\nSPIKE solver took %.6lf seconds", end_t - start_t);
 	block_Print( x, "Solution of the linear system");
 
 	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, nrhs);
-
+	// SolveOriginalSystem( A, x, f);
 
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
 	/* -------------------------------------------------------------------- */
-	schedule_Destroy  ( S );
 	matrix_Deallocate ( A );
-	block_Deallocate  ( yr);
 	block_Deallocate  ( x );
 	block_Deallocate  ( f );
 	
 	// directSolver_CleanUp( pardiso_conf );
 
-	end_t = GetReferenceTime();
 
-	fprintf(stderr, "\nSPIKE solver took %.6lf seconds", end_t - start_t);
 
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
