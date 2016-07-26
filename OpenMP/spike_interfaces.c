@@ -49,8 +49,12 @@
 							complex16 *restrict xij,
 							complex16 *restrict bij)
 {
+	// /gpfs/scratch/bsc21/bsc21253/tests/POC_FMD_3D_MZANZI_003/exec_input>
+	// /gpfs/scratch/bsc21/bsc21225/BSITLocal/trunk/system/main/kernel/bin/em.iso.gp.fm kernel.fm.prm.freq0.05Hz.000001
+	
+	fprintf(stderr, "\n  SPIKE direct-direct solver\n");
 	/* non-buffering std error */
-	setvbuf(stderr, NULL, _IONBF, 0);
+	// setvbuf(stderr, NULL, _IONBF, 0);
 
 	/* -------------------------------------------------------------------- */
 	/* .. Initialize internal structures with external data               . */
@@ -58,6 +62,8 @@
 	matrix_t *A = matrix_CreateFromComponents (n, nnz, colind, rowptr, (complex_t *restrict) aij );
 	block_t  *x = block_CreateFromComponents  (n, nrhs, (complex_t *restrict) xij );
 	block_t  *f = block_CreateFromComponents  (n, nrhs, (complex_t *restrict) bij );
+
+	fprintf(stderr, "\nCreated internal data structures\n");
 
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables.                                                  */
@@ -76,11 +82,13 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 20 );
+	S = spike_solve_analysis( A, nrhs, 40 );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
+	fprintf(stderr, "\nCreated reduced system matrix\n");
 	xr = block_CreateReducedRHS( S->p, S->ku, S->kl, nrhs );
+	fprintf(stderr, "\nCreated reduced system RHS\n");
 
 
 	/* -------------------------------------------------------------------- */

@@ -184,7 +184,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
 	if ( error != 0 )
 	{
-			printf ("\nERROR during symbolic factorization: %d", error);
+			fprintf (stderr, "\nERROR during symbolic factorization: %d", error);
 			exit (1);
 	}
 	ordering_t = GetReferenceTime() - start_t;
@@ -205,7 +205,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 
 	if ( error != 0 )
 	{
-			printf ("\nERROR during numerical factorization: %d", error);
+			fprintf (stderr,"\nERROR during numerical factorization: %d", error);
 			exit (2);
 	}
 	factor_t = GetReferenceTime() - start_t;
@@ -233,7 +233,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	}
 	if ( error != 0 )
 	{
-			printf ("\nERROR during solution: %d", error);
+			fprintf (stderr,"\nERROR during solution: %d", error);
 			exit (3);
 	}
 	solve_t = GetReferenceTime() - start_t;
@@ -332,7 +332,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			&n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
 	if ( error != 0 )
 	{
-			printf ("\nERROR during symbolic factorization: %d", error);
+			fprintf (stderr, "\nERROR during symbolic factorization: %d", error);
 			exit (1);
 	}
 	ordering_t = GetReferenceTime() - start_t;
@@ -353,7 +353,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 
 	if ( error != 0 )
 	{
-			printf ("\nERROR during numerical factorization: %d", error);
+			fprintf (stderr, "\nERROR during numerical factorization: %d", error);
 			exit (2);
 	}
 	factor_t = GetReferenceTime() - start_t;
@@ -434,7 +434,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, b, x, &error);
 	if ( error != 0 )
 	{
-			printf ("\nERROR during solution: %d", error);
+			fprintf (stderr, "\nERROR during solution: %d", error);
 			exit (3);
 	}
 	solve_t = GetReferenceTime() - start_t;
