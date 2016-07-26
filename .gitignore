@@ -1,6 +1,8 @@
 Resources
 *.swp
 *.o
+*.a
+main
 massif.*
 callgrind.*
 .tags*

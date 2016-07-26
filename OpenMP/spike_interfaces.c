@@ -49,6 +49,9 @@
 							complex16 *restrict xij,
 							complex16 *restrict bij)
 {
+	/* non-buffering std error */
+	setvbuf(stderr, NULL, _IONBF, 0);
+
 	/* -------------------------------------------------------------------- */
 	/* .. Initialize internal structures with external data               . */
 	/* -------------------------------------------------------------------- */
