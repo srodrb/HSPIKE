@@ -94,21 +94,25 @@ void CheckPreprocessorMacros (void)
 
 	#if defined (_DATATYPE_Z_) // double complex
 		#define _COMPLEX_ARITHMETIC_
-		datatype = "double complex";
+		datatype = "Double precision complex";
 	#elif defined (_DATATYPE_C_) // complex float
 		#define _COMPLEX_ARITHMETIC_
-		datatype = "single complex";
+		datatype = "Single precision complex";
 	#elif defined (_DATATYPE_D_) // double precision float
-		datatype = "double";
+		datatype = "Double precision";
 	#else // single precision float
-		datatype = "single";
+		datatype = "Single precision";
 	#endif
 
 	#if defined (_COMPLEX_ARITHMETIC_)
-		complex_support = "complex arithmetic support enabled";
+		complex_support = "Complex arithmetic support enabled";
 	#else
-		complex_support = "complex arithmetic support disabled";
+		complex_support = "Complex arithmetic support disabled";
 	#endif
 
-	fprintf(stderr, "\n%s: Dtype: %s MPI SUPPORT: %s COMPLEX ARITHMETIC %s\n", __FUNCTION__, datatype, mpi_support, complex_support );
+	fprintf(stderr, "\n%s:\n\t"
+		"Data type           :        %s\n\t"
+		"MPI support         :        %s\n\t"
+		"Complex arithmetic  :        %s\n\n", 
+		__FUNCTION__, datatype, mpi_support, complex_support );
 };

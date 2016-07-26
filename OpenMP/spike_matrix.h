@@ -78,6 +78,12 @@
 
 	matrix_t*         matrix_CreateEmptyMatrix      (const integer_t n, const integer_t nnz );
 
+	matrix_t*         matrix_CreateFromComponents  (const integer_t n, 
+													const integer_t nnz, 
+													integer_t *restrict colind, 
+													integer_t *restrict rowptr, 
+													complex_t *restrict aij);
+
 
 	Error_t           matrix_Deallocate             (matrix_t* M);
 
@@ -111,6 +117,10 @@
 													blocktype_t type,
 													blocksection_t section);
 
+	block_t* 		  block_CreateFromComponents   (const integer_t n,
+													const integer_t m,
+													complex_t *restrict Bij);
+	
 	Error_t           block_InitializeToValue       ( block_t* B, const complex_t value );
 
 	Error_t           block_Print                   ( block_t* B, const char* msg);
@@ -143,8 +153,8 @@
 													block_t            *B);
 
 	Error_t           block_AddBlockToRHS          (block_t* x, block_t* xi,
-		const integer_t n0,
-		const integer_t nf);
+													const integer_t n0,
+													const integer_t nf);
 
 
 	/* -------------------------------------------------------------------- */
