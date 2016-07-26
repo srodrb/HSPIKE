@@ -62,8 +62,8 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables.                                                  */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t end_t;
+	spike_timer_t start_t;
+	spike_timer_t end_t;
 
 	sm_schedule_t *S;
 

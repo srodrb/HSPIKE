@@ -126,10 +126,10 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t ordering_t;
-	timer_t factor_t;
-	timer_t solve_t;
+	spike_timer_t start_t;
+	spike_timer_t ordering_t;
+	spike_timer_t factor_t;
+	spike_timer_t solve_t;
 
 	MKL_INT mtype = MTYPE_GEN_NOSYMM;  	/* Real unsymmetric matrix */
 	void *pt[64];       				/* Pardiso control parameters. */
@@ -276,9 +276,9 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t ordering_t;
-	timer_t factor_t;
+	spike_timer_t start_t;
+	spike_timer_t ordering_t;
+	spike_timer_t factor_t;
 
 	MKL_INT mtype = MTYPE_GEN_NOSYMM;       	/* Real unsymmetric matrix */
 	MKL_INT iparm[64]; 							/* Pardiso control parameters. */
@@ -384,8 +384,8 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 /* -------------------------------------------------------------------- */
 /* .. Local variables. */
 /* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t solve_t;
+	spike_timer_t start_t;
+	spike_timer_t solve_t;
 
 	MKL_INT mtype = MTYPE_GEN_NOSYMM;  /* Real unsymmetric matrix */
 	MKL_INT maxfct, mnum, phase, error, msglvl;

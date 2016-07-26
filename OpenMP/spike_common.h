@@ -35,7 +35,7 @@
 
 	void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream);
 
-	timer_t GetReferenceTime(void);
+	spike_timer_t GetReferenceTime(void);
 
 	void CheckPreprocessorMacros(void);
 

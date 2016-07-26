@@ -962,10 +962,20 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 		for(integer_t col = 0; col < R->n; col++){
 			complex_t value = D[row * R->n + col];
 
-			if ( number_IsLessThan ( value, __zero ) == True )
-				fprintf(stderr, "%.5f  ", value);
-			else
-				fprintf(stderr, " %.5f  ", value);
+			if ( number_IsLessThan ( value, __zero ) == True ){
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
+			else{
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
 		}
 
 		fprintf(stderr, "\t");
@@ -975,22 +985,42 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 			for(integer_t col=0; col < X->m; col++) {
 				complex_t value = X->aij[row + X->n*col];
 	
-			if ( number_IsLessThan( value, __zero ))
-				fprintf(stderr, "%.5f  ", value);
-			else
-				fprintf(stderr, " %.5f  ", value);
+				if ( number_IsLessThan( value, __zero )){
+					#ifndef _COMPLEX_ARITHMETIC_
+						fprintf(stderr, "\t"_F_" ", value );
+					#else
+						fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+					#endif
+				}
+				else{
+					#ifndef _COMPLEX_ARITHMETIC_
+						fprintf(stderr, "\t"_F_" ", value );
+					#else
+						fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+					#endif
+				}
 			}
 			fprintf(stderr, "\t");
 		}
 
 		/* print y block */
 		for(integer_t col=0; col < Y->m; col++) {
-		complex_t value = Y->aij[row + Y->n*col];
+			complex_t value = Y->aij[row + Y->n*col];
 
-		if ( number_IsLessThan( value, __zero ))
-			fprintf(stderr, "%.5f  ", value);
-		else
-			fprintf(stderr, " %.5f  ", value);
+			if ( number_IsLessThan( value, __zero )){
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
+			else{
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
 		}
 
 		fprintf(stderr, "\n");

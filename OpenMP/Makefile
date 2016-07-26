@@ -5,7 +5,10 @@ ifeq ($(COMPILER),INTEL)
 	CFLAGS  =-qopenmp -std=c99 -g -O2 -restrict
 	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
-	CINCS   =-I${MKLROOT}/include
+	CINCS   =-I${MKLROOT}/include -I.
+
+	#CLIBS = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm -ldl
+	#CINCS = -qopenmp -I${MKLROOT}/include
 else
 	CC      =gcc
 	CFLAGS  =-std=c99 -g -O2
@@ -19,16 +22,20 @@ DEFINES =-D_DATATYPE_Z_ -D_ENABLE_TESTING_
 TARTGET=main
 
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
-			 spike_algebra.o spike_analysis.o spike_common.o
+			 spike_algebra.o spike_analysis.o spike_common.o \
+			 spike_interfaces.o
 
-main: main.o $(OBJS) spike.a
-	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) spike.a
+SPIKELIB = libspike.a
+
+main: main.o $(SPIKELIB)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
 
 main.o:main.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
-spike.a:spike_interfaces.o
-	ar rcs $@ $+
+libspike.a:$(OBJS)
+	ar rc $@ $+
+	ranlib libspike.a
 
 spike_interfaces.o:spike_interfaces.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
@@ -103,4 +110,4 @@ run:
 	./main
 
 clean:
-	rm -r $(TARGET) *.o
+	rm -r main libspike.a *.o
