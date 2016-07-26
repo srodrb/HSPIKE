@@ -84,7 +84,8 @@ int main(int argc, char *argv[])
 	Error_t error;
 	char msg[200];
 
-	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 
 	integer_t  p     = size - 1;
 	integer_t  ku[3] = {2, 1, 1};
@@ -93,13 +94,30 @@ int main(int argc, char *argv[])
 
 
 	sm_schedule_t* schedule;
-
+	debug("------------------------------------------------");
 	if(rank == master){ //MASTER
 		start_t = GetReferenceTime();
 		schedule = spike_solve_analysis( A, nrhs, size-1); //Number of partitions
+		debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", schedule->max_m, schedule->max_n, schedule->p);
 		matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);
 		integer_t r0,rf,c0,cf;
+		
+		for(integer_t p=0; p<schedule->p; p++){
+			int i, check = 0;
+			sendSchedulePacked(schedule, p+1);
+			sm_schedule_t* sTest = recvSchedulePacked(p+1);
+			check += schedule->p - sTest->p;
+			check += schedule->max_m - sTest->max_m;
+			check += schedule->max_n - sTest->max_n;
+			for(i=0; i<schedule->p+1; i++) check += schedule->n[i] - sTest->n[i];
+			for(i=0; i<schedule->p+1; i++) check += schedule->r[i] - sTest->r[i];
+			for(i=0; i<schedule->p  ; i++) check += schedule->ku[i] - sTest->ku[i];
+			for(i=0; i<schedule->p  ; i++) check += schedule->kl[i] - sTest->kl[i];
 
+			if(check == 0) printf("TEST Send Schedule: \t\t%d PASSED\n", p+1);
+			else printf("TEST Send Schedule %d : \t\t%d FAIL \n", check, p+1);
+						
+		}
 		for(integer_t p=0; p<schedule->p; p++){
 
 			r0 = schedule->n[p];
@@ -157,6 +175,9 @@ int main(int argc, char *argv[])
 		}
 	}
 	else{
+		sm_schedule_t* sTest = recvSchedulePacked(master);
+		sendSchedulePacked(sTest, master);
+		
 		//Matrix Testing
 		matrix_t* Aij = recvMatrix(master);
 		sendMatrix(Aij, master);

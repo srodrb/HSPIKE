@@ -59,7 +59,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 
 	// remainder element
 	S->n[S->p] = (integer_t) A->n;
-	S->r[S->p] = (integer_t) A->n;
+	S->r[S->p] = S->r[S->p-1] + S->ku[S->p-1] + S->kl[S->p -1];
 
 
 

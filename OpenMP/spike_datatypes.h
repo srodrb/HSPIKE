@@ -38,11 +38,6 @@
 
 	typedef complex_number   complex_t;
 
-	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_DOUBLE
-		#define _MPI_COUNT_  2
-	#endif
-
 	#define F "%.3lf %.3lf"
 
 #elif defined (_DATATYPE_C_) // complex float
@@ -57,32 +52,17 @@
 
 	typedef complex_number   complex_t;
 
-	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_FLOAT
-		#define _MPI_COUNT_ 2
-	#endif
-
 	#define F "%.3f %.3f"
 
 #elif defined (_DATATYPE_D_) // double precision float
 	typedef double   real_t;
 	typedef double   complex_t;
 
-	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_DOUBLE
-		#define _MPI_COUNT_ 1
-	#endif
-
 	#define F "%.3lf"
 
 #else // single precision float
 	typedef float   real_t;
 	typedef float   complex_t;
-
-	#if defined (_MPI_SUPPORT_)
-		#define _MPI_COMPLEX_T_  MPI_FLOAT
-		#define _MPI_COUNT_ 1
-	#endif
 
 	#define F "%.3f"
 
@@ -94,10 +74,6 @@
 	typedef double   timer_t;
 
 	#define I "%d"
-
-	#if defined (_MPI_SUPPORT_)
-		#define _MPI_INTEGER_T_  MPI_INT
-	#endif
 
 	extern const complex_t __unit;
 	extern const complex_t __zero;

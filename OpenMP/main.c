@@ -56,8 +56,9 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 	matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 	// Compute matrix bandwidth
@@ -216,6 +217,8 @@ int main(int argc, const char *argv[])
 	fprintf(stderr, "\nSolving reduced linear system\n");
 	system_solve ( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, xr->m);
 
+	block_Print(yr, "Original solution reduced system");
+
 
 	/* Free some memory, yr and R are not needed anymore */
 	block_Deallocate ( xr );
@@ -247,12 +250,11 @@ int main(int argc, const char *argv[])
 
 		/* extract fi sub-block */
 		block_t*  fi  = block_ExtractBlock(f, obs, obe );
-			
 		if ( p == 0 ){
 
 			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
-
+			block_Print(Bi, "Bi Slaveeee");
 			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
 			cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
 				Bi->n,    						/* m - number of rows of A    */
@@ -266,7 +268,10 @@ int main(int argc, const char *argv[])
 				1.0, 							/* beta                       */
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
-
+			
+			block_Print(xi, "Slave xi after");
+			block_Print(fi, "Slave fi after");
+			block_Print(xt_next, "Slave xt_next after");
 			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
 
 			block_Deallocate ( Bi );
@@ -343,7 +348,6 @@ int main(int argc, const char *argv[])
 			block_Deallocate ( Ci );
 			block_Deallocate ( xb_prev);
 		}
-
 		block_AddBlockToRHS(x, xi, obs, obe);
 
 		directSolver_CleanUp(NULL,NULL,NULL,NULL,NULL, Aij->n, nrhs, &pardiso_conf);

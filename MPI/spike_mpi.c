@@ -38,10 +38,14 @@ static void MPI_CheckCall( int err )
 /* -------------------------------------------------------------------- */
 void sendMatrix (matrix_t *Aij, integer_t p){
 	
-	MPI_CheckCall(MPI_Send(&Aij->n,     5,					   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
-	MPI_CheckCall(MPI_Send(Aij->colind, Aij->nnz,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
-	MPI_CheckCall(MPI_Send(Aij->rowptr, Aij->n+1,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
-	MPI_CheckCall(MPI_Send(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD));
+	//debug("Sending 5 int to %d", p);
+	MPI_CheckCall(MPI_Ssend(&Aij->n,     5,					   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
+	//debug("Sending %d int to %d",Aij->nnz, p);
+	MPI_CheckCall(MPI_Ssend(Aij->colind, Aij->nnz,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
+	//debug("Sending %d int to %d",Aij->nnz, p);
+	MPI_CheckCall(MPI_Ssend(Aij->rowptr, Aij->n+1,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
+	//debug("Sending %d complex_t to %d",Aij->nnz, p);
+	MPI_CheckCall(MPI_Ssend(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD));
 };
 
 /* -------------------------------------------------------------------- */
@@ -51,10 +55,10 @@ void sendMatrix (matrix_t *Aij, integer_t p){
 void IsendMatrix (matrix_t *Aij, integer_t p){
 	
 	MPI_Request request;
-	MPI_CheckCall(MPI_Isend(&Aij->n,     5,			    		MPI_INT, 	    p, 0, MPI_COMM_WORLD,&request));
-	MPI_CheckCall(MPI_Isend(Aij->colind, Aij->nnz,		    	MPI_INT, 	    p, 0, MPI_COMM_WORLD,&request));
-	MPI_CheckCall(MPI_Isend(Aij->rowptr, Aij->n+1,				MPI_INT, 	    p, 0, MPI_COMM_WORLD,&request));
-	MPI_CheckCall(MPI_Isend(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD,&request));
+	MPI_CheckCall(MPI_Isend(&Aij->n,     5,			    		MPI_INT, 	    p, 0, MPI_COMM_WORLD, &request));
+	MPI_CheckCall(MPI_Isend(Aij->colind, Aij->nnz,		    	MPI_INT, 	    p, 0, MPI_COMM_WORLD, &request));
+	MPI_CheckCall(MPI_Isend(Aij->rowptr, Aij->n+1,				MPI_INT, 	    p, 0, MPI_COMM_WORLD, &request));
+	MPI_CheckCall(MPI_Isend(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD, &request));
 
 };
 
@@ -72,7 +76,7 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p){
 	MPI_Pack(Aij->colind, Aij->nnz			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->rowptr, Aij->n+1			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
-	debug("Values: %d, %d, %d, %d, %d, buffSize: %d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->K, buffSize);
+	debug("Values: %d, %d, %d, %d, %d, buffSize: %d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type, buffSize);
 
 	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
 };
@@ -85,16 +89,19 @@ matrix_t* recvMatrix (integer_t p){
 	
 	int t[5];
 	MPI_Status status;
-
+	//debug("reciving %d int from %d", 5, p);
 	MPI_CheckCall(MPI_Recv(t, 5, MPI_INT, p, 0, MPI_COMM_WORLD, &status));
 
 	matrix_t* Aij = matrix_CreateEmptyMatrix( t[0], t[1] );
 	Aij->ku = t[2];
 	Aij->kl = t[3];
-	Aij->K  = t[4];
-
+	Aij->type  = t[4];
+	
+	//debug("reciving %d int from %d",Aij->nnz, p);
 	MPI_CheckCall(MPI_Recv(Aij->colind, Aij->nnz, 	           MPI_INT,		   p, 0, MPI_COMM_WORLD, &status));
+	//debug("reciving %d int from %d",Aij->nnz, p);
 	MPI_CheckCall(MPI_Recv(Aij->rowptr, Aij->n+1, 	     	   MPI_INT, 	   p, 0, MPI_COMM_WORLD, &status));
+	//debug("reciving %d Complex_t from %d",Aij->nnz, p);
 	MPI_CheckCall(MPI_Recv(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD, &status));
 
 	return Aij;
@@ -121,7 +128,7 @@ matrix_t* recvMatrixPacked (integer_t p){
 	matrix_t* Aij = matrix_CreateEmptyMatrix( t[0], t[1] );
 	Aij->ku = t[2];
 	Aij->kl = t[3];
-	Aij->K  = t[4];
+	Aij->type  = t[4];
 	
 	MPI_Unpack(buff, buffSize, &position, Aij->colind, Aij->nnz			   , MPI_INT	   , MPI_COMM_WORLD);
 	MPI_Unpack(buff, buffSize, &position, Aij->rowptr, Aij->n+1			   , MPI_INT	   , MPI_COMM_WORLD);
@@ -140,6 +147,20 @@ void sendBlock (block_t *b, integer_t p){
 
 	MPI_CheckCall(MPI_Send(b, 6, MPI_INT, p, 0, MPI_COMM_WORLD));
 	MPI_CheckCall(MPI_Send(b->aij,  sendCount, _MPI_COMPLEX_T_, p, 1, MPI_COMM_WORLD));
+
+}
+
+/* -------------------------------------------------------------------- */
+/* .. Function to send block_t to process p, p must recive 
+/* .. this matrix with recvBlock function.
+/* -------------------------------------------------------------------- */
+void IsendBlock (block_t *b, integer_t p){
+	
+	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
+	MPI_Request request;
+
+	MPI_CheckCall(MPI_Isend(b, 6, MPI_INT, p, 0, MPI_COMM_WORLD, &request));
+	MPI_CheckCall(MPI_Isend(b->aij,  sendCount, _MPI_COMPLEX_T_, p, 1, MPI_COMM_WORLD, &request));
 
 }
 
@@ -232,13 +253,63 @@ matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, inte
 		integer_t recvCount = (b->n)*(b->m)*_MPI_COUNT_;
 
 		MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD));
-		matrix_AddBlockToReducedSystem(size-1, status.MPI_SOURCE-1, n, ku, kl, R, b);
+		matrix_AddTipToReducedMatrix(size-1, status.MPI_SOURCE-1, n, ku, kl, R, b);
 
 		free( buff );
 	}
 
 	
 	return R;
+}
+
+void sendSchedulePacked(sm_schedule_t* S, integer_t p){
+
+	integer_t buffSize;
+	buffSize = (3 + 2 + S->p*4)*sizeof(integer_t);
+	char *buff = (char*) malloc(buffSize*sizeof(char));
+	
+	integer_t position = 0;
+	MPI_Pack(S, 	3, 		MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->n,  S->p+1, MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->r, 	S->p+1, MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->ku, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->kl, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	
+	debug("Prepared to send schedule with buffSize: %d ", buffSize);
+	debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", S->max_m, S->max_n, S->p);
+	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
+}
+
+sm_schedule_t* recvSchedulePacked(integer_t p){
+	
+	integer_t buffSize=0, position = 0, t[3];
+	MPI_Status  status;
+	sm_schedule_t* S = (sm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(sm_schedule_t));
+
+	MPI_Probe(p, 0, MPI_COMM_WORLD, &status);
+	MPI_Get_count(&status, MPI_PACKED, &buffSize);
+	char* buff = (char*)malloc(sizeof(char) * buffSize);
+	
+	//debug("Prepared to recv schedule with buffSize: %d ", buffSize);
+	MPI_Recv(buff, buffSize, MPI_PACKED, p, 0, MPI_COMM_WORLD, &status);
+
+	MPI_Unpack(buff, buffSize, &position, t, 3, MPI_INT, MPI_COMM_WORLD);
+	//debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", t[2], t[1], t[0]);
+	S->p = t[0];
+	S->max_n = t[1];
+	S->max_m = t[2];
+
+	S->n     = (integer_t*) spike_malloc(ALIGN_INT, S->p +1, sizeof(integer_t));
+	S->r     = (integer_t*) spike_malloc(ALIGN_INT, S->p +1, sizeof(integer_t));
+	S->ku    = (integer_t*) spike_malloc(ALIGN_INT, S->p, sizeof(integer_t));
+	S->kl    = (integer_t*) spike_malloc(ALIGN_INT, S->p, sizeof(integer_t));
+
+	MPI_Unpack(buff, buffSize, &position, S->n,  S->p+1, MPI_INT, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, S->r,  S->p+1, MPI_INT, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, S->ku, S->p  , MPI_INT, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, S->kl, S->p  , MPI_INT, MPI_COMM_WORLD);
+	
+	return S;
 }
 
 /* -------------------------------------------------------------------- */
@@ -284,7 +355,7 @@ matrix_t* recvAndAddBlock(integer_t *ku, integer_t *n, integer_t *kl){
 		block_Print(recvBlocks[index], "Recived Block");
 		//recvCount = recvBlocks[index]->n * recvBlocks[index]->m * _MPI_COUNT_;
 		//debug("Reciving Asyncronous Data from %d", status.MPI_SOURCE);
-		matrix_AddBlockToReducedSystem(size-1, status.MPI_SOURCE-1, n, ku, kl, R, recvBlocks[index]);
+		matrix_AddTipToReducedMatrix(size-1, status.MPI_SOURCE-1, n, ku, kl, R, recvBlocks[index]);
 		debug("%d, %d, %d",size-1, status.MPI_SOURCE-1, index);
 		//for(k=0; k<recvCount; k++)printf("->%d, ", recvBlocks[index]->aij[k]);
 	}
