@@ -67,6 +67,32 @@ matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const integer_t nnz )
 	return (R);
 };
 
+/*
+	This function receives the components of the matrix and creates a block structure.
+	It is only intended to transform the input arguments of the solver interface to the
+	structures that we use normally.
+ */
+matrix_t* matrix_CreateFromComponents(const integer_t n, 
+	const integer_t nnz, 
+	integer_t *restrict colind, 
+	integer_t *restrict rowptr, 
+	complex_t *restrict aij)
+{
+	/* Allocate and fill matrix structure */
+	matrix_t *A = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
+	A->n   = n;
+	A->nnz = nnz;
+	A->colind = colind;
+	A->rowptr = rowptr;
+	A->aij = aij;
+
+	/* compute matrix bandwidth */
+	matrix_ComputeBandwidth( A->n, A->colind, A->rowptr, A->aij, &A->ku, &A->kl );
+
+	/* resume and return matrix */
+	return (A);
+};
+
 Error_t matrix_Deallocate (matrix_t* M)
 {
 	spike_nullify ( M->colind );
@@ -463,6 +489,26 @@ Error_t block_InitializeToValue( block_t* B, const complex_t value )
 	return (SPIKE_SUCCESS);
 };
 
+/*
+	This function receives the components of the vector and creates a block structure.
+	It is only intended to transform the input arguments of the solver interface to the
+	structures that we use normally.
+ */
+block_t* block_CreateFromComponents(const integer_t n, const integer_t m, complex_t *restrict Bij)
+{
+	/* Allocate and fill block structure */
+	block_t *B = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
+	B->n       = n;
+	B->m       = m;
+	B->aij     = Bij;
+	B->ku      = 0;
+	B->kl      = 0;
+	B->type    = _RHS_BLOCK_;
+	B->section = _WHOLE_SECTION_;
+
+	/* resume and return block */
+	return (B);
+};
 
 Error_t block_Print( block_t* B, const char* msg )
 {

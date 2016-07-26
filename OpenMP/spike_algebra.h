@@ -23,11 +23,12 @@
  	#include "spike_common.h"
  	#include "spike_memory.h"
 
-#ifdef __INTEL_COMPILER
+#ifdef __INTEL_MKL__
 	#include "mkl_pardiso.h"
 	#include "mkl_types.h"
 	#include "mkl_spblas.h"
  	#include "mkl.h"
+	#include "mkl_cblas.h"
 #endif
 
  	/*
