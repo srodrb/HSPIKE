@@ -87,7 +87,7 @@
 	typedef int      integer_t;
 	typedef int      Error_t;
 	typedef int      Bool_t;
-	typedef double   timer_t;
+	typedef double   spike_timer_t;
 
 	#define _I_ "%d"
 

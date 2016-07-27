@@ -23,12 +23,11 @@
  	#include "spike_common.h"
  	#include "spike_memory.h"
 
-#ifdef __INTEL_COMPILER
 	#include "mkl_pardiso.h"
 	#include "mkl_types.h"
 	#include "mkl_spblas.h"
  	#include "mkl.h"
-#endif
+	#include "mkl_cblas.h"
 
  	/*
  		Depending on the back-end, the nature of the coeffient matrix is specified

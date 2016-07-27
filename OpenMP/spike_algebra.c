@@ -7,7 +7,7 @@ Error_t reorder_metis ( const integer_t n,
 						complex_t *restrict aij,
 						integer_t* colperm )
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 Error_t reorder_fiedler( const integer_t n,
@@ -17,7 +17,7 @@ Error_t reorder_fiedler( const integer_t n,
 						integer_t *restrict colperm,
 						integer_t *restrict scale )
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 Error_t reorder_rcm (const integer_t n,
@@ -26,7 +26,7 @@ Error_t reorder_rcm (const integer_t n,
 					complex_t *restrict aij,
 					integer_t *restrict colperm)
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 Error_t matrix_ComputeBandwidth(const integer_t n,
@@ -126,10 +126,10 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t ordering_t;
-	timer_t factor_t;
-	timer_t solve_t;
+	spike_timer_t start_t;
+	spike_timer_t ordering_t;
+	spike_timer_t factor_t;
+	spike_timer_t solve_t;
 
 	MKL_INT mtype = MTYPE_GEN_NOSYMM;  	/* Real unsymmetric matrix */
 	void *pt[64];       				/* Pardiso control parameters. */
@@ -184,7 +184,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
 	if ( error != 0 )
 	{
-			printf ("\nERROR during symbolic factorization: %d", error);
+			fprintf (stderr, "\nERROR during symbolic factorization: %d", error);
 			exit (1);
 	}
 	ordering_t = GetReferenceTime() - start_t;
@@ -205,7 +205,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 
 	if ( error != 0 )
 	{
-			printf ("\nERROR during numerical factorization: %d", error);
+			fprintf (stderr,"\nERROR during numerical factorization: %d", error);
 			exit (2);
 	}
 	factor_t = GetReferenceTime() - start_t;
@@ -233,7 +233,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	}
 	if ( error != 0 )
 	{
-			printf ("\nERROR during solution: %d", error);
+			fprintf (stderr,"\nERROR during solution: %d", error);
 			exit (3);
 	}
 	solve_t = GetReferenceTime() - start_t;
@@ -276,9 +276,9 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t ordering_t;
-	timer_t factor_t;
+	spike_timer_t start_t;
+	spike_timer_t ordering_t;
+	spike_timer_t factor_t;
 
 	MKL_INT mtype = MTYPE_GEN_NOSYMM;       	/* Real unsymmetric matrix */
 	MKL_INT iparm[64]; 							/* Pardiso control parameters. */
@@ -332,7 +332,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			&n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &error);
 	if ( error != 0 )
 	{
-			printf ("\nERROR during symbolic factorization: %d", error);
+			fprintf (stderr, "\nERROR during symbolic factorization: %d", error);
 			exit (1);
 	}
 	ordering_t = GetReferenceTime() - start_t;
@@ -353,7 +353,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 
 	if ( error != 0 )
 	{
-			printf ("\nERROR during numerical factorization: %d", error);
+			fprintf (stderr, "\nERROR during numerical factorization: %d", error);
 			exit (2);
 	}
 	factor_t = GetReferenceTime() - start_t;
@@ -384,8 +384,8 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 /* -------------------------------------------------------------------- */
 /* .. Local variables. */
 /* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t solve_t;
+	spike_timer_t start_t;
+	spike_timer_t solve_t;
 
 	MKL_INT mtype = MTYPE_GEN_NOSYMM;  /* Real unsymmetric matrix */
 	MKL_INT maxfct, mnum, phase, error, msglvl;
@@ -434,7 +434,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 					 &n, aij, rowptr, colind, &idum, &nrhs, iparm, &msglvl, b, x, &error);
 	if ( error != 0 )
 	{
-			printf ("\nERROR during solution: %d", error);
+			fprintf (stderr, "\nERROR during solution: %d", error);
 			exit (3);
 	}
 	solve_t = GetReferenceTime() - start_t;
@@ -496,7 +496,7 @@ void symbolic_factorization ( void )
 */
 Error_t spmv( const integer_t n, const integer_t m, complex_t* aij, integer_t *colind, integer_t *rowptr, complex_t *x, complex_t *b)
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 /*
@@ -527,15 +527,15 @@ Error_t gemm   (const memlayout_t layout,
 
 		CALL_LA_KERNEL(cblas_,_PPREF_,gemm)( Layout, transa, transb,
 			m,    						/* m - number of rows of A    */
-			n, 							/* n - number of columns of B */
+			n, 								/* n - number of columns of B */
 			k,    						/* k - number of columns of A */
 			alpha,						/* alpha                      */
-			a, 							/* A block                    */
+			a, 								/* A block                    */
 			lda,    					/* lda - first dimension of A */
-			b, 							/* B block                    */
+			b, 								/* B block                    */
 			ldb,    					/* ldb - first dimension of B */
-			beta,	 					/* beta                       */
-			c,							/* C block                    */
+			beta,	 						/* beta                       */
+			c,								/* C block                    */
 			ldc );		 				/* ldc - first dimension of C */
 
 	#else
@@ -548,19 +548,21 @@ Error_t gemm   (const memlayout_t layout,
 		transb = (transpose_b == _CONJTRANSPOSE_) ? CblasConjTrans    : CblasNoTrans;
 
 		CALL_LA_KERNEL(cblas_,_PPREF_,gemm)( Layout, transa, transb,
-			m,    						/* m - number of rows of A    */
-			n, 							/* n - number of columns of B */
-			k,    						/* k - number of columns of A */
+			m,    									/* m - number of rows of A    */
+			n, 											/* n - number of columns of B */
+			k,    									/* k - number of columns of A */
 			(const void*) &alpha,		/* alpha                      */
-			a, 							/* A block                    */
-			lda,    					/* lda - first dimension of A */
-			b, 							/* B block                    */
-			ldb,    					/* ldb - first dimension of B */
+			a, 											/* A block                    */
+			lda,    								/* lda - first dimension of A */
+			b, 											/* B block                    */
+			ldb,    								/* ldb - first dimension of B */
 			(const void*) &beta,	 	/* beta                       */
-			c,							/* C block                    */
-			ldc );		 				/* ldc - first dimension of C */
+			c,											/* C block                    */
+			ldc );		 							/* ldc - first dimension of C */
 
 	#endif
+
+	return (SPIKE_SUCCESS);
 }
 
 real_t nrm2(const integer_t n, complex_t *restrict x, const integer_t incx)
@@ -590,4 +592,6 @@ Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, co
 	#else
 		CALL_LA_KERNEL(cblas_,_PPREF_,axpy) (n, (const void*) &alpha, (const void*) x, incx, (void*) y, incy);
 	#endif
+
+	return (SPIKE_SUCCESS);
 };
