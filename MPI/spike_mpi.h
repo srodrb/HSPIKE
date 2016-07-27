@@ -25,12 +25,13 @@
 
 #ifdef NDEBUG
 	#define debug(M, ...)
-	#define error(M, ...)
+	#define stat(M, ...)
 #else		
 	#define debug(M, ...) my_debug(__FILE__, __LINE__, __func__, "\x1B[34mDEBUG", M, ##__VA_ARGS__)
 	#define stat(M, ...)  my_debug(__FILE__, __LINE__, __func__, "STAT", M, ##__VA_ARGS__)
-	#define error(M, ...) my_debug(__FILE__, __LINE__, __func__, "\x1B[31mERROR", M, ##__VA_ARGS__)
 #endif
+
+#define error(M, ...) my_debug(__FILE__, __LINE__, __func__, "\x1B[31mERROR", M, ##__VA_ARGS__)
 
 #if defined (_DATATYPE_Z_) // double complex
 		#define _MPI_COMPLEX_T_  MPI_DOUBLE
