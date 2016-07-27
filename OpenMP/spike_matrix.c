@@ -98,7 +98,7 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 	{
 		if( number_IsEqual(A->aij[i],B->aij[i]) == False )
 		{
-			fprintf(stderr, "\n%s: %d-th coefficents are not equal", __FUNCTION__, i);
+			fprintf(stderr, "\n%s: "_I_"-th coefficents are not equal", __FUNCTION__, i);
 			return (False);
 		}
 	}
@@ -107,7 +107,7 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 	{
 		if( A->colind[i] != B->colind[i]  )
 		{
-			fprintf(stderr, "\n%s: %d-th indices are not equal", __FUNCTION__, i);
+			fprintf(stderr, "\n%s: "_I_"-th indices are not equal", __FUNCTION__, i);
 			return (False);
 		}
 	}
@@ -116,7 +116,7 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 	{
 		if( A->rowptr[i] != B->rowptr[i] )
 		{
-			fprintf(stderr, "\n%s: %d-th row pointers are not equal", __FUNCTION__, i);
+			fprintf(stderr, "\n%s: "_I_"-th row pointers are not equal", __FUNCTION__, i);
 			return (False);
 		}
 	}
@@ -135,19 +135,24 @@ Error_t matrix_PrintAsSparse(matrix_t* M, const char* msg)
 	}
 
 
-	fprintf(stderr, "\n\n\tMatrix dimension: %d, nnz: %d\n", M->n, M->nnz);
+	fprintf(stderr, "\n\n\tMatrix dimension: "_I_", nnz: "_I_"\n", M->n, M->nnz);
 
 	fprintf(stderr, "\n\n\tMatrix coefficients\n");
-	for(integer_t i=0; i<M->nnz; i++)
-		fprintf(stderr, "\t%.3f ", M->aij[i]);
+	for(integer_t i=0; i<M->nnz; i++){
+		#ifndef _COMPLEX_ARITHMETIC_
+			fprintf(stderr, "\t"_F_" ", M->aij[i] );
+		#else
+			fprintf(stderr, "\t"_F_","_F_"i ", M->aij[i].real, M->aij[i].imag );
+		#endif
+	}
 
 	fprintf(stderr, "\n\n\tIndices\n");
 	for(integer_t i=0; i<M->nnz; i++)
-		fprintf(stderr, "\t%d ", M->colind[i]);
+		fprintf(stderr, "\t"_I_" ", M->colind[i]);
 
 	fprintf(stderr, "\n\n\tRow pointers\n");
 	for(integer_t i=0; i<M->n +1; i++)
-		fprintf(stderr, "\t%d ", M->rowptr[i]);
+		fprintf(stderr, "\t"_I_" ", M->rowptr[i]);
 
 	fprintf(stderr,"\n\n");
 
@@ -183,10 +188,20 @@ Error_t matrix_PrintAsDense( matrix_t* A, const char* msg)
 		for(integer_t col = 0; col < ncols; col++){
 			complex_t value = D[row * ncols + col];
 
-			if ( number_IsLessThan ( value, __zero ) == True )
-				fprintf(stderr, "%.5f  ", value);
-			else
-				fprintf(stderr, " %.5f  ", value);
+			if ( number_IsLessThan ( value, __zero ) == True ){
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
+			else{
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_" ", value.real, value.imag );
+				#endif
+			}
 
 		}
 		fprintf(stderr, "\n");
@@ -366,7 +381,7 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 
 			// add diagonal element
 			R->colind[nnz  ] = row;
-			R->aij   [nnz++] = (complex_t) __unit;
+			R->aij   [nnz++] = (complex_t) __punit;
 
 			// add Wi elements
 			if ( p < (TotalPartitions - 1)) // add Vi elements
@@ -391,7 +406,7 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 
 			// add diagonal element
 			R->colind[nnz  ] = row;
-			R->aij   [nnz++] = (complex_t) __unit;
+			R->aij   [nnz++] = (complex_t) __punit;
 
 			// add Wi elements
 			if ( p < (TotalPartitions - 1)) // add Vi elements
@@ -408,10 +423,10 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 		}
 	}
 
-	// clean up
+	/* clean up and resume */
 	spike_nullify( nr );
 
-  return (R);
+ 	return (R);
 };
 
 /*
@@ -463,17 +478,27 @@ Error_t block_Print( block_t* B, const char* msg )
 		return (SPIKE_SUCCESS);
 	}
 
-	fprintf(stderr, "\nBlock info: dimension (%d,%d), bandwidth (%d,%d)\n\n\t", 
+	fprintf(stderr, "\nBlock info: dimension ("_I_","_I_"), bandwidth ("_I_","_I_")\n\n\t", 
 					B->n, B->m, B->ku, B->kl);
 
 	for(integer_t row=0; row < nrows; row++){
 		for(integer_t col=0; col < ncols; col++) {
 			complex_t value = B->aij[row + nrows*col];
-
-			if ( number_IsLessThan( value, __zero ))
-				fprintf(stderr, "%.5f  ", value);
-			else
-				fprintf(stderr, " %.5f  ", value);
+			
+			if ( number_IsLessThan ( value, __zero ) == True ){
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
+			else{
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_" ", value.real, value.imag );
+				#endif
+			}
 		}
 		fprintf(stderr, "\n\t");
 	}
@@ -514,7 +539,7 @@ Bool_t block_AreEqual( block_t* A, block_t* B )
 	{
 		if( number_IsEqual( A->aij[i], B->aij[i]) == False )
 		{
-			fprintf(stderr, "\n%d-th coefficents are not equal", i);
+			fprintf(stderr, "\n"_I_"-th coefficents are not equal", i);
 			return (False);
 		}
 	}
@@ -541,14 +566,19 @@ Bool_t block_AreEqual( block_t* A, block_t* B )
 */
 static Error_t block_Transpose( block_t* B )
 {
-	complex_t *restrict aij = B->aij;
-
 	// TODO omatcopy2 and omatcopy are the out-of-place version of the transpose
 	// matrix operation and seems to achieve much higher throughput. Would be a good
 	// idea testing them.
 	// See "In-place transposition of rectangular matrices on accelerators (H.Whu)"
 
-	mkl_dimatcopy('R', 'T', B->n, B->n, __unit, aij, B->n, B->n );
+	/* transpose the block using mkl_?imatcopy */
+	#ifdef __INTEL_MKL__
+		CALL_LA_KERNEL(mkl_,_PPREF_,imatcopy) ('R', 'T', B->n, B->n, __punit, B->aij, B->n, B->n );
+	#else
+		fprintf(stderr, "%s: NOT IMPLEMENTED\n", __FUNCTION__);
+		abort();
+	#endif
+
 
 	return (SPIKE_SUCCESS);
 };
@@ -595,6 +625,7 @@ block_t* block_ExtractTip ( block_t* B, blocksection_t section, memlayout_t layo
   
   for(integer_t col=0; col < SubBlock->m; col++)
     memcpy((void*) &SubBlock->aij[col * ChunkSize], (const void*) &B->aij[col*B->n + RowOffset], ChunkSize * sizeof(complex_t));
+
 
   /* 
   	central section of the block is never transposed, since it is only

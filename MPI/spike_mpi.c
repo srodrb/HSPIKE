@@ -38,14 +38,10 @@ static void MPI_CheckCall( int err )
 /* -------------------------------------------------------------------- */
 void sendMatrix (matrix_t *Aij, integer_t p){
 	
-	//debug("Sending 5 int to %d", p);
-	MPI_CheckCall(MPI_Ssend(&Aij->n,     5,					   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
-	//debug("Sending %d int to %d",Aij->nnz, p);
-	MPI_CheckCall(MPI_Ssend(Aij->colind, Aij->nnz,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
-	//debug("Sending %d int to %d",Aij->nnz, p);
-	MPI_CheckCall(MPI_Ssend(Aij->rowptr, Aij->n+1,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
-	//debug("Sending %d complex_t to %d",Aij->nnz, p);
-	MPI_CheckCall(MPI_Ssend(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Send(Aij		   , 5,					   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Send(Aij->colind, Aij->nnz,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Send(Aij->rowptr, Aij->n+1,			   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Send(Aij->aij,    Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD));
 };
 
 /* -------------------------------------------------------------------- */
@@ -89,19 +85,16 @@ matrix_t* recvMatrix (integer_t p){
 	
 	int t[5];
 	MPI_Status status;
-	//debug("reciving %d int from %d", 5, p);
+
 	MPI_CheckCall(MPI_Recv(t, 5, MPI_INT, p, 0, MPI_COMM_WORLD, &status));
 
 	matrix_t* Aij = matrix_CreateEmptyMatrix( t[0], t[1] );
-	Aij->ku = t[2];
-	Aij->kl = t[3];
-	Aij->type  = t[4];
+	Aij->ku       = t[2];
+	Aij->kl       = t[3];
+	Aij->type     = t[4];
 	
-	//debug("reciving %d int from %d",Aij->nnz, p);
 	MPI_CheckCall(MPI_Recv(Aij->colind, Aij->nnz, 	           MPI_INT,		   p, 0, MPI_COMM_WORLD, &status));
-	//debug("reciving %d int from %d",Aij->nnz, p);
 	MPI_CheckCall(MPI_Recv(Aij->rowptr, Aij->n+1, 	     	   MPI_INT, 	   p, 0, MPI_COMM_WORLD, &status));
-	//debug("reciving %d Complex_t from %d",Aij->nnz, p);
 	MPI_CheckCall(MPI_Recv(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD, &status));
 
 	return Aij;
@@ -145,7 +138,7 @@ void sendBlock (block_t *b, integer_t p){
 	
 	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
 
-	MPI_CheckCall(MPI_Send(b, 6, MPI_INT, p, 0, MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Send(b, 		6		,   MPI_INT		  , p, 0, MPI_COMM_WORLD));
 	MPI_CheckCall(MPI_Send(b->aij,  sendCount, _MPI_COMPLEX_T_, p, 1, MPI_COMM_WORLD));
 
 }
@@ -164,7 +157,7 @@ void IsendBlock (block_t *b, integer_t p){
 
 }
 
-/* -------------------------------------------------------------------- */
+/* -----------------529--------------------------------------------------- */
 /* .. Function to send block_t to process p, p must recive 
 /* .. this matrix with recvBlock function.
 /* -------------------------------------------------------------------- */
@@ -388,5 +381,5 @@ void my_debug(char *file, integer_t line, const char *func, char *type, const ch
 	fprintf(fp, "\n");
 	va_end(args);
 	
-	fclose (fp);
+	fclose(fp);
 }

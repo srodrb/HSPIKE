@@ -57,7 +57,6 @@ int main(int argc, char *argv[])
 	timer_t start_t, end_t;
 	const integer_t nrhs = 1;
 	Error_t error;
-	char msg[200];
 
 	if(rank == master){
 
@@ -73,21 +72,11 @@ int main(int argc, char *argv[])
 		matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 		// Compute matrix bandwidth
-
 		block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 		block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
-		block_InitializeToValue( x, __zero ); // solution of the system
-		block_InitializeToValue( f, __unit ); // rhs of the system
-
-		#undef _SOLVE_ONLY_WITH_REF_
-		#ifdef _SOLVE_ONLY_WITH_REF_
-			SolveOriginalSystem( A, x, f);
-			matrix_Deallocate( A );
-			block_Deallocate( x );
-			block_Deallocate( f );
-			return 0;
-		#endif
+		block_InitializeToValue( x, __zero  ); // solution of the system
+		block_InitializeToValue( f, __punit ); // rhs of the system
 
 		start_t = GetReferenceTime();
 
@@ -110,7 +99,7 @@ int main(int argc, char *argv[])
 			matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 			sendMatrix(Aij, p+1);
 
-			block_t*  fi  = block_ExtractBlock    ( f, r0, rf );
+			block_t*  fi  = block_ExtractBlock( f, r0, rf );
 			block_t*  yi  = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 			block_SetBandwidthValues( fi, A->ku, A->kl );
 			block_SetBandwidthValues( yi, A->ku, A->kl );
@@ -133,13 +122,13 @@ int main(int argc, char *argv[])
 			if(p == 0){
 				block_t* Vi = block_CreateEmptyBlock ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 				block_t* Bi = matrix_ExtractBlock    ( A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
+				
 				sendBlock(Vi, p+1);
 				sendBlock(Bi, p+1);
-				printf("Sended Block Vi, Bi to %d\n", p+1);
 							
 				block_t* Vit = recvBlock(p+1);
 				block_t* Vib = recvBlock(p+1);
-				printf("Recived Block Vit, Vib from %d\n", p+1);
+
 				matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
 				matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
 
@@ -195,6 +184,7 @@ int main(int argc, char *argv[])
 				block_Deallocate( Wit);
 				block_Deallocate( Wib);
 			}
+			matrix_Deallocate( Aij);
 		}
 		
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -202,7 +192,7 @@ int main(int argc, char *argv[])
 		/* .. Solution of the reduced system.                                   */
 		/* -------------------------------------------------------------------- */
 
-		block_t* yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );  
+		block_t* yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 		fprintf(stderr, "\nSolving reduced linear system\n");
 		system_solve ( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, xr->m);
 		block_Print(yr, "Solucion del sistema reducido");
@@ -225,8 +215,6 @@ int main(int argc, char *argv[])
 			const integer_t rbs = S->r[p];		  		/* reduceed system starting row */
 			const integer_t rbe = S->r[p+1];			/* reduced system ending row    */
 			const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
-
-			debug("p:%d, obs:%d, obe:%d, rbe:%d, rbs:%d ni:%d",p, obs, obe, rbs, rbe, ni);
 
 			/* allocate pardiso configuration parameters */
 			MKL_INT pardiso_conf[64];
@@ -265,14 +253,11 @@ int main(int argc, char *argv[])
 			}
 			xi = recvBlock(p+1);
 			block_AddBlockToRHS(x, xi, obs, obe);
-			//directSolver_CleanUp(NULL,NULL,NULL,NULL,NULL, Aij->n, nrhs, &pardiso_conf);
 			block_Deallocate    ( xi );
 			block_Deallocate 	( fi );
-			//matrix_Deallocate	( Aij);
-
 		}
-		schedule_Destroy  ( S );
-		block_Deallocate  ( yr);
+		schedule_Destroy( S );
+		block_Deallocate( yr);
 	
 		end_t = GetReferenceTime();
 
@@ -290,8 +275,6 @@ int main(int argc, char *argv[])
 		matrix_Deallocate ( A );
 		block_Deallocate  ( x );
 		block_Deallocate  ( f );
-	
-		// directSolver_CleanUp( pardiso_conf );
 
 
 
@@ -301,7 +284,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "\nProgram finished\n");
 	}
 
-	else{
+	else{ //WORKERS
 
 		/* -------------------------------------------------------------------- */
 		/* .. Factorization Phase. */
@@ -320,7 +303,6 @@ int main(int argc, char *argv[])
 		const integer_t rbs = S->r[p];		  		/* reduceed system starting row */
 		const integer_t rbe = S->r[p+1];			/* reduced system ending row    */
 		const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
-		debug("p:%d, obs:%d, obe:%d, rbe:%d, rbs:%d ni:%d",p, obs, obe, rbs, rbe, ni);
 
 		MKL_INT pardiso_conf[64];
 
@@ -362,7 +344,7 @@ int main(int argc, char *argv[])
 			sendBlock(Vit, master);
 			sendBlock(Vib, master);
 
-			block_t* Bib = block_ExtractTip( Bi, _BOTTOM_SECTION_, _ROWMAJOR_ );
+			block_t* Bib = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
 
 			//block_Deallocate( Vi );
 			block_Deallocate( Bi );
@@ -417,7 +399,7 @@ int main(int argc, char *argv[])
 			sendBlock(Wit, master);
 			sendBlock(Wib, master);
 			
-			block_t* Cit = block_ExtractTip(Ci, _TOP_SECTION_, _ROWMAJOR_ );			
+			block_t* Cit = block_ExtractTip(Ci, _TOP_SECTION_, _COLMAJOR_ );			
 		
 			block_Deallocate( Ci );
 			block_Deallocate( Wi );
@@ -463,7 +445,7 @@ int main(int argc, char *argv[])
 			sendBlock(Vit, master);
 			sendBlock(Vib, master);
 
-			block_t* Bib = block_ExtractTip( Bi, _BOTTOM_SECTION_, _ROWMAJOR_ );
+			block_t* Bib = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
 
 			block_Deallocate( Bi );
 			block_Deallocate( Vi );
@@ -479,7 +461,7 @@ int main(int argc, char *argv[])
 			sendBlock(Wit, master);
 			sendBlock(Wib, master);
 			
-			block_t* Cit = block_ExtractTip(Ci, _TOP_SECTION_, _ROWMAJOR_ );
+			block_t* Cit = block_ExtractTip(Ci, _TOP_SECTION_, _COLMAJOR_ );
 			
 			block_Deallocate( Ci );
 			block_Deallocate( Wi );
@@ -537,11 +519,12 @@ int main(int argc, char *argv[])
 			block_Deallocate ( fi );
 		
 		}
-
-		matrix_Deallocate	( Aij);	
+		schedule_Destroy  ( S );
 		directSolver_CleanUp(NULL, NULL, NULL, NULL, NULL, Aij->n, nrhs, &pardiso_conf);
-
+		matrix_Deallocate(Aij);	
+		
 	}
+	debug("Rank %d Finished!\n", rank);
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
 	return 0;

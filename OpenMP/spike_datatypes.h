@@ -8,7 +8,7 @@
  *        Version:  1.0
  *        Created:  21/06/16 10:35:01
  *       Revision:  none
- *       Compiler:  icc
+ *       Compiler:  icc / gcc
  *
  *         Author:  Samuel Rodriguez Bernabeu
  *   Organization:  Barcelona Supercomputing Center
@@ -29,42 +29,58 @@
 
 #if defined (_DATATYPE_Z_) // double complex
 	#define _COMPLEX_ARITHMETIC_
+
 	typedef double   real_t;
 
 	typedef struct {
-		real_t real;
-		real_t imag;
+		double real;
+		double imag;
 	} complex_number;
 
 	typedef complex_number   complex_t;
 
 	#define F "%.3lf %.3lf"
+	/* ensure compatibility with Intel's MKL library */
+	/* https://software.intel.com/en-us/node/528405  */
+	#define MKL_Complex16 complex_t
 
+	#define _F_ 		"%.3lf"
+	#define _PPREF_		z
+ 
 #elif defined (_DATATYPE_C_) // complex float
 	#define _COMPLEX_ARITHMETIC_
 
 	typedef float   real_t;
 
 	typedef struct {
-		real_t real;
-		real_t imag;
+		float real;
+		float imag;
 	} complex_number;
 
 	typedef complex_number   complex_t;
 
 	#define F "%.3f %.3f"
+	/* ensure compatibility with Intel's MKL library */
+	/* https://software.intel.com/en-us/node/528405  */
+	#define MKL_Complex8 complex_t
+
+	#define _F_			"%.3f"
+	#define _PPREF_		c
 
 #elif defined (_DATATYPE_D_) // double precision float
 	typedef double   real_t;
 	typedef double   complex_t;
 
-	#define F "%.3lf"
+	#define _F_ "%.3lf"
+	#define _PPREF_		d
 
 #else // single precision float
 	typedef float   real_t;
 	typedef float   complex_t;
 
-	#define F "%.3f"
+	#define _F_ 		"%.3f"
+	#define _PPREF_		s
+
 
 #endif
 
@@ -73,10 +89,15 @@
 	typedef int      Bool_t;
 	typedef double   timer_t;
 
-	#define I "%d"
+	#define _I_ "%d"
 
-	extern const complex_t __unit;
-	extern const complex_t __zero;
+	#if defined (_MPI_SUPPORT_)
+		#define _MPI_INTEGER_T_  MPI_INT
+	#endif
+
+	extern const complex_t __nunit; /* negative unit */
+	extern const complex_t __punit; /* positive unit */
+	extern const complex_t __zero;  
 
 	extern const Bool_t True;
 	extern const Bool_t False;

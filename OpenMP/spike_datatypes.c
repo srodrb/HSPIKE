@@ -26,18 +26,20 @@
 
 #if defined (_DATATYPE_Z_) || defined (_DATATYPE_C_)
   /* complex arithmetic */
-  const complex_t __unit = (complex_t) {1.0, 1.0};
-  const complex_t __zero = (complex_t) {0.0, 0.0};
+  const complex_t __nunit = (complex_t) {-1.f,  0.f};
+  const complex_t __punit = (complex_t) { 1.f,  0.f};
+  const complex_t __zero  = (complex_t) { 0.f,  0.f};
 
 #else
   /* real arithmetic */
-  const complex_t __unit = (complex_t) 1.0;
-  const complex_t __zero = (complex_t) 0.0;
+  const complex_t __nunit = (complex_t) -1.f;
+  const complex_t __punit = (complex_t)  1.f;
+  const complex_t __zero  = (complex_t)  0.f;
 
 #endif
 
-const Bool_t True  = 1;
-const Bool_t False = 0;
+const Bool_t  True          = 1;
+const Bool_t  False         = 0;
 const Error_t SPIKE_SUCCESS = 1;
 
 Bool_t number_IsLessThan( complex_t a, complex_t b )

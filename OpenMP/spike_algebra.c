@@ -56,8 +56,6 @@ Error_t matrix_ComputeBandwidth(const integer_t n,
 	*ku = abs(*ku);
 	*kl = abs(*kl);
 
-	fprintf(stderr,"\nBandwitdh computed: (upper,lower) (%d,%d)\n", *ku, *kl);
-
 	return (SPIKE_SUCCESS);
 };
 
@@ -82,22 +80,22 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	complex_t *Ax = (complex_t*) spike_malloc( ALIGN_COMPLEX, n, sizeof(complex_t));
 
 	for( integer_t rhs = 0; rhs < nrhs; rhs++){
-		fprintf(stderr, "\n\tProcessing residual for %dth RHS vector", rhs + 1);
+		fprintf(stderr, "\n\tProcessing residual for "_I_"-th RHS vector", rhs + 1);
 
 		// set vector to zero
 		memset((void*) Ax, 0, n * sizeof(complex_t));
 
-		/* compute Ax - b */
-		mkl_cspblas_dcsrgemv ( "N", &n, aij, rowptr, colind, &x[rhs * n], Ax);
+		/* compute Ax - b using mkl_cspblas_?csrgemv*/
+		CALL_LA_KERNEL(mkl_cspblas_,_PPREF_,csrgemv) ("N", &n, aij, rowptr, colind, &x[rhs * n], Ax);
+		
+		/* compute norm of b using cblas_?nrm2*/
+		bnorm = nrm2(n, &b[rhs * n], 1 );
 
-		/* compute norm of b */
-		bnorm = cblas_dnrm2( n, &b[rhs * n], 1 );
-
-		///* subtracts b to Ax */
-		cblas_daxpy( n, -1.0 , &b[rhs * n], 1, Ax, 1 );
+		///* subtracts b to Ax using cblas_?axpy */
+		axpy(n, __nunit , &b[rhs * n], 1, Ax, 1 );
 
 		///* compute the norm of Ax - b */
-		absres = cblas_dnrm2( n, Ax, 1 );
+		absres = nrm2( n, Ax, 1 );
 
 
 		fprintf(stderr, "\n\t\tNorm of rhs vector                    %E", bnorm);
@@ -133,12 +131,12 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	timer_t factor_t;
 	timer_t solve_t;
 
-	MKL_INT mtype = 11;       /* Real unsymmetric matrix */
-	void *pt[64];       /* Pardiso control parameters. */
-	MKL_INT iparm[64]; /* Pardiso control parameters. */
+	MKL_INT mtype = MTYPE_GEN_NOSYMM;  	/* Real unsymmetric matrix */
+	void *pt[64];       				/* Pardiso control parameters. */
+	MKL_INT iparm[64]; 					/* Pardiso control parameters. */
 	MKL_INT maxfct, mnum, phase, error, msglvl;
-	double ddum;          /* Double dummy */
-	MKL_INT idum;         /* Integer dummy. */
+	double ddum;          				/* Double dummy */
+	MKL_INT idum;         				/* Integer dummy. */
 
 	/* -------------------------------------------------------------------- */
 	/* .. Setup Pardiso control parameters. */
@@ -282,11 +280,11 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	timer_t ordering_t;
 	timer_t factor_t;
 
-	MKL_INT mtype = 11;       	/* Real unsymmetric matrix */
-	MKL_INT iparm[64]; 			/* Pardiso control parameters. */
+	MKL_INT mtype = MTYPE_GEN_NOSYMM;       	/* Real unsymmetric matrix */
+	MKL_INT iparm[64]; 							/* Pardiso control parameters. */
 	MKL_INT maxfct, mnum, phase, error, msglvl;
-	double ddum;          		/* Double dummy */
-	MKL_INT idum;         		/* Integer dummy. */
+	double ddum;          						/* Double dummy */
+	MKL_INT idum;         						/* Integer dummy. */
 
 	/* -------------------------------------------------------------------- */
 	/* .. Setup Pardiso control parameters. */
@@ -389,7 +387,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	timer_t start_t;
 	timer_t solve_t;
 
-	MKL_INT mtype = 11;  /* Real unsymmetric matrix */
+	MKL_INT mtype = MTYPE_GEN_NOSYMM;  /* Real unsymmetric matrix */
 	MKL_INT maxfct, mnum, phase, error, msglvl;
 	MKL_INT iparm[64]; /* Pardiso control parameters. */
 	double ddum;          /* Double dummy */
@@ -406,7 +404,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 	iparm[4]  =  0;    /* No user fill-in reducing permutation */
 	iparm[5]  =  0;    /* Write solution into x */
 	iparm[6]  =  0;    /* Not in use */
-	iparm[7]  =  2;    /* Max numbers of iterative refinement steps */
+	iparm[7]  =  3;    /* Max numbers of iterative refinement steps */
 	iparm[8]  =  0;    /* Not in use */
 	iparm[9]  = 13;    /* Perturb the pivot elements with 1E-13 */
 	iparm[10] =  1;    /* Use nonsymmetric permutation and scaling MPS */
@@ -470,7 +468,7 @@ Error_t directSolver_CleanUp(integer_t *restrict colind, // ja
 /* -------------------------------------------------------------------- */
 /* .. Local variables. */
 /* -------------------------------------------------------------------- */
-	MKL_INT mtype = 11;       /* Real unsymmetric matrix */
+	MKL_INT mtype = MTYPE_GEN_NOSYMM;       /* Real unsymmetric matrix */
 	MKL_INT iparm[64]; /* Pardiso control parameters. */
 	MKL_INT maxfct, mnum, phase, error, msglvl;
 	double ddum;          /* Double dummy */
@@ -499,4 +497,97 @@ void symbolic_factorization ( void )
 Error_t spmv( const integer_t n, const integer_t m, complex_t* aij, integer_t *colind, integer_t *rowptr, complex_t *x, complex_t *b)
 {
 
+};
+
+/*
+	Performs general matrix-matrix multiplication.
+ */
+Error_t gemm   (const memlayout_t layout, 
+				const transpose_t transpose_a, 
+				const transpose_t transpose_b, 
+				const integer_t m, 
+				const integer_t n, 
+				const integer_t k,
+				const complex_t alpha,
+				complex_t *restrict a,
+				const integer_t lda,
+				complex_t *restrict b,
+				const integer_t ldb,
+				const complex_t beta,
+				complex_t *restrict c,
+				const integer_t ldc)
+{
+	/* Intel's MKL back-end */
+
+	#ifndef _COMPLEX_ARITHMETIC_
+
+		CBLAS_LAYOUT Layout = (layout      == _ROWMAJOR_ ) ? CblasRowMajor : CblasColMajor;
+		CBLAS_LAYOUT transa = (transpose_a == _TRANSPOSE_) ? CblasTrans    : CblasNoTrans;
+		CBLAS_LAYOUT transb = (transpose_b == _TRANSPOSE_) ? CblasTrans    : CblasNoTrans;
+
+		CALL_LA_KERNEL(cblas_,_PPREF_,gemm)( Layout, transa, transb,
+			m,    						/* m - number of rows of A    */
+			n, 							/* n - number of columns of B */
+			k,    						/* k - number of columns of A */
+			alpha,						/* alpha                      */
+			a, 							/* A block                    */
+			lda,    					/* lda - first dimension of A */
+			b, 							/* B block                    */
+			ldb,    					/* ldb - first dimension of B */
+			beta,	 					/* beta                       */
+			c,							/* C block                    */
+			ldc );		 				/* ldc - first dimension of C */
+
+	#else
+		CBLAS_LAYOUT Layout = (layout      == _ROWMAJOR_ ) ? CblasRowMajor : CblasColMajor;
+		CBLAS_LAYOUT transa = (transpose_a == _TRANSPOSE_) ? CblasTrans    : CblasNoTrans;
+		CBLAS_LAYOUT transb = (transpose_b == _TRANSPOSE_) ? CblasTrans    : CblasNoTrans;
+
+		/* check for conjugate tranpose case: */
+		transa = (transpose_a == _CONJTRANSPOSE_) ? CblasConjTrans    : CblasNoTrans;
+		transb = (transpose_b == _CONJTRANSPOSE_) ? CblasConjTrans    : CblasNoTrans;
+
+		CALL_LA_KERNEL(cblas_,_PPREF_,gemm)( Layout, transa, transb,
+			m,    						/* m - number of rows of A    */
+			n, 							/* n - number of columns of B */
+			k,    						/* k - number of columns of A */
+			(const void*) &alpha,		/* alpha                      */
+			a, 							/* A block                    */
+			lda,    					/* lda - first dimension of A */
+			b, 							/* B block                    */
+			ldb,    					/* ldb - first dimension of B */
+			(const void*) &beta,	 	/* beta                       */
+			c,							/* C block                    */
+			ldc );		 				/* ldc - first dimension of C */
+
+	#endif
+}
+
+real_t nrm2(const integer_t n, complex_t *restrict x, const integer_t incx)
+{
+	real_t norm = 0.0;
+
+	#if defined (_DATATYPE_Z_) // double complex
+		norm = cblas_dznrm2 (n, (const void*) x, incx);
+	 
+	#elif defined (_DATATYPE_C_) // complex float
+		norm = cblas_scnrm2 (n, (const void*) x, incx);
+
+	#elif defined (_DATATYPE_D_) // double precision float
+		norm = cblas_dnrm2 (n, (const double*) x, incx);
+
+	#else // single precision float
+		norm = cblas_snrm2 (n, (const float*) x, incx);
+	#endif
+
+	return (norm);
+};
+
+Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, const integer_t incx, complex_t *restrict y, const integer_t incy)
+{
+	#ifndef _COMPLEX_ARITHMETIC_
+		CALL_LA_KERNEL(cblas_,_PPREF_,axpy) (n, alpha, x, incx, y, incy);
+	#else
+		CALL_LA_KERNEL(cblas_,_PPREF_,axpy) (n, (const void*) &alpha, (const void*) x, incx, (void*) y, incy);
+	#endif
 };

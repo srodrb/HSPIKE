@@ -434,20 +434,44 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
 
     return (x, total_nnz)
 
-def create_pentadiagonal(n):
+def create_pentadiagonal(n, precision):
     '''
     Crea un sistema tridiagonal de dimension N
     '''
     np.random.seed(314) # try to make it reproducible
 
+    if precision == 'float':
+        print 'Populating sparse matrix with real numbers'
 
-    A = sparse.diags(np.random.rand(n) +1.0, 0) + \
-        sparse.diags(np.random.rand(n-1), 1) + \
-        sparse.diags(np.random.rand(n-1),-1) + \
-        sparse.diags(np.random.rand(n-2), 2) + \
-        sparse.diags(np.random.rand(n-2),-2)
+        A = sparse.diags(np.random.rand(n) +1.0, 0) + \
+            sparse.diags(np.random.rand(n-1), 1) + \
+            sparse.diags(np.random.rand(n-1),-1) + \
+            sparse.diags(np.random.rand(n-2), 2) + \
+            sparse.diags(np.random.rand(n-2),-2)
+
+    else:
+        print 'Populating sparse matrix with complex numbers'
+
+        d0 = np.random.rand(n)   + 1j * np.random.rand(n)
+        d1 = np.random.rand(n-1) + 1j * np.random.rand(n-1)
+        d2 = np.random.rand(n-1) + 1j * np.random.rand(n-1)
+        d3 = np.random.rand(n-2) + 1j * np.random.rand(n-2)
+        d4 = np.random.rand(n-2) + 1j * np.random.rand(n-2)
+
+        A = sparse.diags( d0, 0) + \
+            sparse.diags( d1, 1) + \
+            sparse.diags( d2,-1) + \
+            sparse.diags( d3, 2) + \
+            sparse.diags( d4,-2)
+
+    print 'Datatype: ', type(A.data[0])
+
+    if n < 20:
+        print A.todense()
 
     A = A.tocsr()
+
+
 
     # create rhs
     # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
@@ -563,6 +587,9 @@ if __name__ == '__main__':
     print 'SPIKE solver'
     np.set_printoptions(precision=5, threshold=300, linewidth=300)
 
+    # determine data type (real, complex..)
+    precision = np.complex128
+
     # generamos la semilla del generador de numeros aleatorios
     np.random.seed(314)
 
@@ -571,15 +598,15 @@ if __name__ == '__main__':
     N = 15
 
     #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
-    A = create_pentadiagonal(N)
-    export_csr2bin( A, "../Tests/spike/penta_15.bin")
+    A = create_pentadiagonal(N, precision)
+    export_csr2bin( A, "../Tests/spike/penta_15.z")
 
     nrhs = 2
 
     print 'dim(A) %d, (ku,kl) = (%d,%d) processes %d' % (A.shape[0], 2, 2, p)
 
     # b = np.random.rand(N*nrhs).reshape(N, nrhs)
-    b = np.ones(N*nrhs).reshape(N, nrhs)
+    b = np.ones(N*nrhs, dtype=precision).reshape(N, nrhs)
     b_superlu = b.copy()
     b_spike = b.copy()
 
