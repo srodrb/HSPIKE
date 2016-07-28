@@ -111,9 +111,8 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 		block_t*  fi  = block_ExtractBlock    ( f, r0, rf );
 		block_t*  yi  = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
-		block_SetBandwidthValues( fi, A->ku, A->kl );
-		block_SetBandwidthValues( yi, A->ku, A->kl );
-
+		block_SetBandwidthValues( fi, S->ku[p], S->kl[p] );
+		block_SetBandwidthValues( yi, S->ku[p], S->kl[p] );
 		/* solve the system for the RHS value */
 		directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, yi->aij, fi->aij, Aij->n, nrhs, &pardiso_conf );
 
@@ -376,8 +375,9 @@ int main(int argc, const char *argv[])
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
 	const integer_t nrhs = 2;
-	matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.z");
-	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.z");
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
+	 matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	// matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
@@ -397,6 +397,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
 	SolveOriginalSystem( A, x, f);
+	block_Print(x, "Solucion del sistema reducido");
 
 
 	/* -------------------------------------------------------------------- */

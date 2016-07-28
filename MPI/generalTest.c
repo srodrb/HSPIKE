@@ -139,14 +139,14 @@ int main(int argc, char *argv[])
 
 			matrix_t* Aij2 = matrix_ExtractMatrix(A, r0, rf, r0, rf);
 			
-			sendMatrixPacked(Aij2, p+1);
-			matrix_t* test2 = recvMatrixPacked(p+1);
+			sendMatrixPacked(Aij2, p+1, 0);
+			matrix_t* test2 = recvMatrixPacked(p+1, 0);
 		
 			if(matrix_AreEqual (test2, Aij2))printf("TEST send Matrix Packed: \t%d PASSED\n", p+1);
 			matrix_Deallocate(Aij2);
 
 		}
-
+		/*
 		for(integer_t p=0; p<schedule->p; p++){
 
 			r0 = schedule->n[p];
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 			matrix_Deallocate(Aij3);
 
 		}
-
+		*/
 		//Block Test
 		for(integer_t p=0; p<schedule->p; p++){
 			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
@@ -189,10 +189,10 @@ int main(int argc, char *argv[])
 		//Matrix Testing
 		matrix_t* Aij = recvMatrix(master);
 		sendMatrix(Aij, master);
-		Aij = recvMatrixPacked(master);
-		sendMatrixPacked(Aij, master);
-		Aij = recvMatrix(master);
-		IsendMatrix(Aij, master);
+		Aij = recvMatrixPacked(master, 0);
+		sendMatrixPacked(Aij, master, 0);
+		//Aij = recvMatrix(master);
+		//IsendMatrix(Aij, master);
 		matrix_Deallocate(Aij);
 
 		//Block Testing

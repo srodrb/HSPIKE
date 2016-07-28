@@ -62,8 +62,9 @@ void IsendMatrix (matrix_t *Aij, integer_t p){
 /* .. Function to send packed matrix_t to process p, p must recive 
 /* .. this matrix with recvMatrix function.
 /* -------------------------------------------------------------------- */
-void sendMatrixPacked (matrix_t *Aij, integer_t p){
+void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 
+	MPI_Request request;	
 	integer_t position = 0, i;
 	integer_t buffSize = (Aij->n+1 + Aij->nnz + 5)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t);
 	char *buff = (char*) malloc(buffSize*sizeof(char));
@@ -74,7 +75,7 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p){
 	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
 	debug("Values: %d, %d, %d, %d, %d, buffSize: %d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type, buffSize);
 
-	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
+	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
 };
 
 /* -------------------------------------------------------------------- */
@@ -104,19 +105,18 @@ matrix_t* recvMatrix (integer_t p){
 /* .. Function for recive matrix_t from process p, p must send 
 /* .. this matrix with sendMatrix function.
 /* -------------------------------------------------------------------- */
-matrix_t* recvMatrixPacked (integer_t p){
+matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	
 	integer_t buffSize = 0, position = 0, i;
 	MPI_Status  status;
 	integer_t t[5];
 
-	MPI_Probe(p, 0, MPI_COMM_WORLD, &status);
+	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
 	char* buff = (char*)malloc(sizeof(char) * buffSize);
 
-	MPI_Recv(buff, buffSize, MPI_PACKED, p, 0, MPI_COMM_WORLD, &status);
+	MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status);
 	MPI_Unpack(buff, buffSize, &position, t, 5, MPI_INT, MPI_COMM_WORLD);
-	debug("Values: %d, %d, %d, %d, %d, buffSize: %d", t[0], t[1], t[2], t[3], t[4], buffSize);
 
 	matrix_t* Aij = matrix_CreateEmptyMatrix( t[0], t[1] );
 	Aij->ku = t[2];
@@ -161,8 +161,9 @@ void IsendBlock (block_t *b, integer_t p){
 /* .. Function to send block_t to process p, p must recive 
 /* .. this matrix with recvBlock function.
 /* -------------------------------------------------------------------- */
-void sendBlockPacked (block_t *b, integer_t p){
+void sendBlockPacked (block_t *b, integer_t p, integer_t tag){
 	
+	MPI_Request request;	
 	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
 	integer_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
 	char *buff = (char*) malloc(buffSize*sizeof(char));
@@ -171,7 +172,7 @@ void sendBlockPacked (block_t *b, integer_t p){
 	MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
-	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
+	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
 }
 
 /* -------------------------------------------------------------------- */
@@ -197,17 +198,17 @@ block_t* recvBlock (integer_t p){
 /* .. Function for recive block_t from process p, p must send 
 /* .. this block with sendBlock function.
 /* -------------------------------------------------------------------- */
-block_t* recvBlockPacked (integer_t p){
+block_t* recvBlockPacked (integer_t p, integer_t tag){
 
 	integer_t buffSize=0, position = 0;
 	MPI_Status  status;
 	integer_t t[6];
 
-	MPI_Probe(p, 0, MPI_COMM_WORLD, &status);
+	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
 	char* buff = (char*)malloc(sizeof(char) * buffSize);
 
-	MPI_Recv(buff, buffSize, MPI_PACKED, p, 0, MPI_COMM_WORLD, &status);
+	MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status);
 
 	MPI_Unpack(buff, buffSize, &position, t, 6, MPI_INT, MPI_COMM_WORLD);
 
@@ -251,7 +252,6 @@ matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, inte
 		free( buff );
 	}
 
-	
 	return R;
 }
 
