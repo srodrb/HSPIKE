@@ -266,16 +266,24 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
             Ai.append(sla.splu(A[bs:be, bs:be], permc_spec=permc_spec))
             end_t = timer()
 
-            print 'Factorization time for the %d-th block %.5f' % (p, end_t - start_t)
+            print 'Factorization time for the %d-th block %.5fs' % (p, end_t - start_t)
 
             # get the number of nnz
             total_nnz = total_nnz + (Ai[p].nnz - blockdim)
 
             # Resolvemos y copiamos para y
+            start_t = timer()
             y[bs:be, :] = Ai[p].solve(f[bs:be, :])
+            end_t = timer()
+
+            print '\tSolve time for the f block %.5f s' %(end_t - start_t)
 
             # Resolvemos para B->V
+            start_t = timer()
             V = Ai[p].solve(A[bs:be, be:be+ku].todense())
+            end_t = timer()
+
+            print '\tSolve time for the V block %.5f s' %(end_t - start_t)
 
             # Ensamblamos V en el sistema reducido
             R[rs:rs+ku, re:re+ku] = V[0:ku, :]
@@ -337,12 +345,6 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
     xred = lu.solve(yr)
     end_t = timer()
     print 'Factorization and solve time for the reduced system %.5f' % (end_t - start_t)
-    
-    print 'RHS of the reduced system'
-    print yr
-
-    print 'Solution of the reduced system'
-    print xred
 
 
     # -------------------------------------------- Back assembly stage
@@ -377,40 +379,25 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
             re = rs + subblockdim  # reduced system ending point
 
             if p is 0:
+
                 fl = f[bs:be, :].copy()
                 fl[blockdim-kl:blockdim, :] -= A[be-kl:be, be:be+ku].dot(x[be:be+ku, :])
 
-                print 'Bi block'
-                print A[be-kl:be, be:be+ku].todense()
-
-                print 'x2 top'
-                print x[be:be+ku, :]
-
-                print 'fi (i=0 block'
-                print fl
-
                 x[bs+ku:be-kl, :] = Ai[p].solve(fl)[ku:blockdim-kl, :]
-
-                print 'Solution of the sub-block'
-                print x[bs:be, :]
 
             elif p is (partitions - 1):
+
                 fl = f[bs:be, :].copy()
                 fl[0:ku, :] -= A[bs:bs+kl, bs-kl:bs].dot(x[bs-kl:bs, :])
 
                 x[bs+ku:be-kl, :] = Ai[p].solve(fl)[ku:blockdim-kl, :]
-
-                print 'Solution of the last sub-block'
-                print x[bs:be, :]
             else:
+
                 fl = f[bs:be, :].copy()
                 fl[blockdim-kl:blockdim, :] -= A[be-kl:be, be:be+ku].dot(x[be:be+ku, :])
                 fl[0:ku, :] -= A[bs:bs+kl, bs-kl:bs].dot(x[bs-kl:bs, :])
 
                 x[bs+ku:be-kl, :] = Ai[p].solve(fl)[ku:blockdim-kl, :]
-
-                print 'Solution of the central sub-block'
-                print x[bs:be, :]
 
     else:
         for p in range(partitions):
@@ -440,7 +427,7 @@ def create_pentadiagonal(n, precision):
     '''
     np.random.seed(314) # try to make it reproducible
 
-    if precision == 'float':
+    if precision == np.float64:
         print 'Populating sparse matrix with real numbers'
 
         A = sparse.diags(np.random.rand(n) +1.0, 0) + \
@@ -588,20 +575,20 @@ if __name__ == '__main__':
     np.set_printoptions(precision=5, threshold=300, linewidth=300)
 
     # determine data type (real, complex..)
-    precision = np.complex128
+    precision = np.float64
 
     # generamos la semilla del generador de numeros aleatorios
     np.random.seed(314)
 
     # numero de particiones empleadas en el primer nivel
-    p = 3
-    N = 15
+    p = 10
+    N = 1e7
 
     #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
     A = create_pentadiagonal(N, precision)
-    export_csr2bin( A, "../Tests/spike/penta_15.z")
+    export_csr2bin( A, "../Tests/spike/penta_10e6.d")
 
-    nrhs = 2
+    nrhs = 1
 
     print 'dim(A) %d, (ku,kl) = (%d,%d) processes %d' % (A.shape[0], 2, 2, p)
 

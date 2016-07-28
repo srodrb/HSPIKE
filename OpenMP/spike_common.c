@@ -71,12 +71,12 @@ void spike_fread( void* ptr, size_t size, size_t nmemb, FILE* stream)
 	}
 };
 
-timer_t GetReferenceTime(void)
+spike_timer_t GetReferenceTime(void)
 {
-	timer_t tseconds = 0.0;
+	spike_timer_t tseconds = 0.0;
 	struct timeval mytime;
 	gettimeofday( &mytime, (struct timezone*) 0);
-	tseconds = (timer_t) (mytime.tv_sec + mytime.tv_usec * 1.0e-6);
+	tseconds = (spike_timer_t) (mytime.tv_sec + mytime.tv_usec * 1.0e-6);
 	return (tseconds);
 };
 

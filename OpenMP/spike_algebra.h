@@ -23,11 +23,16 @@
  	#include "spike_common.h"
  	#include "spike_memory.h"
 
+ 	/* superlu interface */
+ 	#include "slu_mt_ddefs.h"
+ 	#include "slu_mt_util.h"
+
+ 	/* INTEL MKL interface */
 	#include "mkl_pardiso.h"
 	#include "mkl_types.h"
 	#include "mkl_spblas.h"
  	#include "mkl.h"
- 	#include "mkl_cblas.h"
+	#include "mkl_cblas.h"
 
  	/*
  		Depending on the back-end, the nature of the coeffient matrix is specified
@@ -43,13 +48,41 @@
 			#define MTYPE_SYMM_INDEF   -2	/* Real and symmetric indefinite           	*/
 			#define MTYPE_GEN_NOSYMM   11	/* Real and nonsymmetric matrix 			*/
 		#else
-			#define MTYPE_STRUC_SYMM   3	/* Complex and structurally symmetric      	*/
-			#define MTYPE_HERM_POSDEF  4	/* Complex and Hermitian positive definite 	*/
-			#define MTYPE_HERM_INDEF  -4	/* Complex and Hermitian indefinite 		*/
-			#define MTYPE_SYMM         6	/* Complex and symmetric matrix 			*/
-			#define MTYPE_GEN_NOSYMM  13	/* Complex and nonsymmetric matrix 			*/
+			#define MTYPE_STRUC_SYMM    3	/* Complex and structurally symmetric      	*/
+			#define MTYPE_HERM_POSDEF   4	/* Complex and Hermitian positive definite 	*/
+			#define MTYPE_HERM_INDEF   -4	/* Complex and Hermitian indefinite 		*/
+			#define MTYPE_SYMM          6	/* Complex and symmetric matrix 			*/
+			#define MTYPE_GEN_NOSYMM   13	/* Complex and nonsymmetric matrix 			*/
 	 	#endif
  	#endif
+
+
+ 	typedef enum {
+ 		
+		integer_t 				nprocs;
+		superlumt_options_t 	*superlumt_options;
+		
+		SuperMatrix 			*A; 
+		SuperMatrix 			*L;
+		SuperMatrix 			*U;
+		SuperMatrix 			*B;
+		SuperMatrix 			*X;
+
+		integer_t 				*perm_c;
+		integer_t 				*perm_r;
+		real_t 					*R;
+		real_t 					*C;
+
+		equed_t   				*equed;		
+		real_t 					*recip_pivot_growth, 
+		real_t 					*rcond;
+		real_t 					*ferr;
+		real_t 					*berr; 
+		
+		superlu_memusage_t 		*superlu_memusage;
+		integer_t 				*info;
+
+ 	} solver_handler_t;
 
 
  	/*
@@ -181,5 +214,13 @@
 
 	Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, const integer_t incx, complex_t *restrict y, const integer_t incy);
 
+void superlu_solve (const integer_t n, 
+                    const integer_t nnz,
+                    const integer_t nrhs,
+                    integer_t *restrict colind,
+                    integer_t *restrict rowptr,
+                    complex_t *restrict aij,
+                    complex_t *restrict x,
+                    complex_t *restrict b);
 
 #endif /* end of _SPIKE_ALGEBRA_H_ definition */

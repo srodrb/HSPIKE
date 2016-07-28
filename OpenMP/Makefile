@@ -2,10 +2,17 @@ COMPILER=INTEL
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
-	CFLAGS  =-qopenmp -std=c99 -g -O2 -restrict
+	CFLAGS  =-qopenmp -std=c99 -g -O3 -restrict
 	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CINCS   =-I${MKLROOT}/include
+
+	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt
+	CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT/lib -lsuperlu_mt_openmp
+	CINCS   +=-I/home/srodrigu/Software/SuperLU_MT/SRC
+
+	#CLIBS = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm -ldl
+	#CINCS = -qopenmp -I${MKLROOT}/include
 else
 	CC      =gcc
 	CFLAGS  =-std=c99 -g -O2
@@ -13,22 +20,28 @@ else
 	CINCS   =
 endif
 
-#DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_
-DEFINES =-D_DATATYPE_Z_ -D_ENABLE_TESTING_
+DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_
+#DEFINES =-D_DATATYPE_Z_ -D_ENABLE_TESTING_
 
 TARTGET=main
 
-OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
-			 spike_algebra.o spike_analysis.o spike_common.o
+OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
+		spike_algebra.o spike_analysis.o spike_common.o \
+		spike_interfaces.o
 
-main: main.o $(OBJS) spike.a
-	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) spike.a
+LIBSPIKE = libspike.a
+
+all:main libspike.a tests
+
+main: main.o $(LIBSPIKE)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
 
 main.o:main.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
-spike.a:spike_interfaces.o
-	ar rcs $@ $+
+libspike.a:$(OBJS)
+	ar rc $@ $+
+	ranlib libspike.a
 
 spike_interfaces.o:spike_interfaces.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
@@ -50,6 +63,28 @@ spike_analysis.o:spike_analysis.c
 
 spike_common.o:spike_common.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
+
+# Compile different tests
+tests:innersolver superlu_test
+
+# inner solver solution test for small matrix
+innersolver: innersolvercheck.o $(OBJS) $(LIBSPIKE)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
+
+innersolvercheck.o: innersolvercheck.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
+# inner solver solution test for small matrix
+superlu_test: superlu_test.o $(OBJS) $(LIBSPIKE)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
+
+superlu_test.o: superlu_test.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
 
 
 
@@ -103,4 +138,4 @@ run:
 	./main
 
 clean:
-	rm -r $(TARGET) *.o
+	rm -r main libspike.a *.o

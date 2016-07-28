@@ -9,7 +9,7 @@
 							float     *restrict xij,
 							float     *restrict bij)
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 
@@ -22,7 +22,7 @@
 							double     *restrict xij,
 							double     *restrict bij)
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 
@@ -35,7 +35,7 @@
 							complex8  *restrict xij,
 							complex8  *restrict bij)
 {
-
+	return (SPIKE_SUCCESS);
 };
 
 
@@ -49,18 +49,27 @@
 							complex16 *restrict xij,
 							complex16 *restrict bij)
 {
+	// /gpfs/scratch/bsc21/bsc21253/tests/POC_FMD_3D_MZANZI_003/exec_input>
+	// /gpfs/scratch/bsc21/bsc21225/BSITLocal/trunk/system/main/kernel/bin/em.iso.gp.fm kernel.fm.prm.freq0.05Hz.000001
+	
+	fprintf(stderr, "\n  SPIKE direct-direct solver\n");
+	/* non-buffering std error */
+	// setvbuf(stderr, NULL, _IONBF, 0);
+
 	/* -------------------------------------------------------------------- */
 	/* .. Initialize internal structures with external data               . */
 	/* -------------------------------------------------------------------- */
-	matrix_t *A = matrix_CreateFromComponents (n, nnz, colind, rowptr, aij );
-	block_t  *x = block_CreateFromComponents  (n, nrhs, xij );
-	block_t  *f = block_CreateFromComponents  (n, nrhs, bij );
+	matrix_t *A = matrix_CreateFromComponents (n, nnz, colind, rowptr, (complex_t *restrict) aij );
+	block_t  *x = block_CreateFromComponents  (n, nrhs, (complex_t *restrict) xij );
+	block_t  *f = block_CreateFromComponents  (n, nrhs, (complex_t *restrict) bij );
+
+	fprintf(stderr, "\nCreated internal data structures\n");
 
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables.                                                  */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t end_t;
+	spike_timer_t start_t;
+	spike_timer_t end_t;
 
 	sm_schedule_t *S;
 
@@ -73,11 +82,13 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 3 );
+	S = spike_solve_analysis( A, nrhs, 20 );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
+	fprintf(stderr, "\nCreated reduced system matrix\n");
 	xr = block_CreateReducedRHS( S->p, S->ku, S->kl, nrhs );
+	fprintf(stderr, "\nCreated reduced system RHS\n");
 
 
 	/* -------------------------------------------------------------------- */

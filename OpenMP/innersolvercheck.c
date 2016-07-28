@@ -16,7 +16,7 @@
  * =====================================================================================
  */
 
-#include "spike_analysis.h"
+#include "spike_interfaces.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,8 +62,8 @@ int main(int argc, const char *argv[])
 	block_t*  x1 = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  b1 = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
-	block_InitializeToValue( x1, __zero ); // solution of the system
-	block_InitializeToValue( b1, __unit ); // rhs of the system
+	block_InitializeToValue( x1, __zero  ); // solution of the system
+	block_InitializeToValue( b1, __punit ); // rhs of the system
 
 	CheckInnerSolverSolution( A, x1, b1);
 	
@@ -76,23 +76,12 @@ int main(int argc, const char *argv[])
 	fprintf(stderr, "\nTEST CASE 2: solve a simple system with two vectors"
 		            " on a single RHS\n");
 
-
-
-	block_t*          block_CreateEmptyBlock       (const integer_t n, 
-													const integer_t m, 
-													const integer_t ku, 
-													const integer_t kl, 
-													blocktype_t type,
-													blocksection_t section);
-
-
-
 	nrhs = 2;
 	block_t*  x2 = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  b2 = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
-	block_InitializeToValue( x2, __zero ); // solution of the system
-	block_InitializeToValue( b2, __unit ); // rhs of the system
+	block_InitializeToValue( x2, __zero  ); // solution of the system
+	block_InitializeToValue( b2, __punit ); // rhs of the system
 
 	for(integer_t i=0; i < (A->n * nrhs); i++ ){
 		if   (i < A->n ) b2->aij[i] =  1.0;
@@ -101,19 +90,18 @@ int main(int argc, const char *argv[])
 
 	block_Print( b2, "RHS of the test");
 
-	CheckInnerSolverSolution( A, x2, b2);
+	system_solve( A->colind, A->rowptr, A->aij, x2->aij, b2->aij, A->n, b2->m );
 	
 	block_Deallocate ( x2 );
 	block_Deallocate ( b2 );	
 
 
 	/* -------------------------------------------------------------------- */
-	/* .. CASE 3 Extracts a submatrix from the system and solve the system       . */
+	/* .. CASE 3 Extracts a submatrix from the system and solve the system. */
 	/* -------------------------------------------------------------------- */
 	fprintf(stderr, "\nTEST CASE 3: extracts a submatrix and solves the system"
 					" with multiple vectors on a single RHS\n");
 
-	matrix_ComputeBandwidth(A);
 	nrhs = A->ku;
 	Aij = matrix_ExtractMatrix(A, 0, 5, 0, 5);
 	block_t* x3   = block_CreateEmptyBlock( 5, nrhs, 0, 0,_V_BLOCK_, _WHOLE_SECTION_ );
@@ -137,25 +125,26 @@ int main(int argc, const char *argv[])
 					" in memory between triangular sweeps.\n");
 
 
-	Aij = matrix_ExtractMatrix(A, 0, 5, 0, 5);
-	block_t* x4       = block_CreateEmptyBlock( 5, 1, 0, 0,_V_BLOCK_, _WHOLE_SECTION_ );
-	block_t* b4_left  = matrix_ExtractBlock(A, 0, 5, 5, 6, _V_BLOCK_ );
-	block_t* b4_right = matrix_ExtractBlock(A, 0, 5, 6, 7, _V_BLOCK_ );
+	Aij               = matrix_ExtractMatrix   (A, 0, 5, 0, 5);
+	block_t* x4       = block_CreateEmptyBlock ( 5, 1, 0, 0,_V_BLOCK_, _WHOLE_SECTION_ );
+	block_t* b4_left  = matrix_ExtractBlock    (A, 0, 5, 5, 6, _V_BLOCK_ );
+	block_t* b4_right = matrix_ExtractBlock    (A, 0, 5, 6, 7, _V_BLOCK_ );
 
 	matrix_PrintAsDense( Aij, "Coefficient matrix");
 
-	void *pt    = (void*) spike_malloc( ALIGN_INT, 64, sizeof(MKL_INT));       /* Pardiso control parameters. */
+	/* pardiso control paramters */
+	MKL_INT pardiso_conf[64];
 
 	block_Print( b4_left, "Left-most RHS");
-	directSolver_Factorize( Aij->colind, Aij->rowptr, Aij->aij, NULL, NULL, Aij->n, 0, pt);
+	directSolver_Factorize( Aij->colind, Aij->rowptr, Aij->aij, Aij->n, nrhs, &pardiso_conf);
 
-	directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, x4->aij, b4_left->aij, Aij->n, b4_left->m, pt);
+	directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, x4->aij, b4_left->aij, Aij->n, b4_left->m, &pardiso_conf);
 	block_Print( x4, "Solution for the left-most RHS vector");
 
-	directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, x4->aij, b4_right->aij, Aij->n, b4_right->m, pt);
+	directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, x4->aij, b4_right->aij, Aij->n, b4_right->m, &pardiso_conf);
 	block_Print( x4, "Solution for the right-most RHS vector");
 
-	directSolver_CleanUp( Aij->colind, Aij->rowptr, Aij->aij, x4->aij, b4_right->aij, Aij->n, b4_right->m, pt);
+	directSolver_CleanUp( Aij->colind, Aij->rowptr, Aij->aij, x4->aij, b4_right->aij, Aij->n, b4_right->m, &pardiso_conf);
 	matrix_PrintAsDense( Aij, "Coefficient matrix after releasing");
 
 
@@ -163,8 +152,6 @@ int main(int argc, const char *argv[])
 	block_Deallocate( b4_left);
 	block_Deallocate( b4_right);
 	matrix_Deallocate( Aij);
-
-	spike_nullify( pt );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up and resume                                             . */

@@ -35,6 +35,8 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 	error = system_solve( A->colind, A->rowptr, A->aij, x->aij, rhs->aij, A->n, rhs->m );
 	end_t = GetReferenceTime();
 
+	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, rhs->aij, A->n, rhs->m );
+
 	fprintf(stderr, "\nReference direct solver took %.6lf seconds", end_t - start_t );
 
 	return (SPIKE_SUCCESS);
@@ -62,8 +64,8 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables.                                                  */
 	/* -------------------------------------------------------------------- */
-	timer_t start_t;
-	timer_t end_t;
+	spike_timer_t start_t;
+	spike_timer_t end_t;
 
 	sm_schedule_t *S;
 
@@ -375,9 +377,11 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	const integer_t nrhs = 2;
-	matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.z");
-	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	const integer_t nrhs = 50;
+	//matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
+	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+
 	// matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
@@ -389,7 +393,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Call the direct solver using the high-level interface           . */
 	/* -------------------------------------------------------------------- */
-	zspike_core_host(A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
+	// zspike_core_host(A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
 
 
 	/* -------------------------------------------------------------------- */
@@ -397,6 +401,15 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
 	SolveOriginalSystem( A, x, f);
+
+	block_Print(x, "Solution of the system");
+
+	block_InitializeToValue( x, __zero  ); // solution of the system
+	block_InitializeToValue( f, __punit ); // rhs of the system
+
+	fprintf(stderr, "\nSuperLU REFERENCE SOLUTION...\n");
+	superlu_solve( A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij );
+
 
 
 	/* -------------------------------------------------------------------- */

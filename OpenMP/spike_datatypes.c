@@ -26,15 +26,15 @@
 
 #if defined (_DATATYPE_Z_) || defined (_DATATYPE_C_)
   /* complex arithmetic */
-  const complex_t __nunit = (complex_t) {-1.f,  0.f};
-  const complex_t __punit = (complex_t) { 1.f,  0.f};
-  const complex_t __zero  = (complex_t) { 0.f,  0.f};
+  const complex_t __nunit = (complex_t) { (real_t) -1.0,  (real_t) 0.0 };
+  const complex_t __punit = (complex_t) { (real_t)  1.0,  (real_t) 0.0 };
+  const complex_t __zero  = (complex_t) { (real_t)  0.0,  (real_t) 0.0 };
 
 #else
   /* real arithmetic */
-  const complex_t __nunit = (complex_t) -1.f;
-  const complex_t __punit = (complex_t)  1.f;
-  const complex_t __zero  = (complex_t)  0.f;
+  const complex_t __nunit = (complex_t) -1.0;
+  const complex_t __punit = (complex_t)  1.0;
+  const complex_t __zero  = (complex_t)  0.0;
 
 #endif
 

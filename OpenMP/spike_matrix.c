@@ -262,9 +262,10 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 	B->m       = cf - c0;
 
 	if ( M->ku <= 0 || M->kl <= 0 ){
-		fprintf(stderr, "\n%s:ERROR: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );
-		// TODO compute the bandwidth of the matrix here if needed!
-		abort();
+		fprintf(stderr, "\n%s: WARNING: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );
+		
+		/* force the computetion of the matrix bandwidth */	
+		matrix_ComputeBandwidth( M->n, M->colind, M->rowptr, M->aij, &M->ku, &M->kl );		
 	}
 
 	B->ku      = M->ku;
@@ -316,12 +317,16 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 	 */
 
 	// local variables
+	spike_timer_t tstart, tend;
 	integer_t nnz;
 	integer_t rowind;
 	integer_t nrows;
  	integer_t	idx;
  	integer_t	row;
  	integer_t	col;
+
+ 	/* initialize timer */
+ 	tstart = GetReferenceTime();
 
 	// count the number of nnz inside the block
 	nnz = 0;
@@ -360,6 +365,9 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 
 		B->rowptr[rowind++] = nnz;
 	}
+	tend = GetReferenceTime() - tstart;
+
+	fprintf(stderr, "\n%s: took %.6lf seconds", __FUNCTION__, tend );
 
 	/* compute the bandwidth of the sub-block */	
 	matrix_ComputeBandwidth( B->n, B->colind, B->rowptr, B->aij, &B->ku, &B->kl );
@@ -962,10 +970,20 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 		for(integer_t col = 0; col < R->n; col++){
 			complex_t value = D[row * R->n + col];
 
-			if ( number_IsLessThan ( value, __zero ) == True )
-				fprintf(stderr, "%.5f  ", value);
-			else
-				fprintf(stderr, " %.5f  ", value);
+			if ( number_IsLessThan ( value, __zero ) == True ){
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
+			else{
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
 		}
 
 		fprintf(stderr, "\t");
@@ -975,22 +993,42 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 			for(integer_t col=0; col < X->m; col++) {
 				complex_t value = X->aij[row + X->n*col];
 	
-			if ( number_IsLessThan( value, __zero ))
-				fprintf(stderr, "%.5f  ", value);
-			else
-				fprintf(stderr, " %.5f  ", value);
+				if ( number_IsLessThan( value, __zero )){
+					#ifndef _COMPLEX_ARITHMETIC_
+						fprintf(stderr, "\t"_F_" ", value );
+					#else
+						fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+					#endif
+				}
+				else{
+					#ifndef _COMPLEX_ARITHMETIC_
+						fprintf(stderr, "\t"_F_" ", value );
+					#else
+						fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+					#endif
+				}
 			}
 			fprintf(stderr, "\t");
 		}
 
 		/* print y block */
 		for(integer_t col=0; col < Y->m; col++) {
-		complex_t value = Y->aij[row + Y->n*col];
+			complex_t value = Y->aij[row + Y->n*col];
 
-		if ( number_IsLessThan( value, __zero ))
-			fprintf(stderr, "%.5f  ", value);
-		else
-			fprintf(stderr, " %.5f  ", value);
+			if ( number_IsLessThan( value, __zero )){
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
+			else{
+				#ifndef _COMPLEX_ARITHMETIC_
+					fprintf(stderr, "\t"_F_" ", value );
+				#else
+					fprintf(stderr, "\t"_F_","_F_"i ", value.real, value.imag );
+				#endif
+			}
 		}
 
 		fprintf(stderr, "\n");
