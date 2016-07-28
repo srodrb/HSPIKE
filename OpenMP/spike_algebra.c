@@ -676,9 +676,6 @@ void superlu_solve (const integer_t n,
     real_t                   rpg;
     real_t                   rcond;
 
-	fprintf(stderr, "\n%s: line %d\n", __FUNCTION__, __LINE__ );
-
-
     if ( lwork > 0 ) {
       work = SUPERLU_MALLOC(lwork);
       fprintf(stderr, "\nUse work space of size LWORK = " IFMT " bytes\n", lwork);
@@ -814,4 +811,87 @@ void superlu_solve (const integer_t n,
     ComputeResidualOfLinearSystem( colind, rowptr, aij, x, b, n, nrhs );
 
     fprintf(stderr, "\nSuperLU solver took %.6lf seconds\n", tend_t);
+};
+
+void superlu_Factorize (const integer_t n, 
+                    	const integer_t nnz,
+                    	integer_t *restrict colind,
+                    	integer_t *restrict rowptr,
+                    	complex_t *restrict aij)
+{
+#ifdef jdafa
+    NCformat *Astore;
+    DNformat *Bstore;
+    SuperMatrix AC; /* Matrix postmultiplied by Pc */
+    SuperMatrix *AA; /* A in NC format used by the factorization routine.*/
+    pdgstrf_options_t pdgstrf_options;
+    Gstat_t  Gstat;
+    
+    yes_no_t refact = NO;
+    yes_no_t usepr  = NO;
+    trans_t  trans  = TRANS;
+    int panel_size = sp_ienv(1);
+    int relax      = sp_ienv(2);
+    double diag_pivot_thresh = 1.;
+    double drop_tol = 0.0;
+    void *work      = NULL;
+    int lwork       = 0;
+    double   t; /* Temporary time */
+    double   *utime;
+    flops_t  *ops, flopcnt;
+
+    /* ------------------------------------------------------------
+       Allocate storage and initialize statistics variables. 
+       ------------------------------------------------------------*/
+    StatAlloc(n, nprocs, panel_size, relax, &Gstat);
+    StatInit(n, nprocs, &Gstat);
+    utime = Gstat.utime;
+    ops   = Gstat.ops;
+
+    /* ------------------------------------------------------------
+       Initialize the option structure pdgstrf_options using the
+       user-input parameters;
+       Apply perm_c to the columns of original A to form AC.
+       ------------------------------------------------------------*/
+    pdgstrf_init(nprocs, refact, panel_size, relax,
+		 diag_pivot_thresh, usepr, drop_tol, perm_c, perm_r,
+		 work, lwork, AA, &AC, &pdgstrf_options, &Gstat);
+
+    /* ------------------------------------------------------------
+       Compute the LU factorization of A.
+       The following routine will create nprocs threads.
+       ------------------------------------------------------------*/
+    pdgstrf(&pdgstrf_options, &AC, perm_r, L, U, &Gstat, info);
+
+    flopcnt = 0;
+    for (i = 0; i < nprocs; ++i) flopcnt += Gstat.procstat[i].fcops;
+    ops[FACT] = flopcnt;
+
+    /* ------------------------------------------------------------
+       Solve the system A*X=B, overwriting B with X.
+       ------------------------------------------------------------*/
+    if ( *info == 0 ) {
+        t = SuperLU_timer_();
+		dgstrs (trans, L, U, perm_r, perm_c, B, &Gstat, info);
+		utime[SOLVE] = SuperLU_timer_() - t;
+		ops[SOLVE] = ops[TRISOLVE];
+    }
+
+    /* ------------------------------------------------------------
+       Deallocate storage after factorization.
+       ------------------------------------------------------------*/
+    pdgstrf_finalize(&pdgstrf_options, &AC);
+    if ( A->Stype == SLU_NR ) {
+	Destroy_SuperMatrix_Store(AA);
+	SUPERLU_FREE(AA);
+    }
+
+    /* ------------------------------------------------------------
+       Print timings, then deallocate statistic variables.
+       ------------------------------------------------------------*/
+    PrintStat(&Gstat);
+    StatFree(&Gstat);
+
+    fprintf(stderr, "Factorizacion completada!\n");
+#endif
 };

@@ -2,7 +2,7 @@ COMPILER=INTEL
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
-	CFLAGS  =-qopenmp -std=c99 -g -O3 -restrict
+	CFLAGS  =-qopenmp -std=c99 -g -O2 -restrict
 	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CINCS   =-I${MKLROOT}/include

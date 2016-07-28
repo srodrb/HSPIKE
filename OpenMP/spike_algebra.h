@@ -57,32 +57,54 @@
  	#endif
 
 
- 	typedef enum {
+ 	typedef struct {
  		
-		integer_t 				nprocs;
-		superlumt_options_t 	*superlumt_options;
+		superlumt_options_t 	superlumt_options;
+		superlu_memusage_t 		superlu_memusage;
+		// Gstat_t  Gstat;
 		
-		SuperMatrix 			*A; 
-		SuperMatrix 			*L;
-		SuperMatrix 			*U;
-		SuperMatrix 			*B;
-		SuperMatrix 			*X;
+		integer_t nprocs;
+    	fact_t fact;
+    	trans_t trans;
+    	yes_no_t refact;
+    	yes_no_t usepr;
+    	equed_t equed;
+    	void *work;
+    	integer_t info;
+    	integer_t lwork;
+    	integer_t panel_size;
+    	integer_t relax;
+    	integer_t permc_spec;
+    	real_t u;
+    	real_t drop_tol;
+    	real_t rpg;
+		real_t recip_pivot_growth; // ???
+		real_t rcond;
+
+		integer_t n;    /* matrix dimension                    */
+    	integer_t ldx;	/* matrix leading dimension            */
+		integer_t nnz;  /* nnz elements in A                   */
+		integer_t nrhs; /* number of columns of x and b arrays */
+		 
+
+		SuperMatrix 			A; 
+		SuperMatrix 			L;
+		SuperMatrix 			U;
+		SuperMatrix 			B;
+		SuperMatrix 			X;
 
 		integer_t 				*perm_c;
 		integer_t 				*perm_r;
 		real_t 					*R;
 		real_t 					*C;
+		real_t                  *berr;
+		real_t                  *ferr;
 
-		equed_t   				*equed;		
-		real_t 					*recip_pivot_growth, 
-		real_t 					*rcond;
-		real_t 					*ferr;
-		real_t 					*berr; 
-		
-		superlu_memusage_t 		*superlu_memusage;
-		integer_t 				*info;
+		integer_t *etree; 			/* elimination tree */
+		integer_t *colcnt_h; 		/* column count */
+		integer_t *part_super_h; 	/* supernode partition for the Householder matrix */
 
- 	} solver_handler_t;
+ 	} DirectSolverHander_t;
 
 
  	/*
