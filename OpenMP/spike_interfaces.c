@@ -105,11 +105,19 @@
 
 		/* allocate pardiso configuration parameters */
 		// void *pardiso_conf = (void*) spike_malloc( ALIGN_INT, 64, sizeof(integer_t));
-		MKL_INT pardiso_conf[64];
+		DirectSolverHander_t *handler = directSolver_CreateHandler();
+		
+		directSolver_Configure(handler);
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
-		directSolver_Factorize( Aij->colind, Aij->rowptr, Aij->aij, Aij->n, nrhs, &pardiso_conf);
+		
+		directSolver_Factorize( handler, 
+								Aij->n,
+								Aij->nnz, 
+								Aij->colind, 
+								Aij->rowptr, 
+								Aij->aij);
 
 		/* -------------------------------------------------------------------- */
 		/* Solve Ai * yi = fi                                                   */
@@ -123,7 +131,7 @@
 		block_SetBandwidthValues( yi, A->ku, A->kl );
 
 		/* solve the system for the RHS value */
-		directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, yi->aij, fi->aij, Aij->n, nrhs, &pardiso_conf );
+		directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij );
 
 		/* Extract the tips of the yi block */
 		block_t* yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
@@ -143,7 +151,9 @@
 			block_t* Vi = block_CreateEmptyBlock ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Bi = matrix_ExtractBlock    ( A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
+			/* solve Aij * Vi = Bi */
+			directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij );
+
 
 			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
@@ -160,7 +170,8 @@
 			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m, &pardiso_conf );
+			/* solve Aij * Wi = Ci */
+			directSolver_SolveForRHS( handler, Wi->m, Wi->aij, Ci->aij );
 
 			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
@@ -177,7 +188,8 @@
 			block_t* Vi    = block_CreateEmptyBlock( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Bi    = matrix_ExtractBlock   (A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Vi->aij, Bi->aij, Aij->n, Vi->m, &pardiso_conf );
+			/* solve Aij * Vi = Bi */
+			directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij );
 
 			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
@@ -193,7 +205,8 @@
 			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, Wi->aij, Ci->aij, Aij->n, Wi->m, &pardiso_conf );
+			/* solve Aij * Wi = Ci */
+			directSolver_SolveForRHS( handler, Wi->m, Wi->aij, Ci->aij );
 
 			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
@@ -207,7 +220,8 @@
 			block_Deallocate( Wib);
 		}
 
-		directSolver_CleanUp(NULL, NULL, NULL, NULL, NULL, Aij->n, nrhs, &pardiso_conf);
+		directSolver_ShowStatistics(handler);
+		directSolver_Finalize(handler);
 
 		matrix_Deallocate(Aij); 
 	}
@@ -218,7 +232,7 @@
 
 	yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );  
 	fprintf(stderr, "\nSolving reduced linear system\n");
-	system_solve ( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, xr->m);
+	directSolver_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
 
 
 	/* Free some memory, yr and R are not needed anymore */
@@ -242,11 +256,13 @@
 		const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
 
 		/* allocate pardiso configuration parameters */
-		MKL_INT pardiso_conf[64];
+		DirectSolverHander_t *handler = directSolver_CreateHandler();
+
+		directSolver_Configure( handler );
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe);
-		directSolver_Factorize( Aij->colind, Aij->rowptr, Aij->aij, Aij->n, nrhs, &pardiso_conf);
+		directSolver_Factorize( handler, Aij->n, Aij->nnz, Aij->colind, Aij->rowptr, Aij->aij);
 
 		/* extract xi sub-block */
 		block_t*  xi  = block_ExtractBlock(x, obs, obe );
@@ -273,7 +289,8 @@
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+			/* Solve Aij * ( f - Bi * xt ) */
+			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
 
 			block_Deallocate ( Bi );
 			block_Deallocate ( xt_next); 
@@ -297,7 +314,9 @@
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+
+			/* Solve Aij * ( f - Ci * xt ) */
+			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
 
 			block_Deallocate ( Ci );
 			block_Deallocate ( xb_prev); 
@@ -322,7 +341,9 @@
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+
+			/* Solve Aij * ( f - Bi * xt ) */
+			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
 
 			block_Deallocate ( Bi );
 			block_Deallocate ( xt_next); 
@@ -344,7 +365,9 @@
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
-			directSolver_ApplyFactorToRHS( Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi->aij, Aij->n, xi->m, &pardiso_conf );
+
+			/* Solve Aij * ( f - Bi * xt ) */
+			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
 
 			block_Deallocate ( Ci );
 			block_Deallocate ( xb_prev);
@@ -352,7 +375,9 @@
 
 		block_AddBlockToRHS(x, xi, obs, obe);
 
-		directSolver_CleanUp(NULL,NULL,NULL,NULL,NULL, Aij->n, nrhs, &pardiso_conf);
+		directSolver_ShowStatistics(handler);
+		directSolver_Finalize(handler);
+
 		block_Deallocate    ( xi );
 		block_Deallocate 	( fi );
 		matrix_Deallocate	( Aij);
