@@ -44,50 +44,63 @@
     #include "slu_mt_util.h"
 
     typedef struct {
-            superlumt_options_t     superlumt_options;
-            superlu_memusage_t      superlu_memusage;
-            // Gstat_t  Gstat;
+        
+        superlumt_options_t     superlumt_options;
+        superlu_memusage_t      superlu_memusage;
+        // Gstat_t  Gstat;
             
-            integer_t nprocs;
-            fact_t fact;
-            trans_t trans;
-            yes_no_t refact;
-            yes_no_t usepr;
-            equed_t equed;
-            void *work;
-            integer_t info;
-            integer_t lwork;
-            integer_t panel_size;
-            integer_t relax;
-            integer_t permc_spec;
-            real_t u;
-            real_t drop_tol;
-            real_t rpg;
-            real_t recip_pivot_growth; // ???
-            real_t rcond;
+        integer_t nprocs;
+        fact_t fact;
+        trans_t trans;
+        yes_no_t refact;
+        yes_no_t usepr;
+        equed_t equed;
+        void *work;
+        integer_t info;
+        integer_t lwork;
+        integer_t panel_size;
+        integer_t relax;
+        integer_t permc_spec;
+        real_t u;
+        real_t drop_tol;
+        real_t rpg;
+        real_t recip_pivot_growth; // ???
+        real_t rcond;
 
-            integer_t n;    /* matrix dimension                    */
-            integer_t ldx;  /* matrix leading dimension            */
-            integer_t nnz;  /* nnz elements in A                   */
-            integer_t nrhs; /* number of columns of x and b arrays */
+        integer_t n;    /* matrix dimension                    */
+        integer_t ldx;  /* matrix leading dimension            */
+        integer_t nnz;  /* nnz elements in A                   */
+        integer_t nrhs; /* number of columns of x and b arrays */
              
 
-            SuperMatrix             A; 
-            SuperMatrix             L;
-            SuperMatrix             U;
-            SuperMatrix             B;
-            SuperMatrix             X;
+        SuperMatrix             A; 
+        SuperMatrix             L;
+        SuperMatrix             U;
+        SuperMatrix             B;
+        SuperMatrix             X;
 
-            integer_t               *perm_c;
-            integer_t               *perm_r;
-            real_t                  *R;
-            real_t                  *C;
-            real_t                  *berr;
-            real_t                  *ferr;
+        integer_t               *perm_c;
+        integer_t               *perm_r;
+        real_t                  *R;
+        real_t                  *C;
+        real_t                  *berr;
+        real_t                  *ferr;
 
-            integer_t *etree;           /* elimination tree */
-            integer_t *colcnt_h;        /* column count */
-            integer_t *part_super_h;    /* supernode partition for the Householder matrix */
+        integer_t *etree;           /* elimination tree */
+        integer_t *colcnt_h;        /* column count */
+        integer_t *part_super_h;    /* supernode partition for the Householder matrix */
+
+
+        /* -------------------------------------------------------------------- */
+        /* .. Statistical variables                                             */
+        /* -------------------------------------------------------------------- */
+        spike_timer_t ordering_t;
+        spike_timer_t scaling_t;
+        spike_timer_t factor_t;
+        spike_timer_t solve_t;
+        spike_timer_t refine_t;
+        integer_t rhs_block_count;
+        integer_t rhs_column_count;
 
     } DirectSolverHander_t;
 

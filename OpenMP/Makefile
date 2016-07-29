@@ -10,7 +10,7 @@ OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
-	CFLAGS  =-qopenmp -std=c99 -g -O2 -restrict
+	CFLAGS  =-qopenmp -std=c99 -g -O3 -xHost -restrict
 	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	CINCS   =-I${MKLROOT}/include
@@ -26,10 +26,14 @@ endif
 
 ifeq ($(BACKEND),SUPERLU)
 	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt
+	#CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_mkl/SRC
+
+
 	DEFINES +=-D_SUPERLU_BACKEND_
 
 	CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT/lib -lsuperlu_mt_openmp
 	CINCS   +=-I/home/srodrigu/Software/SuperLU_MT/SRC
+	
 	OBJS    += spike_superlu.o
 else
 	DEFINES +=-D_PARDISO_BACKEND_

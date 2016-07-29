@@ -18,7 +18,8 @@
 
 #include "spike_superlu.h"
 
-static Error_t spike_pgssvx_factor (  integer_t nprocs,
+static Error_t spike_pgssvx_factor (   DirectSolverHander_t *handler,
+                                       integer_t nprocs,
                                        superlumt_options_t *superlumt_options,
                                        SuperMatrix *A, 
                                        integer_t *perm_c,
@@ -33,7 +34,8 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
                                        superlu_memusage_t *superlu_memusage,
                                        integer_t *info);
 
-static Error_t spike_pgssvx_solve  (integer_t nprocs,
+static Error_t spike_pgssvx_solve  ( DirectSolverHander_t *handler,
+                integer_t nprocs,
                 superlumt_options_t *superlumt_options,
                 SuperMatrix *AA, 
                 integer_t *perm_c,
@@ -60,6 +62,15 @@ DirectSolverHander_t *directSolver_CreateHandler(void)
 
 Error_t directSolver_Configure( DirectSolverHander_t *handler )
 {   
+    /* intialize metrics to 0 */
+    handler->ordering_t          = 0.0;
+    handler->scaling_t           = 0.0;
+    handler->factor_t            = 0.0;
+    handler->solve_t             = 0.0;
+    handler->refine_t            = 0.0;
+    handler->rhs_block_count     =   0;
+    handler->rhs_column_count    =   0;
+
     /* create superlu structures from data */
     handler->nprocs     = (integer_t) 1;
     handler->fact       = (fact_t)   EQUILIBRATE;
@@ -119,7 +130,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 
 
     /* ya que la matriz esta ordenada como SLU_NR, la cambiamos a AA */
-// dCreate_CompCol_Matrix
+    // dCreate_CompCol_Matrix
 
     dCreate_CompCol_Matrix( &handler->A, handler->n, handler->n, handler->nnz, 
                    aij, colind, rowptr,
@@ -154,7 +165,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
     handler->superlumt_options.drop_tol          = handler->drop_tol;
     handler->superlumt_options.diag_pivot_thresh = handler->u;
     handler->superlumt_options.SymmetricMode     = NO;
-    handler->superlumt_options.PrintStat         = YES;
+    handler->superlumt_options.PrintStat         = NO;
     handler->superlumt_options.perm_c            = handler->perm_c;
     handler->superlumt_options.perm_r            = handler->perm_r;
     handler->superlumt_options.work              = handler->work;
@@ -166,22 +177,21 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 
     /* perform the factorization of the coefficient matrix */
     /* using the modified SuperLU's p?gssv expert driver   */
-    spike_pgssvx_factor( handler->nprocs,
-        &handler->superlumt_options,
-        &handler->A, 
-        handler->perm_c,
-        handler->perm_r,
-        &handler->equed,
-        handler->R,
-        handler->C,
-        &handler->L,
-        &handler->U,
-        &handler->recip_pivot_growth, 
-        &handler->rcond,
-        &handler->superlu_memusage,
-        &handler->info);
-
-    fprintf(stderr, "Fin de la rutina!!!\n");
+    spike_pgssvx_factor( handler,
+                         handler->nprocs,
+                         &handler->superlumt_options,
+                         &handler->A, 
+                         handler->perm_c,
+                         handler->perm_r,
+                         &handler->equed,
+                         handler->R,
+                         handler->C,
+                         &handler->L,
+                         &handler->U,
+                         &handler->recip_pivot_growth, 
+                         &handler->rcond,
+                         &handler->superlu_memusage,
+                         &handler->info);
 
     /* resume */
     return (SPIKE_SUCCESS);
@@ -211,7 +221,7 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 
     /* perform the factorization of the coefficient matrix */
     /* using the modified SuperLU's p?gssv expert driver   */
-    spike_pgssvx_solve(
+    spike_pgssvx_solve( handler,
         handler->nprocs,
         &handler->superlumt_options,
         &handler->A, 
@@ -231,15 +241,22 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
         &handler->superlu_memusage,
         &handler->info);
 
-    for(int i=0; i < 10; i++)
-        fprintf(stderr, "\nx %f b %f", xij[i], bij[i] );
-
     return (SPIKE_SUCCESS);
 };
 
 Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
 {
-    // TODO
+    fprintf(stderr, "\n\n--------------------------------------------------------");
+    fprintf(stderr, "\n              BACKEND: SUPERLU                         \n\n");
+    fprintf(stderr, "\n Total number of RHS packs solved by this handler    : %d", handler->rhs_block_count );
+    fprintf(stderr, "\n Total number of RHS vectors solved by this hander   : %d", handler->rhs_column_count );
+    fprintf(stderr, "\n Ordering time                                       : %.6lf seconds", handler->ordering_t);
+    fprintf(stderr, "\n Scaling time                                        : %.6lf seconds", handler->scaling_t);
+    fprintf(stderr, "\n Factorization time                                  : %.6lf seconds", handler->factor_t);
+    fprintf(stderr, "\n Solution time                                       : %.6lf seconds", handler->solve_t);
+    fprintf(stderr, "\n iterative refinement time                           : %.6lf seconds", handler->refine_t);
+    fprintf(stderr, "\n----------------------------------------------------------");
+
 
     return (SPIKE_SUCCESS);
 };
@@ -395,7 +412,7 @@ Error_t directSolver_Solve (integer_t n,
     superlumt_options.drop_tol          = drop_tol;
     superlumt_options.diag_pivot_thresh = u;
     superlumt_options.SymmetricMode     = NO;
-    superlumt_options.PrintStat         = YES;
+    superlumt_options.PrintStat         = NO;
     superlumt_options.perm_c            = perm_c;
     superlumt_options.perm_r            = perm_r;
     superlumt_options.work              = work;
@@ -495,7 +512,8 @@ Error_t directSolver_Solve (integer_t n,
 
 
 
-static Error_t spike_pgssvx_factor (  integer_t nprocs,
+static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
+                                       integer_t nprocs,
 	                                   superlumt_options_t *superlumt_options,
 	                                   SuperMatrix *A, 
 	                                   integer_t *perm_c,
@@ -510,6 +528,10 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
 	                                   superlu_memusage_t *superlu_memusage,
 	                                   integer_t *info)
 {
+    /* spike timers */
+    spike_timer_t tstart_t, tend_t;
+
+    /* function local variables */
     NCformat  	*Astore;
     SuperMatrix *AA; /* A in NC format used by the factorization routine.*/
     SuperMatrix  AC; /* Matrix postmultiplied by Pc */
@@ -539,13 +561,14 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
     						  superlumt_options_t *,
     						  SuperMatrix *);
 
+
     Astore 					  = A->Store;
     superlumt_options->perm_c = perm_c;
     superlumt_options->perm_r = perm_r;
 
     *info = 0;
     dofact = (superlumt_options->fact == DOFACT);
-    equil = (superlumt_options->fact == EQUILIBRATE);
+    equil  = (superlumt_options->fact == EQUILIBRATE);
     notran = (superlumt_options->trans == NOTRANS);
 
     if (dofact || equil) {
@@ -637,8 +660,6 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
 		return (SPIKE_ERROR);
     }
     
-    printf("colcnt_h[0] %lld\n", superlumt_options->colcnt_h[0]);
-
     /* ------------------------------------------------------------
        Allocate storage and initialize statistics variables. 
        ------------------------------------------------------------*/
@@ -675,6 +696,8 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
     /* ------------------------------------------------------------
        Diagonal scaling to equilibrate the matrix.
        ------------------------------------------------------------*/
+    tstart_t = GetReferenceTime();
+
     if ( equil ) {
 		t0 = SuperLU_timer_();
 		/* Compute row and column scalings to equilibrate the matrix A. */
@@ -689,6 +712,11 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
 		utime[EQUIL] = SuperLU_timer_() - t0;
     }
 
+    tend_t = GetReferenceTime() - tstart_t;
+
+    /* collect statistic */
+    handler->scaling_t += tend_t;
+
     /* ------------------------------------------------------------
        Scale the right hand side.
        ------------------------------------------------------------*/
@@ -696,6 +724,8 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
     /* ------------------------------------------------------------
        Perform the LU factorization.
        ------------------------------------------------------------*/
+    tstart_t = GetReferenceTime();
+
     if ( dofact || equil ) {
 
         /* Obtain column etree, the column count (colcnt_h) and supernode
@@ -705,8 +735,7 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
     	utime[ETREE] = SuperLU_timer_() - t0;
 
  
-    	printf("Factor PA = LU ... relax %d\tw %d\tmaxsuper %d\trowblk %d\n", 
-    		relax, panel_size, sp_ienv(3), sp_ienv(4));
+    	printf("Factor PA = LU ... relax %d\tw %d\tmaxsuper %d\trowblk %d\n", relax, panel_size, sp_ienv(3), sp_ienv(4));
     	fflush(stdout);
 
 
@@ -725,6 +754,11 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
     		return (SPIKE_ERROR);
     	}
     }
+
+    tend_t = GetReferenceTime() - tstart_t;
+
+    /* collect statistic */
+    handler->factor_t += tend_t;
 
     if ( *info > 0 ) {
     	if ( *info <= A->ncol ) {
@@ -788,12 +822,14 @@ static Error_t spike_pgssvx_factor (  integer_t nprocs,
     /* return AA instead of AA */
     A = AA;
 
-    PrintStat(&Gstat);
+    // PrintStat(&Gstat);
     StatFree(&Gstat);
 };
 
 
-static Error_t spike_pgssvx_solve  (integer_t nprocs,
+static Error_t spike_pgssvx_solve  (
+                DirectSolverHander_t *handler,
+                integer_t nprocs,
 				superlumt_options_t *superlumt_options,
 				SuperMatrix *AA, 
 				integer_t *perm_c,
@@ -812,6 +848,9 @@ static Error_t spike_pgssvx_solve  (integer_t nprocs,
 				superlu_memusage_t *superlu_memusage,
 				integer_t *info)
 {
+    /* spike variables for statistics */
+    spike_timer_t tstart_t, tend_t;
+
     DNformat  *Bstore, *Xstore;
     double    *Bmat, *Xmat;
     integer_t         n = AA->nrow;
@@ -878,8 +917,6 @@ static Error_t spike_pgssvx_solve  (integer_t nprocs,
 		trant = superlumt_options->trans;
     }
 
-    fprintf(stderr, "\n%s: line %d", __FUNCTION__, __LINE__ );
-
     /* ------------------------------------------------------------
        Allocate storage and initialize statistics variables. 
        ------------------------------------------------------------*/
@@ -888,9 +925,6 @@ static Error_t spike_pgssvx_solve  (integer_t nprocs,
     
     StatAlloc(n, nprocs, panel_size, relax, &Gstat);
     StatInit(n, nprocs, &Gstat);
-
-    fprintf(stderr, "\n%s: line %d", __FUNCTION__, __LINE__ );
-
     
     utime = Gstat.utime;
     ops = Gstat.ops;
@@ -898,6 +932,8 @@ static Error_t spike_pgssvx_solve  (integer_t nprocs,
     /* ------------------------------------------------------------
        Scale the right hand side.
        ------------------------------------------------------------*/
+    tstart_t = GetReferenceTime();
+
     if ( notran ) {
 		if ( rowequ ) {
 	    	for (j = 0; j < nrhs; ++j)
@@ -912,34 +948,45 @@ static Error_t spike_pgssvx_solve  (integer_t nprocs,
                 Bmat[i + j*ldb] *= C[i];
 	    	}
     }
-    
+    tend_t = GetReferenceTime() - tstart_t;
+
+    /* collect metric */
+    handler->scaling_t += tend_t;
+
+
 	/* ------------------------------------------------------------
 	   Compute the solution matrix X.
 	   ------------------------------------------------------------*/
 	for (j = 0; j < nrhs; j++)    /* Save a copy of the right hand sides */
 	    for (i = 0; i < n; i++)
 			Xmat[i + j*ldx] = Bmat[i + j*ldb];
-
-    fprintf(stderr, "\n%s: line %d", __FUNCTION__, __LINE__ );
-
     
+    tstart_t = GetReferenceTime();
+
 	t0 = SuperLU_timer_();
 	dgstrs(trant, L, U, perm_r, perm_c, X, &Gstat, info);
 	utime[SOLVE] = SuperLU_timer_() - t0;
 	ops[SOLVE] = ops[TRISOLVE];
 
+    tend_t = GetReferenceTime() - tstart_t;
 
-	for(int i=0; i < 10; i++){
-		fprintf(stderr, "\n x[%d] %f b[%d] %f", i, Xmat[i], i, Bmat[i] );
-	}
+    /* collect metric */
+    handler->solve_t += tend_t;
     
 	/* ------------------------------------------------------------
 	   Use iterative refinement to improve the computed solution and
 	   compute error bounds and backward error estimates for it.
 	   ------------------------------------------------------------*/
+    tstart_t = GetReferenceTime();
+
 	t0 = SuperLU_timer_();
 	dgsrfs(trant, AA, L, U, perm_r, perm_c, *equed, R, C, B, X, ferr, berr, &Gstat, info);
 	utime[REFINE] = SuperLU_timer_() - t0;
+
+    tend_t = GetReferenceTime() - tstart_t;
+
+    /* collect metric */
+    handler->refine_t += tend_t;
 
 	/* ------------------------------------------------------------
 	   Transform the solution matrix X to a solution of the original
@@ -965,7 +1012,7 @@ static Error_t spike_pgssvx_solve  (integer_t nprocs,
     /* ------------------------------------------------------------
        Print timings, then deallocate statistic variables.
        ------------------------------------------------------------*/
-    PrintStat(&Gstat);
+    // PrintStat(&Gstat);
     StatFree(&Gstat);
 
     return (SPIKE_SUCCESS);
