@@ -40,7 +40,10 @@
 
 const Bool_t  True          = 1;
 const Bool_t  False         = 0;
-const Error_t SPIKE_SUCCESS = 1;
+const Error_t SPIKE_SUCCESS = 0;
+const Error_t SPIKE_ERROR   = 1;
+
+
 
 Bool_t number_IsLessThan( complex_t a, complex_t b )
 {

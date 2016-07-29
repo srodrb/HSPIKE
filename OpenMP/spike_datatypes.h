@@ -101,6 +101,7 @@
 	extern const Bool_t False;
 
 	extern const Error_t SPIKE_SUCCESS;
+	extern const Error_t SPIKE_ERROR;
 
 	Bool_t number_IsLessThan( complex_t a, complex_t b );
 	Bool_t number_IsEqual( complex_t a, complex_t b );

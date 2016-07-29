@@ -29,55 +29,51 @@ DirectSolverHander_t *solver_Init(void)
 };
 
 
-#define PRNTlevel 5
-
-
-void pdgssvx_factor(int_t nprocs,
+Error_t spike_pdgssvx_factor(integer_t nprocs,
 	superlumt_options_t *superlumt_options,
 	SuperMatrix *A, 
-	int_t *perm_c,
-	int_t *perm_r,
+	integer_t *perm_c,
+	integer_t *perm_r,
 	equed_t *equed,
 	double *R,
 	double *C,
 	SuperMatrix *L,
 	SuperMatrix *U,
 	double *recip_pivot_growth, 
-	double *rcond,
-	double *ferr,
-	double *berr, 
+	double *rcond, 
 	superlu_memusage_t *superlu_memusage,
-	int_t *info,
-	int nrhs,
-	int n)
+	integer_t *info)
 {
     NCformat  	*Astore;
     SuperMatrix *AA; /* A in NC format used by the factorization routine.*/
     SuperMatrix  AC; /* Matrix postmultiplied by Pc */
 
-    int_t       ldb = n;
-    int_t       ldx = n;
+    integer_t       n = A->nrow;
+    integer_t       ldb = n;
+    integer_t       ldx = n;
     
     
-    int_t       colequ, equil, dofact, notran, rowequ;
-    char      norm[1];
-    trans_t   trant;
-    int_t     j, info1;
-    int i;
-    double amax, anorm, bignum, smlnum, colcnd, rowcnd, rcmax, rcmin;
-    int_t       relax, panel_size;
-    Gstat_t   Gstat;
-    double    t0;      /* temporary time */
-    double    *utime;
-    flops_t   *ops, flopcnt;
+    integer_t     	colequ, equil, dofact, notran, rowequ;
+    char      		norm[1];
+    trans_t   		trant;
+    integer_t     	j, info1;
+    int 			i;
+    double 			amax, anorm, bignum, smlnum, colcnd, rowcnd, rcmax, rcmin;
+    integer_t       relax, panel_size;
+    Gstat_t   		Gstat;
+    double    		t0;      /* temporary time */
+    double    		*utime;
+    flops_t   		*ops, flopcnt;
    
     /* External functions */
-    extern double dlangs(char *, SuperMatrix *);
-    extern double dlamch_(char *);
-    extern void sp_colorder(SuperMatrix *, int_t *, superlumt_options_t *,
-	    SuperMatrix *);
+    extern real_t dlangs     (char *, SuperMatrix *);
+    extern real_t dlamch_    (char *);
+    extern void   sp_colorder(SuperMatrix *,
+    						  integer_t *,
+    						  superlumt_options_t *,
+    						  SuperMatrix *);
 
-    Astore = A->Store;
+    Astore 					  = A->Store;
     superlumt_options->perm_c = perm_c;
     superlumt_options->perm_r = perm_r;
 
@@ -172,7 +168,7 @@ void pdgssvx_factor(int_t nprocs,
     if (*info != 0) {
 		i = -(*info);
 		xerbla_("pdgssvx", &i);
-		return;
+		return (SPIKE_ERROR);
     }
     
     printf("colcnt_h[0] %lld\n", superlumt_options->colcnt_h[0]);
@@ -231,21 +227,6 @@ void pdgssvx_factor(int_t nprocs,
        Scale the right hand side.
        ------------------------------------------------------------*/
     
-    // if ( notran ) {
-	// 	if ( rowequ ) {
-	//     	for (j = 0; j < nrhs; ++j)
-	// 			for (i = 0; i < A->nrow; ++i) {
-    //         		Bmat[i + j*ldb] *= R[i];
-	// 			}
-	// 	}
-    // } else if ( colequ ) {
-	// 	for (j = 0; j < nrhs; ++j)
-	//     	for (i = 0; i < A->nrow; ++i) {
-    //             Bmat[i + j*ldb] *= C[i];
-	//     }
-    // }
-
-    
     /* ------------------------------------------------------------
        Perform the LU factorization.
        ------------------------------------------------------------*/
@@ -269,12 +250,13 @@ void pdgssvx_factor(int_t nprocs,
     	utime[FACT] = SuperLU_timer_() - t0;
 
     	flopcnt = 0;
-    	for (i = 0; i < nprocs; ++i) flopcnt += Gstat.procstat[i].fcops;
+    	for (i = 0; i < nprocs; ++i)flopcnt += Gstat.procstat[i].fcops;
     		ops[FACT] = flopcnt;
 
     	if ( superlumt_options->lwork == -1 ) {
     		superlu_memusage->total_needed = *info - A->ncol;
-    		return;
+    		fprintf(stderr, "\n%s: Too much memory required!\n", __FUNCTION__ );
+    		return (SPIKE_ERROR);
     	}
     }
 
@@ -304,43 +286,16 @@ void pdgssvx_factor(int_t nprocs,
 	   dgscon(norm, L, U, anorm, rcond, info);
 	   utime[RCOND] = SuperLU_timer_() - t0;
 
-	/* ------------------------------------------------------------
-	   Compute the solution matrix X.
-	   ------------------------------------------------------------*/
-// 	for (j = 0; j < nrhs; j++)    /* Save a copy of the right hand sides */
-// 	   for (i = 0; i < B->nrow; i++)
-// 			Xmat[i + j*ldx] = Bmat[i + j*ldb];
-// 	   t0 = SuperLU_timer_();
-// 	   dgstrs(trant, L, U, perm_r, perm_c, X, &Gstat, info);
-// 	   utime[SOLVE] = SuperLU_timer_() - t0;
-// 	   ops[SOLVE] = ops[TRISOLVE];
 
 	/* ------------------------------------------------------------
 	   Use iterative refinement to improve the computed solution and
 	   compute error bounds and backward error estimates for it.
 	   ------------------------------------------------------------*/
-//	   t0 = SuperLU_timer_();
-//	   dgsrfs(trant, AA, L, U, perm_r, perm_c, *equed,
-//	   	R, C, B, X, ferr, berr, &Gstat, info);
-//	   utime[REFINE] = SuperLU_timer_() - t0;
 
 	/* ------------------------------------------------------------
 	   Transform the solution matrix X to a solution of the original
 	   system.
 	   ------------------------------------------------------------*/
-//	   if ( notran ) {
-//	   	if ( colequ ) {
-//	   		for (j = 0; j < nrhs; ++j)
-//	   			for (i = 0; i < A->nrow; ++i) {
-//	   				Xmat[i + j*ldx] *= C[i];
-//	   			}
-//	   		}
-//	   	} else if ( rowequ ) {
-//	   		for (j = 0; j < nrhs; ++j)
-//	   			for (i = 0; i < A->nrow; ++i) {
-//	   				Xmat[i + j*ldx] *= R[i];
-//	   			}
-//	   		}
 
 	/* Set INFO = A->ncol+1 if the matrix is singular to 
 	   working precision.*/
@@ -348,26 +303,23 @@ void pdgssvx_factor(int_t nprocs,
 
 	} /* end bracket of no error if-else check */
 
-	
-
-
-
-fflush(stdout);
-
 	superlu_dQuerySpace(nprocs, L, U, panel_size, superlu_memusage);
 
     /* ------------------------------------------------------------
        Deallocate storage after factorization.
        ------------------------------------------------------------*/
-    // if ( dofact || equil ) {
-    //     Destroy_CompCol_Permuted(&AC);
-    // }
-    // 
-    // if ( A->Stype == SLU_NR ) {
-	// 	Destroy_SuperMatrix_Store(AA);
-	// 	SUPERLU_FREE(AA);
-    // }
+    if ( dofact || equil ) {
+    	Destroy_CompCol_Permuted(&AC);
+    }
+    
+    if ( A->Stype == SLU_NR ) {
+		Destroy_SuperMatrix_Store(A);
 
+		// Destroy_SuperMatrix_Store(AA);
+		// SUPERLU_FREE(AA);
+    }
+
+    /* return AA instead of AA */
     A = AA;
 
     PrintStat(&Gstat);
@@ -375,12 +327,11 @@ fflush(stdout);
 };
 
 
-void
-pdgssvx_solve  (int_t nprocs,
+Error_t spike_pdgssvx_solve  (integer_t nprocs,
 				superlumt_options_t *superlumt_options,
 				SuperMatrix *AA, 
-				int_t *perm_c,
-				int_t *perm_r,
+				integer_t *perm_c,
+				integer_t *perm_r,
 				equed_t *equed,
 				double *R,
 				double *C,
@@ -393,31 +344,33 @@ pdgssvx_solve  (int_t nprocs,
 				double *ferr,
 				double *berr, 
 				superlu_memusage_t *superlu_memusage,
-				int_t *info,
-				const integer_t n,
-				const integer_t nrhs)
+				integer_t *info)
 {
     DNformat  *Bstore, *Xstore;
     double    *Bmat, *Xmat;
-    int_t       ldb = n;
-    int_t       ldx = n;
-    int_t       colequ, equil, dofact, notran, rowequ;
+    integer_t         n = AA->nrow;
+    integer_t       nrhs = B->ncol;
+    integer_t       ldb = n;
+    integer_t       ldx = n;
+    integer_t       colequ, equil, dofact, notran, rowequ;
     char      norm[1];
     trans_t   trant = TRANS; /* TODO fixed by me ! */
-    int_t     j, info1;
+    integer_t     j, info1;
     int i;
     double amax, anorm, bignum, smlnum, colcnd, rowcnd, rcmax, rcmin;
-    int_t       relax, panel_size;
+    integer_t       relax, panel_size;
     Gstat_t   Gstat;
     double    t0;      /* temporary time */
     double    *utime;
     flops_t   *ops, flopcnt;
    
     /* External functions */
-    extern double dlangs(char *, SuperMatrix *);
-    extern double dlamch_(char *);
-    extern void sp_colorder(SuperMatrix *, int_t *, superlumt_options_t *,
-	    SuperMatrix *);
+    extern real_t 	dlangs(char *, SuperMatrix *);
+    extern real_t 	dlamch_(char *);
+    extern void 	sp_colorder(SuperMatrix *,
+    				integer_t *,
+    				superlumt_options_t *,
+	    			SuperMatrix *);
 
     Bstore = B->Store;
     Xstore = X->Store;
@@ -509,11 +462,9 @@ pdgssvx_solve  (int_t nprocs,
 	utime[SOLVE] = SuperLU_timer_() - t0;
 	ops[SOLVE] = ops[TRISOLVE];
 
-    fprintf(stderr, "\n%s: line %d", __FUNCTION__, __LINE__ );
 
-
-	for(int i=0; i < n; i++){
-		fprintf(stderr, "\n x[%d] %.f b[%d] %f", i, Xmat[i], i, Bmat[i] );
+	for(int i=0; i < 10; i++){
+		fprintf(stderr, "\n x[%d] %f b[%d] %f", i, Xmat[i], i, Bmat[i] );
 	}
     
 	/* ------------------------------------------------------------
@@ -523,8 +474,6 @@ pdgssvx_solve  (int_t nprocs,
 	t0 = SuperLU_timer_();
 	dgsrfs(trant, AA, L, U, perm_r, perm_c, *equed, R, C, B, X, ferr, berr, &Gstat, info);
 	utime[REFINE] = SuperLU_timer_() - t0;
-
-	fprintf(stderr, "\n%s: line %d\n", __FUNCTION__, __LINE__ );
 
 	/* ------------------------------------------------------------
 	   Transform the solution matrix X to a solution of the original
@@ -552,6 +501,8 @@ pdgssvx_solve  (int_t nprocs,
        ------------------------------------------------------------*/
     PrintStat(&Gstat);
     StatFree(&Gstat);
+
+    return (SPIKE_SUCCESS);
 };
 
 
@@ -617,30 +568,27 @@ Error_t solver_Factorize(DirectSolverHander_t *handler,
     handler->nnz        = nnz;
 
 	/* create SuperLU matrix using handler.A pointer*/
-	dCreate_CompCol_Matrix( &handler->A, handler->n, handler->n, handler->nnz, aij, colind, rowptr, SLU_NR, SLU_D, SLU_GE);
+	// dCreate_CompCol_Matrix( &handler->A, handler->n, handler->n, handler->nnz, aij, colind, rowptr, SLU_NR, SLU_D, SLU_GE);
+
+
+	/* ya que la matriz esta ordenada como SLU_NR, la cambiamos a AA */
+// dCreate_CompCol_Matrix
+
+	dCreate_CompCol_Matrix( &handler->A, handler->n, handler->n, handler->nnz, 
+			       aij, colind, rowptr,
+			       SLU_NC, SLU_D, SLU_GE );
+
 
 	/* row and column permutation arrays */
 	handler->perm_r = (integer_t*) spike_malloc( ALIGN_INT , handler->n   , sizeof(integer_t));
 	handler->perm_c = (integer_t*) spike_malloc( ALIGN_INT , handler->n   , sizeof(integer_t));
 
-	/* */
+	/* row and column scaling vectors */
 	handler->C      = (real_t*   ) spike_malloc( ALIGN_REAL, handler->n   , sizeof(real_t)   );
 	handler->R      = (real_t*   ) spike_malloc( ALIGN_REAL, handler->n   , sizeof(real_t)   );
 
 	/* get permutation spect */
 	get_perm_c( handler->permc_spec, &handler->A, handler->perm_c);
-
-	fprintf(stderr, "\n%d todo bien", __LINE__ );
-
-
-
-	/* update number of RHS */
-	
-	handler->nrhs = 1;
-
-	/* backward and forward error propagation arrays */
-	handler->berr   = (real_t*   ) spike_malloc( ALIGN_REAL, handler->nrhs, sizeof(real_t)   ); 
-	handler->ferr   = (real_t*   ) spike_malloc( ALIGN_REAL, handler->nrhs, sizeof(real_t)   );
 
 	/* allocate space for elimination tree */
     handler->etree        = (integer_t*) spike_malloc( ALIGN_INT, handler->n, sizeof(integer_t));
@@ -669,15 +617,9 @@ Error_t solver_Factorize(DirectSolverHander_t *handler,
 	handler->superlumt_options.part_super_h      = handler->part_super_h;
 
 
-    dCreate_Dense_Matrix( &handler->B, handler->n, handler->nrhs, bij, handler->n, SLU_DN, SLU_D, SLU_GE);
-    dCreate_Dense_Matrix( &handler->X, handler->n, handler->nrhs, xij, handler->n, SLU_DN, SLU_D, SLU_GE);
-
-	fprintf(stderr, "\n%d todo bien", __LINE__ );
-
-
-
-
-	pdgssvx_factor( handler->nprocs,
+	/* perform the factorization of the coefficient matrix */
+	/* using the modified SuperLU's p?gssv expert driver   */
+	spike_pdgssvx_factor( handler->nprocs,
 		&handler->superlumt_options,
 		&handler->A, 
 		handler->perm_c,
@@ -687,18 +629,42 @@ Error_t solver_Factorize(DirectSolverHander_t *handler,
 		handler->C,
 		&handler->L,
 		&handler->U,
-//		&handler->B,
-//		&handler->X,
 		&handler->recip_pivot_growth, 
 		&handler->rcond,
-		handler->ferr,
-		handler->berr, 
 		&handler->superlu_memusage,
-		&handler->info,
-		handler->n,
-		handler->nrhs);
+		&handler->info);
 
-	pdgssvx_solve(
+	fprintf(stderr, "Fin de la rutina!!!\n");
+
+	/* resume */
+	return (SPIKE_SUCCESS);
+};
+
+Error_t solver_ApplyToRHS ( DirectSolverHander_t* handler,
+							const integer_t nrhs,
+							complex_t *restrict xij,
+							complex_t *restrict bij)
+{
+	/* update number of RHS */
+	handler->nrhs = nrhs;
+
+
+	/* Create RHS and solution blocks */
+    dCreate_Dense_Matrix( &handler->B, handler->n, handler->nrhs, bij, handler->n, SLU_DN, SLU_D, SLU_GE);
+    dCreate_Dense_Matrix( &handler->X, handler->n, handler->nrhs, xij, handler->n, SLU_DN, SLU_D, SLU_GE);
+
+
+    // TODO usar las funciones de FILL RHS e iniciar estos vectores en el init()
+    // de esta forma no tendremos que crear las estructuras cada vez
+
+
+	/* backward and forward error propagation arrays */
+	handler->berr   = (real_t*   ) spike_malloc( ALIGN_REAL, handler->nrhs, sizeof(real_t)   ); 
+	handler->ferr   = (real_t*   ) spike_malloc( ALIGN_REAL, handler->nrhs, sizeof(real_t)   );
+
+	/* perform the factorization of the coefficient matrix */
+	/* using the modified SuperLU's p?gssv expert driver   */
+	spike_pdgssvx_solve(
 		handler->nprocs,
 		&handler->superlumt_options,
 		&handler->A, 
@@ -716,38 +682,10 @@ Error_t solver_Factorize(DirectSolverHander_t *handler,
 		handler->ferr,
 		handler->berr, 
 		&handler->superlu_memusage,
-		&handler->info,
-		handler->n,
-		handler->nrhs);
+		&handler->info);
 
-	for(int i=0; i < handler->n; i++)
+	for(int i=0; i < 10; i++)
 		fprintf(stderr, "\nx %f b %f", xij[i], bij[i] );
-
-	fprintf(stderr, "\n");
-
-	fprintf(stderr, "Fin de la rutina!!!\n");
-
-	/* resume */
-	return (SPIKE_SUCCESS);
-};
-
-Error_t solver_ApplyToRHS ( DirectSolverHander_t* handler,
-							const integer_t nrhs,
-							complex_t *restrict xaij,
-							complex_t *restrict baij)
-{
-//	/* update number of RHS */
-//	handler->nrhs = nrhs;
-//
-//	/* backward and forward error propagation arrays */
-//	handler->berr   = (real_t*   ) spike_malloc( ALIGN_REAL, handler->nrhs, sizeof(real_t)   ); 
-//	handler->ferr   = (real_t*   ) spike_malloc( ALIGN_REAL, handler->nrhs, sizeof(real_t)   );
-//
-//	/* allocate space for elimination tree */
-//    handler->etree        = (integer_t*) spike_malloc( ALIGN_INT, handler->n, sizeof(integer_t));
-//    handler->colcnt_h     = (integer_t*) spike_malloc( ALIGN_INT, handler->n, sizeof(integer_t));
-//    handler->part_super_h = (integer_t*) spike_malloc( ALIGN_INT, handler->n, sizeof(integer_t));
-
 
 	return (SPIKE_SUCCESS);
 };
