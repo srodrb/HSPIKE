@@ -59,11 +59,11 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	const integer_t nrhs = 10;
+	const integer_t nrhs = 1;
 	//matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
-	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
 
 	// matrix_PrintAsDense( A, "Original coeffient matrix" );
 

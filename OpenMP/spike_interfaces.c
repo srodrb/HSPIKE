@@ -82,7 +82,7 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 6);
+	S = spike_solve_analysis( A, nrhs, 2);
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -230,10 +230,10 @@
 	fprintf(stderr, "\nSolving reduced linear system\n");
 	directSolver_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
 
-	// reduced_PrintAsDense( R, yr, xr, "Reduced system");
+	reduced_PrintAsDense( R, yr, xr, "Reduced system");
 
 	/* compute residual */
-	// ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, yr->m );
+	ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, xr->aij, yr->aij, R->n, yr->m );
 
 	/* Free some memory, yr and R are not needed anymore */
 	block_Deallocate ( xr );

@@ -62,17 +62,8 @@ DirectSolverHander_t *directSolver_CreateHandler(void)
 
 Error_t directSolver_Configure( DirectSolverHander_t *handler )
 {   
-    /* intialize metrics to 0 */
-    handler->ordering_t          = 0.0;
-    handler->scaling_t           = 0.0;
-    handler->factor_t            = 0.0;
-    handler->solve_t             = 0.0;
-    handler->refine_t            = 0.0;
-    handler->rhs_block_count     =   0;
-    handler->rhs_column_count    =   0;
-
     /* create superlu structures from data */
-    handler->nprocs     = (integer_t) 1;
+    handler->nprocs     = 1;
     handler->fact       = (fact_t)   EQUILIBRATE;
     handler->trans      = (trans_t)  TRANS;
     handler->refact     = (yes_no_t) NO;
@@ -89,9 +80,6 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
     handler->permc_spec = 1;
     handler->recip_pivot_growth = 0.0; // ?? 
 
-    // handler->Gstat;
-
-
     /* allocate working buffer if it is not provided */
     if ( handler->lwork > 0 ) {
       handler->work = SUPERLU_MALLOC(handler->lwork);
@@ -102,6 +90,25 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
             SUPERLU_ABORT("SLINSOLX: cannot allocate work[]");
         }
     }
+
+    /* -------------------------------------------------------------------- */
+    /* .. Set the number of processors according to the OMP_NUM_THREADS   . */
+    /* -------------------------------------------------------------------- */
+    char *var = getenv("OMP_NUM_THREADS");
+    if(var != NULL)
+        sscanf( var, "%d", &handler->nprocs );
+    else {
+        printf("Set environment OMP_NUM_THREADS to 1");
+    }
+
+    /* intialize metrics to 0 */
+    handler->ordering_t          = 0.0;
+    handler->scaling_t           = 0.0;
+    handler->factor_t            = 0.0;
+    handler->solve_t             = 0.0;
+    handler->refine_t            = 0.0;
+    handler->rhs_block_count     =   0;
+    handler->rhs_column_count    =   0;
 
     /* resume and exit */
     return (SPIKE_SUCCESS);
@@ -165,7 +172,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
     handler->superlumt_options.drop_tol          = handler->drop_tol;
     handler->superlumt_options.diag_pivot_thresh = handler->u;
     handler->superlumt_options.SymmetricMode     = NO;
-    handler->superlumt_options.PrintStat         = NO;
+    handler->superlumt_options.PrintStat         = YES;
     handler->superlumt_options.perm_c            = handler->perm_c;
     handler->superlumt_options.perm_r            = handler->perm_r;
     handler->superlumt_options.work              = handler->work;
@@ -205,6 +212,9 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
     /* update number of RHS */
     handler->nrhs = nrhs;
 
+    /* update statistics, keep track of RHS */
+    handler->rhs_block_count  += 1;
+    handler->rhs_column_count += nrhs;
 
     /* Create RHS and solution blocks */
     dCreate_Dense_Matrix( &handler->B, handler->n, handler->nrhs, bij, handler->n, SLU_DN, MATRIX_DTYPE, SLU_GE);
@@ -250,6 +260,7 @@ Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
     fprintf(stderr, "\n              BACKEND: SUPERLU                         \n\n");
     fprintf(stderr, "\n Total number of RHS packs solved by this handler    : %d", handler->rhs_block_count );
     fprintf(stderr, "\n Total number of RHS vectors solved by this hander   : %d", handler->rhs_column_count );
+    fprintf(stderr, "\n Number of OMP threads used                          : %d", handler->nprocs             );
     fprintf(stderr, "\n Ordering time                                       : %.6lf seconds", handler->ordering_t);
     fprintf(stderr, "\n Scaling time                                        : %.6lf seconds", handler->scaling_t);
     fprintf(stderr, "\n Factorization time                                  : %.6lf seconds", handler->factor_t);
@@ -373,10 +384,17 @@ Error_t directSolver_Solve (integer_t n,
         SUPERLU_ABORT("SLINSOLX: cannot allocate work[]");
     }
 
+    char *var = getenv("OMP_NUM_THREADS");
+    if(var != NULL)
+        sscanf( var, "%d", &nprocs );
+    else {
+        printf("Set environment OMP_NUM_THREADS to 1");
+    }
+
 
     fprintf(stderr, "Creating sparse matrix\n");
 
-    dCreate_CompCol_Matrix(&A, n, n, nnz, aij, colind, rowptr, SLU_NC, SLU_D, SLU_GE);
+    dCreate_CompCol_Matrix(&A, n, n, nnz, aij, colind, rowptr, SLU_NR, SLU_D, SLU_GE);
     Astore = A.Store;
     fprintf(stderr, "Dimension " IFMT "x" IFMT "; # nonzeros " IFMT "\n", A.nrow, A.ncol, Astore->nnz);
 
@@ -463,12 +481,6 @@ Error_t directSolver_Solve (integer_t n,
     /* print vectors */
     DNformat  *Bstore  = (DNformat* ) B.Store;
     complex_t *Bvalues = (complex_t*) Bstore->nzval;
-
-
-    for(int i=0; i < 10; i++){
-        // (stderr, "x[%d] = %.lf b[%d] = %.lf\n", i, Xvalues[i], i, Bvalues[i]);
-        fprintf(stderr, "b[%d] = %f x[%d] %f\n", i, b[i], i, x[i]);
-    }
 
     /* clean up and resume execution */
     //Destroy_CompCol_Matrix   (&A);
@@ -935,7 +947,6 @@ static Error_t spike_pgssvx_solve  (
     if ( notran ) {
 		if ( rowequ ) {
 	    	for (j = 0; j < nrhs; ++j)
-                #pragma omp parallel for 
 				for (i = 0; i < n; ++i) {
                     Bmat[i + j*ldb] *= R[i];
 				}
@@ -943,7 +954,6 @@ static Error_t spike_pgssvx_solve  (
     }
     else if ( colequ ) {
 		for (j = 0; j < nrhs; ++j)
-            #pragma omp parallel for 
 	    	for (i = 0; i < n; ++i) {
                 Bmat[i + j*ldb] *= C[i];
 	    	}

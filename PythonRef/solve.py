@@ -340,9 +340,6 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
     # -------------------------------------------- Solve stage
     R = R.tocsc()
 
-    print 'Reduced system'
-    print R.todense()
-
     start_t = timer()
     lu = sla.splu(R)
     xred = lu.solve(yr)
@@ -622,4 +619,4 @@ if __name__ == '__main__':
     x  = LU.solve(b)
     tend = timer() - tstart
 
-    print 'It took %f seconds', tend
+    print 'It took %f seconds' %(tend)
