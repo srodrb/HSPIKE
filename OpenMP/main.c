@@ -59,10 +59,11 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-	const integer_t nrhs = 50;
+	const integer_t nrhs = 10;
 	//matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
-	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 
 	// matrix_PrintAsDense( A, "Original coeffient matrix" );
 
@@ -84,12 +85,6 @@ int main(int argc, const char *argv[])
 	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
 	SolveOriginalSystem( A, x, f);
 
-	block_Print(x, "Solution of the system");
-
-	block_InitializeToValue( x, __zero  ); // solution of the system
-	block_InitializeToValue( f, __punit ); // rhs of the system
-
-
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
 	/* -------------------------------------------------------------------- */
@@ -98,12 +93,12 @@ int main(int argc, const char *argv[])
 	block_Deallocate  ( f );
 	
 
-
-
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
 	fprintf(stderr, "\nProgram finished\n");
+
+	fprintf(stderr, "Number of malloc() %d, number of free() %d\n", cnt_alloc, cnt_free );
 
 	return 0;
 }

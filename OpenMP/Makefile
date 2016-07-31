@@ -1,8 +1,9 @@
-COMPILER=INTEL
-BACKEND=SUPERLU
+COMPILER =INTEL
+BACKEND  =PARDISO
+DEBUG    =NO
 
 #DEFINES =-D_DATATYPE_Z_ -D_ENABLE_TESTING_
-DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_
+DEFINES =-D_DATATYPE_D_
 
 OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 		spike_algebra.o spike_analysis.o spike_common.o \
@@ -10,9 +11,13 @@ OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
-	CFLAGS  =-qopenmp -std=c99 -g -O3 -xHost -restrict
-	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	CFLAGS  =-qopenmp -std=c99 -O3 -g -restrict
+	# CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	
+	# multi-threaded version
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	# sequential version
+	# CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
 	CINCS   =-I${MKLROOT}/include
 
 	#CLIBS = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm -ldl
@@ -25,14 +30,18 @@ else
 endif
 
 ifeq ($(BACKEND),SUPERLU)
-	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt
+	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt_openmp
 	#CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_mkl/SRC
 
 
 	DEFINES +=-D_SUPERLU_BACKEND_
 
-	CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT/lib -lsuperlu_mt_openmp
-	CINCS   +=-I/home/srodrigu/Software/SuperLU_MT/SRC
+	# CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT/lib -lsuperlu_mt_openmp
+	# CINCS   +=-I/home/srodrigu/Software/SuperLU_MT/SRC
+
+	CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_3.1/lib -lsuperlu_mt_OPENMP
+	CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_3.1/SRC
+
 	
 	OBJS    += spike_superlu.o
 else
@@ -41,6 +50,10 @@ else
 
 endif
 
+
+ifeq  ($(DEBUG),YES)
+	DEFINES += -D_ENABLE_TESTING_
+endif
 
 TARTGET=main
 

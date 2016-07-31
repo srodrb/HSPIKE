@@ -28,11 +28,12 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
 	/* -------------------------------------------------------------------- */
 	handler->iparm[0]  =  1;    /* No solver default */
 	handler->iparm[1]  =  2;    /* Fill-in reordering from METIS */
+ 	handler->iparm[2]  =  1;    /* Use all cores                 */
 	handler->iparm[3]  =  0;    /* No iterative-direct algorithm */
 	handler->iparm[4]  =  0;    /* No user fill-in reducing permutation */
 	handler->iparm[5]  =  0;    /* Write solution into x */
 	handler->iparm[6]  =  0;    /* Not in use */
-	handler->iparm[7]  =  3;    /* Max numbers of iterative refinement steps */
+	handler->iparm[7]  =  2;    /* Max numbers of iterative refinement steps */
 	handler->iparm[8]  =  0;    /* Not in use */
 	handler->iparm[9]  = 13;    /* Perturb the pivot elements with 1E-13 */
 	handler->iparm[10] =  1;    /* Use nonsymmetric permutation and scaling MPS */
@@ -52,12 +53,29 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
 	handler->msglvl    =  0;    /* Print statistical information in file */
 	handler->error     =  0;    /* Initialize error flag */
 
+	/* -------------------------------------------------------------------- */
+	/* .. Set the number of processors according to the OMP_NUM_THREADS   . */
+	/* -------------------------------------------------------------------- */
+    char *var = getenv("OMP_NUM_THREADS");
+    if(var != NULL)
+        sscanf( var, "%d", &handler->iparm[2] );
+    else {
+        printf("Set environment OMP_NUM_THREADS to 1");
+    }
+
+	/* Pardiso requieres this parameter at the factorization stage */
+	/* but we still dont know anything about the rhs               */
+	handler->nrhs   = 1;
+
+    /* matrix type */
 	handler->mtype = MTYPE_GEN_NOSYMM;
 
 	/* statistical parameters */
 	handler->ordering_t = 0.0;
 	handler->factor_t   = 0.0;
 	handler->solve_t    = 0.0;
+	handler->clean_t    = 0.0;
+
 	handler->rhs_block_count  = 0;
 	handler->rhs_column_count = 0;
 
@@ -78,10 +96,6 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	handler->n      = n;
 	handler->nnz    = nnz;
 
-	/* Pardiso requieres this parameter at the factorization stage */
-	/* but we still dont know anything about the rhs               */
-	handler->nrhs   = 1;
-
 
 	pardiso_Factorize( handler );
 };
@@ -93,7 +107,7 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
                             complex_t *restrict bij)
 {
 	/* update the value of rhs columns */
-	handler->nrhs;
+	handler->nrhs = nrhs;
 
 	/* update statistics, keep track of RHS */
 	handler->rhs_block_count  += 1;
@@ -111,18 +125,31 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 
 Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
 {
+
+#ifdef _ENABLE_TESTING_
+	/* local variables */
+	double avrhs = handler->solve_t / (double) handler->rhs_column_count;
+
 	fprintf(stderr, "\n\n--------------------------------------------------------");
 	fprintf(stderr, "\n              BACKEND: PARDISO                         \n\n");
-	fprintf(stderr, "\n Total number of RHS packs solved by this handler    : %d", handler->rhs_block_count );
-	fprintf(stderr, "\n Total number of RHS vectors solved by this hander   : %d", handler->rhs_column_count );
+	fprintf(stderr, "\n Total number of RHS packs solved by this handler    : %d", handler->rhs_block_count      );
+	fprintf(stderr, "\n Total number of RHS vectors solved by this hander   : %d", handler->rhs_column_count     );
+	fprintf(stderr, "\n Number of OMP threads used                          : %d", handler->iparm[2]             );
 	fprintf(stderr, "\n Reordering time                                     : %.6lf seconds", handler->ordering_t);
-	fprintf(stderr, "\n Factorization time                                  : %.6lf seconds", handler->factor_t);
-	fprintf(stderr, "\n Solution time                                       : %.6lf seconds", handler->solve_t);
+	fprintf(stderr, "\n Factorization time                                  : %.6lf seconds", handler->factor_t  );
+	fprintf(stderr, "\n Solution time                                       : %.6lf seconds", handler->solve_t   );
+	fprintf(stderr, "\n Release internal memory                             : %.6lf seconds", handler->clean_t   );	
+	fprintf(stderr, "\n Av. time per RHS column                             : %.6lf seconds", avrhs);
 	fprintf(stderr, "\n----------------------------------------------------------");
+#endif
+
+	return (SPIKE_SUCCESS);
 };
 
 Error_t directSolver_Finalize( DirectSolverHander_t *handler )
 {
+	pardiso_CleanUp(handler);
+
 	spike_nullify(handler);
 
 	return (SPIKE_SUCCESS);
@@ -148,7 +175,7 @@ static Error_t pardiso_ApplyFactorToRHS  ( DirectSolverHander_t *handler )
 	/* -------------------------------------------------------------------- */
 	/* .. Back substitution and iterative refinement. */
 	/* -------------------------------------------------------------------- */
-	fprintf (stderr, "\n\n%s: Back substitution and iterative refinement...\n", __FUNCTION__);
+	//fprintf (stderr, "\n\n%s: Back substitution and iterative refinement...\n", __FUNCTION__);
 
 	start_t = GetReferenceTime();
 	phase = 33;
@@ -176,7 +203,7 @@ static Error_t pardiso_ApplyFactorToRHS  ( DirectSolverHander_t *handler )
 	}
 	end_t = GetReferenceTime() - start_t;
 	
-	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, end_t );
+	// fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, end_t );
 	
 	/* collect handler statistics */
 	handler->solve_t += end_t;
@@ -244,10 +271,10 @@ static Error_t pardiso_Factorize(DirectSolverHander_t *handler )
 	}
 	end_t = GetReferenceTime() - start_t;
 
-	fprintf(stderr, "\n%s: Reordering completed ... ", __FUNCTION__);
-	fprintf(stderr, "\n%s: Number of nonzeros in factors = %d", __FUNCTION__, handler->iparm[17]);
-	fprintf(stderr, "\n%s: Number of factorization MFLOPS = %d", __FUNCTION__, handler->iparm[18]);
-	fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, end_t );
+	// fprintf(stderr, "\n%s: Reordering completed ... ", __FUNCTION__);
+	// fprintf(stderr, "\n%s: Number of nonzeros in factors = %d", __FUNCTION__, handler->iparm[17]);
+	// fprintf(stderr, "\n%s: Number of factorization MFLOPS = %d", __FUNCTION__, handler->iparm[18]);
+	// fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, end_t );
 
 	/* update handler statistics */
 	handler->ordering_t += end_t;
@@ -282,8 +309,8 @@ static Error_t pardiso_Factorize(DirectSolverHander_t *handler )
 	
 	end_t = GetReferenceTime() - start_t;
 	
-	fprintf(stderr, "\n%s: Factorization completed ... ", __FUNCTION__);
-	fprintf(stderr, "\n%s: Numerical factorization time %.6lf\n", __FUNCTION__, end_t );
+	// fprintf(stderr, "\n%s: Factorization completed ... ", __FUNCTION__);
+	// fprintf(stderr, "\n%s: Numerical factorization time %.6lf\n", __FUNCTION__, end_t );
 
 	/* update handler statistics */
 	handler->factor_t += end_t;
@@ -295,16 +322,21 @@ static Error_t pardiso_Factorize(DirectSolverHander_t *handler )
 static Error_t pardiso_CleanUp( DirectSolverHander_t *handler )
 {
 
-	/* -------------------------------------------------------------------- */
-	/* .. Local variables. */
-	/* -------------------------------------------------------------------- */
+/* -------------------------------------------------------------------- */
+/* .. Local variables. */
+/* -------------------------------------------------------------------- */
+	// MKL_INT mtype = MTYPE_GEN_NOSYMM;       /* Real unsymmetric matrix */
+	// MKL_INT iparm[64]; /* Pardiso control parameters. */
+	// MKL_INT conf[64];
 	MKL_INT phase;
 	double ddum;          /* Double dummy */
 	MKL_INT idum;         /* Integer dummy. */
+	spike_timer_t tstart_t;
 
-	/* -------------------------------------------------------------------- */
-	/* .. Termination and release of memory. */
-	/* -------------------------------------------------------------------- */
+/* -------------------------------------------------------------------- */
+/* .. Termination and release of memory. */
+/* -------------------------------------------------------------------- */
+	tstart_t = GetReferenceTime();
 	phase = -1;           /* Release internal memory. */
 	PARDISO (   handler->conf,
 				&handler->maxfct,
@@ -323,9 +355,7 @@ static Error_t pardiso_CleanUp( DirectSolverHander_t *handler )
 				&ddum,
 				&handler->error);
 
-
-	fprintf(stderr, "\n%s: status OK", __FUNCTION__ );
-
+	handler->clean_t += GetReferenceTime() - tstart_t;
 
 	return (SPIKE_SUCCESS);
 };
@@ -365,6 +395,7 @@ static Error_t pardiso_CleanUp( DirectSolverHander_t *handler )
 
 	iparm[0]  =  1;    /* No solver default */
 	iparm[1]  =  2;    /* Fill-in reordering from METIS */
+	iparm[2]  =  1;    /* Use two cores */
 	iparm[3]  =  0;    /* No iterative-direct algorithm */
 	iparm[4]  =  0;    /* No user fill-in reducing permutation */
 	iparm[5]  =  0;    /* Write solution into x */
@@ -387,6 +418,17 @@ static Error_t pardiso_CleanUp( DirectSolverHander_t *handler )
 	mnum      =  1;    /* Which factorization to use. */
 	msglvl    =  0;    /* Print statistical information in file */
 	error     =  0;    /* Initialize error flag */
+
+
+	/* -------------------------------------------------------------------- */
+	/* .. Set the number of processors according to the OMP_NUM_THREADS   . */
+	/* -------------------------------------------------------------------- */
+    char *var = getenv("OMP_NUM_THREADS");
+    if(var != NULL)
+        sscanf( var, "%d", &iparm[2] );
+    else {
+        printf("Set environment OMP_NUM_THREADS to 1");
+    }
 
 	/* -------------------------------------------------------------------- */
 	/* .. Initialize the internal solver memory pointer. This is only */

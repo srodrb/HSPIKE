@@ -29,15 +29,15 @@ matrix_t* matrix_LoadCSR(const char* filename)
 
 	// allocate space for matrix coefficients and load them
 	M->aij    = (complex_t*) spike_malloc( ALIGN_COMPLEX, M->nnz , sizeof(complex_t));
-	spike_fread( (void*) M->aij, sizeof(complex_t), M->nnz, f );
+	spike_fread( M->aij, sizeof(complex_t), M->nnz, f );
 
 	// allocate space for matrix indices and load them
-	M->colind = (integer_t*) spike_malloc( ALIGN_INT    , M->nnz , sizeof(integer_t));
-	spike_fread( (void*) M->colind, sizeof(integer_t), M->nnz, f );
+	M->colind = (integer_t*) spike_malloc( ALIGN_INT, M->nnz , sizeof(integer_t));
+	spike_fread( M->colind, sizeof(integer_t), M->nnz, f );
 
 	// allocate space for matrix row pointers and load them
-	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT    , M->n +1, sizeof(integer_t));
-	spike_fread( (void*) M->rowptr, sizeof(integer_t), M->n + 1, f );
+	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT, M->n +1, sizeof(integer_t));
+	spike_fread( M->rowptr, sizeof(integer_t), M->n + 1, f );
 
 	// close file
 	spike_fclose(f);

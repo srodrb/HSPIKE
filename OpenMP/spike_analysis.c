@@ -70,10 +70,11 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 void schedule_Destroy( sm_schedule_t* S )
 {
 	spike_nullify( S->n  );
+	spike_nullify( S->r  );
 	spike_nullify( S->ku );
 	spike_nullify( S->kl );
 
-	spike_nullify(S);
+	spike_nullify( S );
 };
 
 void schedule_Print (sm_schedule_t* S)

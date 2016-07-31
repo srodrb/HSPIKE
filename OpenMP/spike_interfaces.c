@@ -82,14 +82,11 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 20 );
+	S = spike_solve_analysis( A, nrhs, 6);
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
-	fprintf(stderr, "\nCreated reduced system matrix\n");
 	xr = block_CreateReducedRHS( S->p, S->ku, S->kl, nrhs );
-	fprintf(stderr, "\nCreated reduced system RHS\n");
-
 
 	/* -------------------------------------------------------------------- */
 	/* .. Factorization Phase. */
@@ -104,7 +101,6 @@
 		const integer_t rf = S->n[p+1];
 
 		/* allocate pardiso configuration parameters */
-		// void *pardiso_conf = (void*) spike_malloc( ALIGN_INT, 64, sizeof(integer_t));
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 		
 		directSolver_Configure(handler);
@@ -133,6 +129,7 @@
 		/* solve the system for the RHS value */
 		directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij );
 
+
 		/* Extract the tips of the yi block */
 		block_t* yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
 		block_t* yib = block_ExtractTip( yi, _BOTTOM_SECTION_, _COLMAJOR_ );
@@ -153,7 +150,6 @@
 
 			/* solve Aij * Vi = Bi */
 			directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij );
-
 
 			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
@@ -234,6 +230,10 @@
 	fprintf(stderr, "\nSolving reduced linear system\n");
 	directSolver_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
 
+	// reduced_PrintAsDense( R, yr, xr, "Reduced system");
+
+	/* compute residual */
+	// ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, yr->m );
 
 	/* Free some memory, yr and R are not needed anymore */
 	block_Deallocate ( xr );
@@ -383,16 +383,26 @@
 		matrix_Deallocate	( Aij);
 
 	}
+
 	fprintf(stderr, "\n\n----------- Release memory phase ------------------\n\n");
 
-	schedule_Destroy  ( S );
-	block_Deallocate  ( yr);
+	block_Deallocate  ( yr );
+	schedule_Destroy  ( S  );
 	
+
+	fprintf(stderr, "Internal SPIKE residual\n");
+	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, nrhs);
+	
+	/* deallocate temporal structures */
+	spike_nullify( A );
+	spike_nullify( x );
+	spike_nullify( f );
+
+
 	end_t = GetReferenceTime();
 
 	fprintf(stderr, "\nSPIKE solver took %.6lf seconds", end_t - start_t);
 
-	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, nrhs);
 	
 	return (SPIKE_SUCCESS);
 };

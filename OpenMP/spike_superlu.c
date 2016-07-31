@@ -314,8 +314,6 @@ Error_t directSolver_Solve (integer_t n,
     /* superlu overwrites the solution x on b vector */
     memcpy( x, b, n * nrhs * sizeof(complex_t));
 
-
-    fprintf(stderr, "\n%s: line %d\n", __FUNCTION__, __LINE__ );
     /* local variables */
     spike_timer_t tstart_t, tend_t;
 
@@ -378,7 +376,7 @@ Error_t directSolver_Solve (integer_t n,
 
     fprintf(stderr, "Creating sparse matrix\n");
 
-    dCreate_CompCol_Matrix(&A, n, n, nnz, aij, colind, rowptr, SLU_NR, SLU_D, SLU_GE);
+    dCreate_CompCol_Matrix(&A, n, n, nnz, aij, colind, rowptr, SLU_NC, SLU_D, SLU_GE);
     Astore = A.Store;
     fprintf(stderr, "Dimension " IFMT "x" IFMT "; # nonzeros " IFMT "\n", A.nrow, A.ncol, Astore->nnz);
 
@@ -937,6 +935,7 @@ static Error_t spike_pgssvx_solve  (
     if ( notran ) {
 		if ( rowequ ) {
 	    	for (j = 0; j < nrhs; ++j)
+                #pragma omp parallel for 
 				for (i = 0; i < n; ++i) {
                     Bmat[i + j*ldb] *= R[i];
 				}
@@ -944,6 +943,7 @@ static Error_t spike_pgssvx_solve  (
     }
     else if ( colequ ) {
 		for (j = 0; j < nrhs; ++j)
+            #pragma omp parallel for 
 	    	for (i = 0; i < n; ++i) {
                 Bmat[i + j*ldb] *= C[i];
 	    	}

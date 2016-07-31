@@ -65,14 +65,19 @@
 
         MKL_INT mtype;
 
-        MKL_INT conf[64];
+        MKL_INT *conf[64];
         MKL_INT iparm[64];
 
         MKL_INT maxfct, mnum, error, msglvl;
 
+        /* -------------------------------------------------------------------- */
+        /* .. Statistical variables                                             */
+        /* -------------------------------------------------------------------- */
         spike_timer_t ordering_t;
         spike_timer_t factor_t;
         spike_timer_t solve_t;
+        spike_timer_t clean_t;
+        
         integer_t rhs_block_count;
         integer_t rhs_column_count;
 

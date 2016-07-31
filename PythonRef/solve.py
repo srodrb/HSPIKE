@@ -340,6 +340,9 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
     # -------------------------------------------- Solve stage
     R = R.tocsc()
 
+    print 'Reduced system'
+    print R.todense()
+
     start_t = timer()
     lu = sla.splu(R)
     xred = lu.solve(yr)
@@ -581,12 +584,12 @@ if __name__ == '__main__':
     np.random.seed(314)
 
     # numero de particiones empleadas en el primer nivel
-    p = 10
-    N = 1e7
+    p = 2
+    N = 10
 
     #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
     A = create_pentadiagonal(N, precision)
-    export_csr2bin( A, "../Tests/spike/penta_10e6.d")
+    export_csr2bin( A, "../Tests/pentadiagonal/small.bin")
 
     nrhs = 1
 
@@ -596,7 +599,6 @@ if __name__ == '__main__':
     b = np.ones(N*nrhs, dtype=precision).reshape(N, nrhs)
     b_superlu = b.copy()
     b_spike = b.copy()
-
 
     # analysis.performance_analysis(A, b[:,0:2], 'analysis.rhs.1', pmin=1, pmax=50)
     # analysis.performance_analysis(A, b[:,0:45], 'analysis.rhs.45', pmin=1, pmax=50)
@@ -612,3 +614,12 @@ if __name__ == '__main__':
 
     for i in range( min(nrhs,10)):
         print '%.2d-th RHS - SPIKE error: %.2E' %(i, norm(b[:, i] - A.dot(x_spike[:, i])))
+
+
+    print 'Using reference SuperLU solver'
+    tstart = timer()
+    LU = sla.splu(A)
+    x  = LU.solve(b)
+    tend = timer() - tstart
+
+    print 'It took %f seconds', tend

@@ -157,5 +157,8 @@ int main(int argc, const char *argv[])
 	matrix_Deallocate( A );
 	fprintf(stderr, "\nTest finished finished\n");
 
+		fprintf(stderr, "Number of malloc() %d, number of free() %d\n", cnt_alloc, cnt_free );
+
+
 	return 0;
 }

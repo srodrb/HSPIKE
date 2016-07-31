@@ -21,10 +21,14 @@
 
 	#include <stdio.h>
 	#include <stdlib.h>
+ 	#include <string.h>
 
-	#define ALIGN_INT     (const int) 32
-	#define ALIGN_REAL    (const int) 64
-	#define ALIGN_COMPLEX (const int) 64
+ 	extern unsigned int cnt_alloc;
+ 	extern unsigned int cnt_free;
+
+	#define ALIGN_INT     (const int) 16
+	#define ALIGN_REAL    (const int) 32
+	#define ALIGN_COMPLEX (const int) 32
 
 	void* spike_malloc    ( const int alignment, const int nmemb, const size_t size);
 	void  spike_free      ( void* ptr );
