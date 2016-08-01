@@ -256,6 +256,12 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 
 Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
 {
+#ifdef _ENABLE_TESTING_
+    /* derived performance metrics */
+    double avrhs; /* average time per rhs column solve */
+
+    avrhs = (handler->solve_t + handler->refine_t) / (double) handler->rhs_column_count;
+
     fprintf(stderr, "\n\n--------------------------------------------------------");
     fprintf(stderr, "\n              BACKEND: SUPERLU                         \n\n");
     fprintf(stderr, "\n Total number of RHS packs solved by this handler    : %d", handler->rhs_block_count );
@@ -266,8 +272,11 @@ Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
     fprintf(stderr, "\n Factorization time                                  : %.6lf seconds", handler->factor_t);
     fprintf(stderr, "\n Solution time                                       : %.6lf seconds", handler->solve_t);
     fprintf(stderr, "\n iterative refinement time                           : %.6lf seconds", handler->refine_t);
+    fprintf(stderr, "\n Av. time per RHS column                             : %.6lf seconds", avrhs);
+
     fprintf(stderr, "\n----------------------------------------------------------");
 
+#endif
 
     return (SPIKE_SUCCESS);
 };
@@ -524,25 +533,25 @@ Error_t directSolver_Solve (integer_t n,
 
 static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
                                        integer_t nprocs,
-	                                   superlumt_options_t *superlumt_options,
-	                                   SuperMatrix *A, 
-	                                   integer_t *perm_c,
-	                                   integer_t *perm_r,
-	                                   equed_t *equed,
-	                                   double *R,
-	                                   double *C,
-	                                   SuperMatrix *L,
-	                                   SuperMatrix *U,
-	                                   double *recip_pivot_growth, 
-	                                   double *rcond, 
-	                                   superlu_memusage_t *superlu_memusage,
-	                                   integer_t *info)
+                                       superlumt_options_t *superlumt_options,
+                                       SuperMatrix *A, 
+                                       integer_t *perm_c,
+                                       integer_t *perm_r,
+                                       equed_t *equed,
+                                       double *R,
+                                       double *C,
+                                       SuperMatrix *L,
+                                       SuperMatrix *U,
+                                       double *recip_pivot_growth, 
+                                       double *rcond, 
+                                       superlu_memusage_t *superlu_memusage,
+                                       integer_t *info)
 {
     /* spike timers */
     spike_timer_t tstart_t, tend_t;
 
     /* function local variables */
-    NCformat  	*Astore;
+    NCformat    *Astore;
     SuperMatrix *AA; /* A in NC format used by the factorization routine.*/
     SuperMatrix  AC; /* Matrix postmultiplied by Pc */
 
@@ -551,28 +560,28 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
     integer_t       ldx = n;
     
     
-    integer_t     	colequ, equil, dofact, notran, rowequ;
-    char      		norm[1];
-    trans_t   		trant;
-    integer_t     	j, info1;
-    int 			i;
-    double 			amax, anorm, bignum, smlnum, colcnd, rowcnd, rcmax, rcmin;
+    integer_t       colequ, equil, dofact, notran, rowequ;
+    char            norm[1];
+    trans_t         trant;
+    integer_t       j, info1;
+    int             i;
+    double          amax, anorm, bignum, smlnum, colcnd, rowcnd, rcmax, rcmin;
     integer_t       relax, panel_size;
-    Gstat_t   		Gstat;
-    double    		t0;      /* temporary time */
-    double    		*utime;
-    flops_t   		*ops, flopcnt;
+    Gstat_t         Gstat;
+    double          t0;      /* temporary time */
+    double          *utime;
+    flops_t         *ops, flopcnt;
    
     /* External functions */
     extern real_t dlangs     (char *, SuperMatrix *);
     extern real_t dlamch_    (char *);
     extern void   sp_colorder(SuperMatrix *,
-    						  integer_t *,
-    						  superlumt_options_t *,
-    						  SuperMatrix *);
+                              integer_t *,
+                              superlumt_options_t *,
+                              SuperMatrix *);
 
 
-    Astore 					  = A->Store;
+    Astore                    = A->Store;
     superlumt_options->perm_c = perm_c;
     superlumt_options->perm_r = perm_r;
 
@@ -582,14 +591,14 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
     notran = (superlumt_options->trans == NOTRANS);
 
     if (dofact || equil) {
-    	*equed = NOEQUIL;
-    	rowequ = FALSE;
-    	colequ = FALSE;
+        *equed = NOEQUIL;
+        rowequ = FALSE;
+        colequ = FALSE;
     } else {
-    	rowequ = (*equed == ROW) || (*equed == BOTH);
-    	colequ = (*equed == COL) || (*equed == BOTH);
-    	smlnum = dlamch_("Safe minimum");
-    	bignum = 1. / smlnum;
+        rowequ = (*equed == ROW) || (*equed == BOTH);
+        colequ = (*equed == COL) || (*equed == BOTH);
+        smlnum = dlamch_("Safe minimum");
+        bignum = 1. / smlnum;
     }
 
     /* ------------------------------------------------------------
@@ -598,76 +607,76 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
     if ( nprocs <= 0 ) *info = -1;
 
     else if ( (!dofact && !equil && (superlumt_options->fact != FACTORED))
-	      || (!notran && (superlumt_options->trans != TRANS) && 
-		 (superlumt_options->trans != CONJ))
-	      || (superlumt_options->refact != YES && 
-		  superlumt_options->refact != NO)
-	      || (superlumt_options->usepr != YES &&
-		  superlumt_options->usepr != NO)
-	      || superlumt_options->lwork < -1 )
+          || (!notran && (superlumt_options->trans != TRANS) && 
+         (superlumt_options->trans != CONJ))
+          || (superlumt_options->refact != YES && 
+          superlumt_options->refact != NO)
+          || (superlumt_options->usepr != YES &&
+          superlumt_options->usepr != NO)
+          || superlumt_options->lwork < -1 )
 
         *info = -2;
     else if ( A->nrow != A->ncol || A->nrow < 0 ||
-	      (A->Stype != SLU_NC && A->Stype != SLU_NR) ||
-	      A->Dtype != MATRIX_DTYPE || A->Mtype != SLU_GE )
+          (A->Stype != SLU_NC && A->Stype != SLU_NR) ||
+          A->Dtype != MATRIX_DTYPE || A->Mtype != SLU_GE )
 
-		*info = -3;
+        *info = -3;
     
     else if ((superlumt_options->fact == FACTORED) && 
-	     !(rowequ || colequ || (*equed == NOEQUIL)))
+         !(rowequ || colequ || (*equed == NOEQUIL)))
 
-    	*info = -6;
+        *info = -6;
     
 
     else {
-		if (rowequ) {
-		    rcmin = bignum;
-		    rcmax = 0.;
-		    for (j = 0; j < A->nrow; ++j) {
-				rcmin = SUPERLU_MIN(rcmin, R[j]);
-				rcmax = SUPERLU_MAX(rcmax, R[j]);
-		    }
-		    if (rcmin <= 0.) 
-		    	*info = -7;
-		    else if ( A->nrow > 0)
-				rowcnd = SUPERLU_MAX(rcmin,smlnum) / SUPERLU_MIN(rcmax,bignum);
-		    else
-		    	rowcnd = 1.;
-		}
+        if (rowequ) {
+            rcmin = bignum;
+            rcmax = 0.;
+            for (j = 0; j < A->nrow; ++j) {
+                rcmin = SUPERLU_MIN(rcmin, R[j]);
+                rcmax = SUPERLU_MAX(rcmax, R[j]);
+            }
+            if (rcmin <= 0.) 
+                *info = -7;
+            else if ( A->nrow > 0)
+                rowcnd = SUPERLU_MAX(rcmin,smlnum) / SUPERLU_MIN(rcmax,bignum);
+            else
+                rowcnd = 1.;
+        }
 
-		if (colequ && *info == 0) {
-		    rcmin = bignum;
-		    rcmax = 0.;
-		    for (j = 0; j < A->nrow; ++j) {
-				rcmin = SUPERLU_MIN(rcmin, C[j]);
-				rcmax = SUPERLU_MAX(rcmax, C[j]);
-		    }
-		    if (rcmin <= 0.)
-		    	*info = -8;
-		    else if (A->nrow > 0)
-				colcnd = SUPERLU_MAX(rcmin,smlnum) / SUPERLU_MIN(rcmax,bignum);
-		    else
-		    	colcnd = 1.;
-		}
+        if (colequ && *info == 0) {
+            rcmin = bignum;
+            rcmax = 0.;
+            for (j = 0; j < A->nrow; ++j) {
+                rcmin = SUPERLU_MIN(rcmin, C[j]);
+                rcmax = SUPERLU_MAX(rcmax, C[j]);
+            }
+            if (rcmin <= 0.)
+                *info = -8;
+            else if (A->nrow > 0)
+                colcnd = SUPERLU_MAX(rcmin,smlnum) / SUPERLU_MIN(rcmax,bignum);
+            else
+                colcnd = 1.;
+        }
 
-		//if (*info == 0) {
-		//    if ( B->ncol < 0 || Bstore->lda < SUPERLU_MAX(0, A->nrow) ||
-		//	      B->Stype != SLU_DN || B->Dtype != MATRIX_DTYPE || 
-		//	      B->Mtype != SLU_GE )
-		//		
-		//		*info = -11;
-		//    
-		//    else if ( X->ncol < 0 || Xstore->lda < SUPERLU_MAX(0, A->nrow) ||
-		//	      B->ncol != X->ncol || X->Stype != SLU_DN ||
-		//	      X->Dtype != MATRIX_DTYPE || X->Mtype != SLU_GE )
-		//	
-		//	*info = -12;
-		//}
+        //if (*info == 0) {
+        //    if ( B->ncol < 0 || Bstore->lda < SUPERLU_MAX(0, A->nrow) ||
+        //        B->Stype != SLU_DN || B->Dtype != MATRIX_DTYPE || 
+        //        B->Mtype != SLU_GE )
+        //      
+        //      *info = -11;
+        //    
+        //    else if ( X->ncol < 0 || Xstore->lda < SUPERLU_MAX(0, A->nrow) ||
+        //        B->ncol != X->ncol || X->Stype != SLU_DN ||
+        //        X->Dtype != MATRIX_DTYPE || X->Mtype != SLU_GE )
+        //  
+        //  *info = -12;
+        //}
     }
     if (*info != 0) {
-		i = -(*info);
-		xerbla_("pdgssvx", &i);
-		return (SPIKE_ERROR);
+        i = -(*info);
+        xerbla_("pdgssvx", &i);
+        return (SPIKE_ERROR);
     }
     
     /* ------------------------------------------------------------
@@ -684,23 +693,23 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
        Convert A to NC format when necessary.
        ------------------------------------------------------------*/
     if ( A->Stype == SLU_NR ) {
-		NRformat *Astore = A->Store;
-		AA = (SuperMatrix *) spike_malloc( ALIGN_INT, 1, sizeof(SuperMatrix));
-		
-		dCreate_CompCol_Matrix(AA, A->ncol, A->nrow, Astore->nnz, 
-			       Astore->nzval, Astore->colind, Astore->rowptr,
-			       SLU_NC, A->Dtype, A->Mtype);
-	
-		if ( notran ) { /* Reverse the transpose argument. */
-	    	trant = TRANS;
-	    	notran = 0;
-		} else {
-	    	trant = NOTRANS;
-	    	notran = 1;
-		}
+        NRformat *Astore = A->Store;
+        AA = (SuperMatrix *) spike_malloc( ALIGN_INT, 1, sizeof(SuperMatrix));
+        
+        dCreate_CompCol_Matrix(AA, A->ncol, A->nrow, Astore->nnz, 
+                   Astore->nzval, Astore->colind, Astore->rowptr,
+                   SLU_NC, A->Dtype, A->Mtype);
+    
+        if ( notran ) { /* Reverse the transpose argument. */
+            trant = TRANS;
+            notran = 0;
+        } else {
+            trant = NOTRANS;
+            notran = 1;
+        }
     } else { /* A->Stype == NC */
-		trant = superlumt_options->trans;
-		AA = A;
+        trant = superlumt_options->trans;
+        AA = A;
     }
 
     /* ------------------------------------------------------------
@@ -709,17 +718,17 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
     tstart_t = GetReferenceTime();
 
     if ( equil ) {
-		t0 = SuperLU_timer_();
-		/* Compute row and column scalings to equilibrate the matrix A. */
-		dgsequ(AA, R, C, &rowcnd, &colcnd, &amax, &info1);
-	
-		if ( info1 == 0 ) {
-	    	/* Equilibrate matrix A. */
-	    	dlaqgs(AA, R, C, rowcnd, colcnd, amax, equed);
-	    	rowequ = (*equed == ROW) || (*equed == BOTH);
-	    	colequ = (*equed == COL) || (*equed == BOTH);
-		}
-		utime[EQUIL] = SuperLU_timer_() - t0;
+        t0 = SuperLU_timer_();
+        /* Compute row and column scalings to equilibrate the matrix A. */
+        dgsequ(AA, R, C, &rowcnd, &colcnd, &amax, &info1);
+    
+        if ( info1 == 0 ) {
+            /* Equilibrate matrix A. */
+            dlaqgs(AA, R, C, rowcnd, colcnd, amax, equed);
+            rowequ = (*equed == ROW) || (*equed == BOTH);
+            colequ = (*equed == COL) || (*equed == BOTH);
+        }
+        utime[EQUIL] = SuperLU_timer_() - t0;
     }
 
     tend_t = GetReferenceTime() - tstart_t;
@@ -739,30 +748,30 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
     if ( dofact || equil ) {
 
         /* Obtain column etree, the column count (colcnt_h) and supernode
-	   partition (part_super_h) for the Householder matrix. */
-    	t0 = SuperLU_timer_();
-    	sp_colorder(AA, perm_c, superlumt_options, &AC);
-    	utime[ETREE] = SuperLU_timer_() - t0;
+       partition (part_super_h) for the Householder matrix. */
+        t0 = SuperLU_timer_();
+        sp_colorder(AA, perm_c, superlumt_options, &AC);
+        utime[ETREE] = SuperLU_timer_() - t0;
 
  
-    	printf("Factor PA = LU ... relax %d\tw %d\tmaxsuper %d\trowblk %d\n", relax, panel_size, sp_ienv(3), sp_ienv(4));
-    	fflush(stdout);
+        printf("Factor PA = LU ... relax %d\tw %d\tmaxsuper %d\trowblk %d\n", relax, panel_size, sp_ienv(3), sp_ienv(4));
+        fflush(stdout);
 
 
-		/* Compute the LU factorization of A*Pc. */
-    	t0 = SuperLU_timer_();
-    	pdgstrf(superlumt_options, &AC, perm_r, L, U, &Gstat, info);
-    	utime[FACT] = SuperLU_timer_() - t0;
+        /* Compute the LU factorization of A*Pc. */
+        t0 = SuperLU_timer_();
+        pdgstrf(superlumt_options, &AC, perm_r, L, U, &Gstat, info);
+        utime[FACT] = SuperLU_timer_() - t0;
 
-    	flopcnt = 0;
-    	for (i = 0; i < nprocs; ++i)flopcnt += Gstat.procstat[i].fcops;
-    		ops[FACT] = flopcnt;
+        flopcnt = 0;
+        for (i = 0; i < nprocs; ++i)flopcnt += Gstat.procstat[i].fcops;
+            ops[FACT] = flopcnt;
 
-    	if ( superlumt_options->lwork == -1 ) {
-    		superlu_memusage->total_needed = *info - A->ncol;
-    		fprintf(stderr, "\n%s: Too much memory required!\n", __FUNCTION__ );
-    		return (SPIKE_ERROR);
-    	}
+        if ( superlumt_options->lwork == -1 ) {
+            superlu_memusage->total_needed = *info - A->ncol;
+            fprintf(stderr, "\n%s: Too much memory required!\n", __FUNCTION__ );
+            return (SPIKE_ERROR);
+        }
     }
 
     tend_t = GetReferenceTime() - tstart_t;
@@ -771,62 +780,62 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
     handler->factor_t += tend_t;
 
     if ( *info > 0 ) {
-    	if ( *info <= A->ncol ) {
-	    /* Compute the reciprocal pivot growth factor of the leading
-	       rank-deficient *info columns of A. */
-    		*recip_pivot_growth = dPivotGrowth(*info, AA, perm_c, L, U);
-    	}
+        if ( *info <= A->ncol ) {
+        /* Compute the reciprocal pivot growth factor of the leading
+           rank-deficient *info columns of A. */
+            *recip_pivot_growth = dPivotGrowth(*info, AA, perm_c, L, U);
+        }
     }
     else{
-	/* ------------------------------------------------------------
-	   Compute the reciprocal pivot growth factor *recip_pivot_growth.
-	   ------------------------------------------------------------*/
-	   *recip_pivot_growth = dPivotGrowth(A->ncol, AA, perm_c, L, U);
+    /* ------------------------------------------------------------
+       Compute the reciprocal pivot growth factor *recip_pivot_growth.
+       ------------------------------------------------------------*/
+       *recip_pivot_growth = dPivotGrowth(A->ncol, AA, perm_c, L, U);
 
-	/* ------------------------------------------------------------
-	   Estimate the reciprocal of the condition number of A.
-	   ------------------------------------------------------------*/
-	   t0 = SuperLU_timer_();
-	   if ( notran ) {
-	   	*(unsigned char *)norm = '1';
-	   } else {
-	   	*(unsigned char *)norm = 'I';
-	   }
-	   anorm = dlangs(norm, AA);
-	   dgscon(norm, L, U, anorm, rcond, info);
-	   utime[RCOND] = SuperLU_timer_() - t0;
+    /* ------------------------------------------------------------
+       Estimate the reciprocal of the condition number of A.
+       ------------------------------------------------------------*/
+       t0 = SuperLU_timer_();
+       if ( notran ) {
+        *(unsigned char *)norm = '1';
+       } else {
+        *(unsigned char *)norm = 'I';
+       }
+       anorm = dlangs(norm, AA);
+       dgscon(norm, L, U, anorm, rcond, info);
+       utime[RCOND] = SuperLU_timer_() - t0;
 
 
-	/* ------------------------------------------------------------
-	   Use iterative refinement to improve the computed solution and
-	   compute error bounds and backward error estimates for it.
-	   ------------------------------------------------------------*/
+    /* ------------------------------------------------------------
+       Use iterative refinement to improve the computed solution and
+       compute error bounds and backward error estimates for it.
+       ------------------------------------------------------------*/
 
-	/* ------------------------------------------------------------
-	   Transform the solution matrix X to a solution of the original
-	   system.
-	   ------------------------------------------------------------*/
+    /* ------------------------------------------------------------
+       Transform the solution matrix X to a solution of the original
+       system.
+       ------------------------------------------------------------*/
 
-	/* Set INFO = A->ncol+1 if the matrix is singular to 
-	   working precision.*/
-	   		if ( *rcond < dlamch_("E") ) *info = A->ncol + 1;
+    /* Set INFO = A->ncol+1 if the matrix is singular to 
+       working precision.*/
+            if ( *rcond < dlamch_("E") ) *info = A->ncol + 1;
 
-	} /* end bracket of no error if-else check */
+    } /* end bracket of no error if-else check */
 
-	superlu_dQuerySpace(nprocs, L, U, panel_size, superlu_memusage);
+    superlu_dQuerySpace(nprocs, L, U, panel_size, superlu_memusage);
 
     /* ------------------------------------------------------------
        Deallocate storage after factorization.
        ------------------------------------------------------------*/
     if ( dofact || equil ) {
-    	Destroy_CompCol_Permuted(&AC);
+        Destroy_CompCol_Permuted(&AC);
     }
     
     if ( A->Stype == SLU_NR ) {
-		Destroy_SuperMatrix_Store(A);
+        Destroy_SuperMatrix_Store(A);
 
-		// Destroy_SuperMatrix_Store(AA);
-		// SUPERLU_FREE(AA);
+        // Destroy_SuperMatrix_Store(AA);
+        // SUPERLU_FREE(AA);
     }
 
     /* return AA instead of AA */
@@ -840,30 +849,30 @@ static Error_t spike_pgssvx_factor (  DirectSolverHander_t *handler,
 static Error_t spike_pgssvx_solve  (
                 DirectSolverHander_t *handler,
                 integer_t nprocs,
-				superlumt_options_t *superlumt_options,
-				SuperMatrix *AA, 
-				integer_t *perm_c,
-				integer_t *perm_r,
-				equed_t *equed,
-				double *R,
-				double *C,
-				SuperMatrix *L,
-				SuperMatrix *U,
-				SuperMatrix *B,
-				SuperMatrix *X,
-				double *recip_pivot_growth, 
-				double *rcond,
-				double *ferr,
-				double *berr, 
-				superlu_memusage_t *superlu_memusage,
-				integer_t *info)
+                superlumt_options_t *superlumt_options,
+                SuperMatrix *AA, 
+                integer_t *perm_c,
+                integer_t *perm_r,
+                equed_t *equed,
+                double *R,
+                double *C,
+                SuperMatrix *L,
+                SuperMatrix *U,
+                SuperMatrix *B,
+                SuperMatrix *X,
+                double *recip_pivot_growth, 
+                double *rcond,
+                double *ferr,
+                double *berr, 
+                superlu_memusage_t *superlu_memusage,
+                integer_t *info)
 {
     /* spike variables for statistics */
     spike_timer_t tstart_t, tend_t;
 
-    DNformat  *Bstore, *Xstore;
-    double    *Bmat, *Xmat;
-    integer_t         n = AA->nrow;
+    DNformat        *Bstore, *Xstore;
+    double          *Bmat, *Xmat;
+    integer_t       n = AA->nrow;
     integer_t       nrhs = B->ncol;
     integer_t       ldb = n;
     integer_t       ldx = n;
@@ -880,12 +889,12 @@ static Error_t spike_pgssvx_solve  (
     flops_t   *ops, flopcnt;
    
     /* External functions */
-    extern real_t 	dlangs(char *, SuperMatrix *);
-    extern real_t 	dlamch_(char *);
-    extern void 	sp_colorder(SuperMatrix *,
-    				integer_t *,
-    				superlumt_options_t *,
-	    			SuperMatrix *);
+    extern real_t   dlangs(char *, SuperMatrix *);
+    extern real_t   dlamch_(char *);
+    extern void     sp_colorder(SuperMatrix *,
+                    integer_t *,
+                    superlumt_options_t *,
+                    SuperMatrix *);
 
     Bstore = B->Store;
     Xstore = X->Store;
@@ -903,15 +912,15 @@ static Error_t spike_pgssvx_solve  (
     notran = (superlumt_options->trans == NOTRANS);
     
     if (dofact || equil) {
-		*equed = NOEQUIL;
-		rowequ = FALSE;
-		colequ = FALSE;
+        *equed = NOEQUIL;
+        rowequ = FALSE;
+        colequ = FALSE;
     }
     else {
-		rowequ = (*equed == ROW) || (*equed == BOTH);
-		colequ = (*equed == COL) || (*equed == BOTH);
-		smlnum = dlamch_("Safe minimum");
-		bignum = 1. / smlnum;
+        rowequ = (*equed == ROW) || (*equed == BOTH);
+        colequ = (*equed == COL) || (*equed == BOTH);
+        smlnum = dlamch_("Safe minimum");
+        bignum = 1. / smlnum;
     }
 
     /* ------------------------------------------------------------
@@ -922,9 +931,9 @@ static Error_t spike_pgssvx_solve  (
        Convert A to NC format when necessary.
        ------------------------------------------------------------*/
     if ( AA->Stype == SLU_NR ) {
-		fprintf(stderr, "\nVamos mal....");
+        fprintf(stderr, "\nVamos mal....");
     } else { /* A->Stype == NC */
-		trant = superlumt_options->trans;
+        trant = superlumt_options->trans;
     }
 
     /* ------------------------------------------------------------
@@ -945,18 +954,18 @@ static Error_t spike_pgssvx_solve  (
     tstart_t = GetReferenceTime();
 
     if ( notran ) {
-		if ( rowequ ) {
-	    	for (j = 0; j < nrhs; ++j)
-				for (i = 0; i < n; ++i) {
+        if ( rowequ ) {
+            for (j = 0; j < nrhs; ++j)
+                for (i = 0; i < n; ++i) {
                     Bmat[i + j*ldb] *= R[i];
-				}
-		}
+                }
+        }
     }
     else if ( colequ ) {
-		for (j = 0; j < nrhs; ++j)
-	    	for (i = 0; i < n; ++i) {
+        for (j = 0; j < nrhs; ++j)
+            for (i = 0; i < n; ++i) {
                 Bmat[i + j*ldb] *= C[i];
-	    	}
+            }
     }
     tend_t = GetReferenceTime() - tstart_t;
 
@@ -964,58 +973,58 @@ static Error_t spike_pgssvx_solve  (
     handler->scaling_t += tend_t;
 
 
-	/* ------------------------------------------------------------
-	   Compute the solution matrix X.
-	   ------------------------------------------------------------*/
-	for (j = 0; j < nrhs; j++)    /* Save a copy of the right hand sides */
-	    for (i = 0; i < n; i++)
-			Xmat[i + j*ldx] = Bmat[i + j*ldb];
+    /* ------------------------------------------------------------
+       Compute the solution matrix X.
+       ------------------------------------------------------------*/
+    for (j = 0; j < nrhs; j++)    /* Save a copy of the right hand sides */
+        for (i = 0; i < n; i++)
+            Xmat[i + j*ldx] = Bmat[i + j*ldb];
     
     tstart_t = GetReferenceTime();
 
-	t0 = SuperLU_timer_();
-	dgstrs(trant, L, U, perm_r, perm_c, X, &Gstat, info);
-	utime[SOLVE] = SuperLU_timer_() - t0;
-	ops[SOLVE] = ops[TRISOLVE];
+    t0 = SuperLU_timer_();
+    dgstrs(trant, L, U, perm_r, perm_c, X, &Gstat, info);
+    utime[SOLVE] = SuperLU_timer_() - t0;
+    ops[SOLVE] = ops[TRISOLVE];
 
     tend_t = GetReferenceTime() - tstart_t;
 
     /* collect metric */
     handler->solve_t += tend_t;
     
-	/* ------------------------------------------------------------
-	   Use iterative refinement to improve the computed solution and
-	   compute error bounds and backward error estimates for it.
-	   ------------------------------------------------------------*/
+    /* ------------------------------------------------------------
+       Use iterative refinement to improve the computed solution and
+       compute error bounds and backward error estimates for it.
+       ------------------------------------------------------------*/
     tstart_t = GetReferenceTime();
 
-	t0 = SuperLU_timer_();
-	dgsrfs(trant, AA, L, U, perm_r, perm_c, *equed, R, C, B, X, ferr, berr, &Gstat, info);
-	utime[REFINE] = SuperLU_timer_() - t0;
+    t0 = SuperLU_timer_();
+    dgsrfs(trant, AA, L, U, perm_r, perm_c, *equed, R, C, B, X, ferr, berr, &Gstat, info);
+    utime[REFINE] = SuperLU_timer_() - t0;
 
     tend_t = GetReferenceTime() - tstart_t;
 
     /* collect metric */
     handler->refine_t += tend_t;
 
-	/* ------------------------------------------------------------
-	   Transform the solution matrix X to a solution of the original
-	   system.
-	   ------------------------------------------------------------*/
-	if ( notran ) {
-	    if ( colequ ) {
-			for (j = 0; j < nrhs; ++j)
-		    	for (i = 0; i < n; ++i) {
-		    		Xmat[i + j*ldx] *= C[i];
-		    	}
-	    	}
-	}
-	else if ( rowequ ) {
-	    for (j = 0; j < nrhs; ++j)
-			for (i = 0; i < n; ++i) {
-				Xmat[i + j*ldx] *= R[i];
-			}
-	}
+    /* ------------------------------------------------------------
+       Transform the solution matrix X to a solution of the original
+       system.
+       ------------------------------------------------------------*/
+    if ( notran ) {
+        if ( colequ ) {
+            for (j = 0; j < nrhs; ++j)
+                for (i = 0; i < n; ++i) {
+                    Xmat[i + j*ldx] *= C[i];
+                }
+            }
+    }
+    else if ( rowequ ) {
+        for (j = 0; j < nrhs; ++j)
+            for (i = 0; i < n; ++i) {
+                Xmat[i + j*ldx] *= R[i];
+            }
+    }
 
     superlu_dQuerySpace(nprocs, L, U, panel_size, superlu_memusage);
 

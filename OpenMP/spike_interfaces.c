@@ -230,10 +230,8 @@
 	fprintf(stderr, "\nSolving reduced linear system\n");
 	directSolver_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
 
-	reduced_PrintAsDense( R, yr, xr, "Reduced system");
-
 	/* compute residual */
-	ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, xr->aij, yr->aij, R->n, yr->m );
+	ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, yr->m );
 
 	/* Free some memory, yr and R are not needed anymore */
 	block_Deallocate ( xr );
