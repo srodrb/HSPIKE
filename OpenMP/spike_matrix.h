@@ -120,6 +120,13 @@
 	block_t* 		  block_CreateFromComponents   (const integer_t n,
 													const integer_t m,
 													complex_t *restrict Bij);
+
+	block_t* 		  block_BuildBlockFromMatrix  ( matrix_t *M,
+													blocktype_t type,
+													const integer_t n,
+													const integer_t m,
+													const integer_t ku,
+													const integer_t kl );
 	
 	Error_t           block_InitializeToValue       ( block_t* B, const complex_t value );
 

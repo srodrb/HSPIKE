@@ -153,22 +153,6 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up and resume                                             . */
 	/* -------------------------------------------------------------------- */
-	
-	block_t* blockref = matrix_ExtractBlock ( A, 0, 5, 5, 7, _RHS_BLOCK_ );
-	block_Print( blockref, "reference block");
-
-
-	matrix_t* Bi = matrix_ExtractMatrix(A, 3, 5, 5, 7);
-
-	matrix_PrintAsDense( Bi, "Bi matrix");
-
-	block_t*  foo = block_BuildBlockFromMatrix( Bi, _V_BLOCK_, 5, 2, 2, 2 );
-	block_Print( foo, "suerte...");
-
-	// matrix_Deallocate( Bi );
-	block_Deallocate( foo );
-	block_Deallocate( blockref);
-
 
 	matrix_Deallocate( A );
 	fprintf(stderr, "\nTest finished finished\n");

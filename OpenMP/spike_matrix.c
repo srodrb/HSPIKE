@@ -518,6 +518,54 @@ block_t* block_CreateFromComponents(const integer_t n, const integer_t m, comple
 	return (B);
 };
 
+block_t* block_BuildBlockFromMatrix( matrix_t *M, blocktype_t type,
+	const integer_t n, const integer_t m, const integer_t ku, const integer_t kl )
+{
+	/* local variables */
+	integer_t row, idx, col;
+
+	// allocates the -dense- block
+	block_t* B = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
+	B->type    = type;
+	B->section = _WHOLE_SECTION_;
+	B->n       = n;
+	B->m       = (B->type ==  _V_BLOCK_) ? ku : kl;
+	B->ku      = ku;
+	B->kl      = kl;
+
+	if ( B->ku <= 0 || B->kl <= 0 ){
+		fprintf(stderr, "\n%s: ERROR: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );		
+		abort();
+	}
+
+
+	B->aij = (complex_t*) spike_malloc( ALIGN_COMPLEX, B->n * B->m, sizeof(complex_t));
+	memset((void*) B->aij, 0, B->n * B->m * sizeof(complex_t));
+
+
+	/* locate myself */
+	integer_t firstRow = (B->type ==  _V_BLOCK_) ? B->n - B->ku : 0;
+	integer_t lastRow  = (B->type ==  _V_BLOCK_) ? B->n         : B->kl;
+
+
+	// extract the elements, correct the indices and insert them into the dense block
+	for(row=0; row < M->n; row++)
+	{
+		for(idx=M->rowptr[row]; idx<M->rowptr[row+1]; idx++)
+		{
+			col = M->colind[idx];
+			
+			/* place the element in the block */	
+			B->aij[ (row + firstRow) + col*B->n] = M->aij[idx]; // CSC
+			//B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx]; // CSR
+		}
+	}
+
+	matrix_Deallocate(M);
+
+	return (B);
+};
+
 Error_t block_Print( block_t* B, const char* msg )
 {
 

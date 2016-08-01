@@ -1,6 +1,7 @@
 COMPILER =INTEL
 BACKEND  =PARDISO
 DEBUG    =YES
+CUDA     =NO
 
 # Data type definition
 DEFINES =-D_DATATYPE_D_
@@ -8,6 +9,7 @@ DEFINES =-D_DATATYPE_D_
 OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 		spike_algebra.o spike_analysis.o spike_common.o \
 		spike_interfaces.o
+
 
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
@@ -43,15 +45,28 @@ ifeq ($(BACKEND),SUPERLU)
 	
 	OBJS    += spike_superlu.o
 else
-	DEFINES +=-D_PARDISO_BACKEND_
+	DEFINES += -D_PARDISO_BACKEND_
 	OBJS    += spike_pardiso.o
 
 endif
 
 
-ifeq  ($(DEBUG),YES)
+ifeq ($(DEBUG),YES)
 	DEFINES += -D_ENABLE_TESTING_
 endif
+
+
+ifeq ($(CUDA),YES)
+	NVCC     = nvcc
+	NVCFLAGS = -Xcompiler -fopenmp -O2
+	NVCLIBS  =
+	NVCINCS  =
+
+	DEFINES += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+
+	OBJS    += spike_cuda.o
+endif
+
 
 TARTGET=main
 
