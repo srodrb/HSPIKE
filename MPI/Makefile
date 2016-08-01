@@ -1,11 +1,21 @@
 COMPILER=INTEL
+BACKEND  =PARDISO
+DEBUG    =NO
+
+# Data type definition
+DEFINES =-D_DATATYPE_D_
 
 ifeq ($(COMPILER),INTEL)
 	CC      =mpiicc
-	CFLAGS  =-qopenmp -std=c99 -g -restrict -O2
-	#CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	CFLAGS  =-qopenmp -std=c99 -O2 -g -restrict
+
+	# multi-threaded version
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
-	CINCS   =-I../OpenMP -I${MKLROOT}/include
+	CINCS   =-I${MKLROOT}/include
+	
+	# sequential version
+	# CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+	# CINCS   =-I${MKLROOT}/include
 else
 	CC      =mpicc
 	CFLAGS  =-std=c99 -g -O2
@@ -13,7 +23,32 @@ else
 	CINCS   =-I../OpenMP
 endif
 
-DEFINES =-D_DATATYPE_D_ -D_ENABLE_TESTING_ -D_MPI_SUPPORT_ -D_DEBUG # -D_DEBUG_MATRIX_
+ifeq ($(BACKEND),SUPERLU)
+	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt_openmp
+	#CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_mkl/SRC
+
+	DEFINES +=-D_SUPERLU_BACKEND_
+
+	# CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT/lib -lsuperlu_mt_openmp
+	# CINCS   +=-I/home/srodrigu/Software/SuperLU_MT/SRC
+
+	CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_3.1/lib -lsuperlu_mt_OPENMP
+	CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_3.1/SRC
+
+	
+	OBJS    += spike_superlu.o
+else
+	DEFINES +=-D_PARDISO_BACKEND_
+	OBJS    += spike_pardiso.o
+
+endif
+
+DEFINES +=-D_MPI_SUPPORT_
+
+ifeq  ($(DEBUG),YES)
+	DEFINES += -D_ENABLE_TESTING_ -D_DEBUG
+endif
+
 
 TARTGET=main
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \

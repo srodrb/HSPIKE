@@ -127,8 +127,9 @@ Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
 {
 
 #ifdef _ENABLE_TESTING_
-	/* local variables */
-	double avrhs = handler->solve_t / (double) handler->rhs_column_count;
+    double avrhs; /* average time per rhs column solve */
+
+    avrhs = handler->solve_t / (double) handler->rhs_column_count;
 
 	fprintf(stderr, "\n\n--------------------------------------------------------");
 	fprintf(stderr, "\n              BACKEND: PARDISO                         \n\n");

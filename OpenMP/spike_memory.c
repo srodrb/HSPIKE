@@ -9,7 +9,6 @@ void* spike_malloc( const int alignment, const int nmemb, const size_t size)
 
 #ifdef __INTEL_COMPILER
 	void *buffer = _mm_malloc( size * nmemb, alignment );
-
 #else
 	void *buffer = malloc( size * nmemb );
 #endif

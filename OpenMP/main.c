@@ -65,8 +65,6 @@ int main(int argc, const char *argv[])
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
 
-	// matrix_PrintAsDense( A, "Original coeffient matrix" );
-
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
@@ -83,6 +81,8 @@ int main(int argc, const char *argv[])
 	/* .. Check residual and compare against reference solver             . */
 	/* -------------------------------------------------------------------- */
 	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
+	block_InitializeToValue( x, __zero  ); // solution of the system
+	block_InitializeToValue( f, __punit ); // rhs of the system
 	SolveOriginalSystem( A, x, f);
 
 	/* -------------------------------------------------------------------- */
@@ -96,9 +96,8 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
+	fprintf(stderr, "Number of malloc() calls %d, number of free() calls %d\n", cnt_alloc, cnt_free );
+
 	fprintf(stderr, "\nProgram finished\n");
-
-	fprintf(stderr, "Number of malloc() %d, number of free() %d\n", cnt_alloc, cnt_free );
-
 	return 0;
 }

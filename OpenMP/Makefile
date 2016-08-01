@@ -62,11 +62,11 @@ LIBSPIKE = libspike.a
 
 all:main tests
 
-#main: main.o $(LIBSPIKE)
-#	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
+main: main.o $(LIBSPIKE)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
 
-main: main.o $(OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+#main: main.o $(OBJS)
+#	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 main.o:main.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c

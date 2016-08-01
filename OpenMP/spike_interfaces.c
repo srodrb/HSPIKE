@@ -82,7 +82,7 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 2);
+	S = spike_solve_analysis( A, nrhs, 4);
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -100,7 +100,7 @@
 		const integer_t r0 = S->n[p];
 		const integer_t rf = S->n[p+1];
 
-		/* allocate pardiso configuration parameters */
+		/* Set up solver handler */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 		
 		directSolver_Configure(handler);

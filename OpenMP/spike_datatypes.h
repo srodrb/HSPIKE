@@ -39,6 +39,7 @@
 
 	typedef complex_number   complex_t;
 
+	#define F "%.3lf %.3lf"
 	/* ensure compatibility with Intel's MKL library */
 	/* https://software.intel.com/en-us/node/528405  */
 	#define MKL_Complex16 complex_t
@@ -58,6 +59,7 @@
 
 	typedef complex_number   complex_t;
 
+	#define F "%.3f %.3f"
 	/* ensure compatibility with Intel's MKL library */
 	/* https://software.intel.com/en-us/node/528405  */
 	#define MKL_Complex8 complex_t
@@ -69,7 +71,7 @@
 	typedef double   real_t;
 	typedef double   complex_t;
 
-	#define _F_			"%.3lf"
+	#define _F_ "%.3lf"
 	#define _PPREF_		d
 
 #else // single precision float
