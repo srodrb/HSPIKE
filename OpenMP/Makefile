@@ -1,8 +1,8 @@
 COMPILER =INTEL
 BACKEND  =PARDISO
-DEBUG    =NO
+DEBUG    =YES
 
-#DEFINES =-D_DATATYPE_Z_ -D_ENABLE_TESTING_
+# Data type definition
 DEFINES =-D_DATATYPE_D_
 
 OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
@@ -12,16 +12,14 @@ OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 ifeq ($(COMPILER),INTEL)
 	CC      =icc
 	CFLAGS  =-qopenmp -std=c99 -O3 -g -restrict
-	# CLIBS_MAC =-L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
 	
 	# multi-threaded version
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
+	CINCS   =-I${MKLROOT}/include
+	
 	# sequential version
 	# CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
-	CINCS   =-I${MKLROOT}/include
-
-	#CLIBS = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm -ldl
-	#CINCS = -qopenmp -I${MKLROOT}/include
+	# CINCS   =-I${MKLROOT}/include
 else
 	CC      =gcc
 	CFLAGS  =-std=c99 -g -O2

@@ -5,6 +5,9 @@ DEBUG    =NO
 # Data type definition
 DEFINES =-D_DATATYPE_D_
 
+OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
+			 spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o
+
 ifeq ($(COMPILER),INTEL)
 	CC      =mpiicc
 	CFLAGS  =-qopenmp -std=c99 -O2 -g -restrict
@@ -16,6 +19,8 @@ ifeq ($(COMPILER),INTEL)
 	# sequential version
 	# CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
 	# CINCS   =-I${MKLROOT}/include
+
+	CINCS   =-I../OpenMP
 else
 	CC      =mpicc
 	CFLAGS  =-std=c99 -g -O2
@@ -51,8 +56,6 @@ endif
 
 
 TARTGET=main
-OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
-			 spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o
 
 main: main.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
@@ -61,6 +64,12 @@ main.o:main.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_datatypes.o:../OpenMP/spike_datatypes.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+spike_pardiso.o:../OpenMP/spike_pardiso.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+spike_superlu.o:../OpenMP/spike_superlu.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_memory.o:../OpenMP/spike_memory.c
