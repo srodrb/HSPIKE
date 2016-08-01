@@ -2,6 +2,8 @@ Resources
 *.swp
 *.o
 *.a
+*.err
+*.out
 main
 massif.*
 callgrind.*

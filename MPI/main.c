@@ -31,7 +31,7 @@ static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 	fprintf(stderr, "\nSolving original linear system using reference direct solver");
 
 	start_t = GetReferenceTime();
-	error = system_solve( A->colind, A->rowptr, A->aij, x->aij, rhs->aij, A->n, rhs->m );
+	error = directSolver_Solve( A->n, A->nnz, rhs->m, A->colind, A->rowptr, A->aij, x->aij, rhs->aij );
 	end_t = GetReferenceTime();
 
 	fprintf(stderr, "\nReference direct solver took %.6lf seconds", end_t - start_t );
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 		/* .. Load and initalize the system Ax=f. */
 		/* -------------------------------------------------------------------- */
 		// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
-		matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+		matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 		// matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 		// matrix_PrintAsDense( A, "Original coeffient matrix" );
 
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 
 		block_t* yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 		fprintf(stderr, "\nSolving reduced linear system\n");
-		system_solve ( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, xr->m);
+		directSolver_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij);
 		//block_Print(yr, "Solucion del sistema reducido");
 
 
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 			Aij->nnz,
 			Aij->colind,
 			Aij->rowptr,
-			Aij->aij, Aij->n);
+			Aij->aij);
 		
 		if(rank == 1 || rank == size-1) max_work = 2;
 		else max_work = 3;

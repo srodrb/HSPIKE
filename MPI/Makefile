@@ -1,6 +1,6 @@
 COMPILER=INTEL
 BACKEND  =PARDISO
-DEBUG    =NO
+DEBUG    =YES
 
 # Data type definition
 DEFINES =-D_DATATYPE_D_
@@ -19,13 +19,13 @@ ifeq ($(COMPILER),INTEL)
 	# sequential version
 	# CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
 	# CINCS   =-I${MKLROOT}/include
-
-	CINCS   =-I../OpenMP
+	
+	CINCS   +=-I../OpenMP
 else
 	CC      =mpicc
 	CFLAGS  =-std=c99 -g -O2
 	CLIBS   =
-	CINCS   =-I../OpenMP
+	CINCS   +=-I../OpenMP
 endif
 
 ifeq ($(BACKEND),SUPERLU)
