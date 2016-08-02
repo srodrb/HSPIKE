@@ -3,18 +3,13 @@
 unsigned int cnt_devMalloc = 0;
 unsigned int cnt_devFree   = 0;
 
-/* local functions */
-static Error_t cusolver_Factorize         ( DirectSolverHander_t *handler );
-static Error_t cusolver_ApplyFactorToRHS  ( DirectSolverHander_t *handler );
-static Error_t cusolver_CleanUp           ( DirectSolverHander_t *handler );
+static inline void checkCudaErrors( int status ) { /* TODO */ };
 
-static inline void* spike_devMalloc( void* devPtr, const size_t nmemb, const size_t size )
+static inline void spike_devMalloc( void* devPtr, const size_t nmemb, const size_t size )
 {
 	checkCudaErrors( cudaMalloc((void**) &devPtr, nmemb * size ));
 
 	cnt_devMalloc += 1;
-
-	return (buffer);
 };
 
 static inline Error_t spike_devNullify( void* devPtr )
@@ -73,9 +68,9 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
 Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 						const integer_t n,
 						const integer_t nnz,
-						integer_t *restrict colind,
-						integer_t *restrict rowptr,
-						complex_t *restrict aij)
+						integer_t *__restrict__ colind,
+						integer_t *__restrict__ rowptr,
+						complex_t *__restrict__ aij)
 {
 	/* matrix dimensions */
 	handler->n   = n;
@@ -135,7 +130,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
                            handler->n,
                            handler->nnz,
                            handler->MatDescr,
-                           handler->d_aij,
+                           (const float*) handler->d_aij,
                            handler->d_rowptr,
                            handler->d_colind,
                            handler->csrqrInfo,
@@ -153,7 +148,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
                            handler->n,
                            handler->nnz,
                            handler->MatDescr,
-                           handler->d_aij,
+                           (const float*) handler->d_aij,
                            handler->d_rowptr,
                            handler->d_colind,
                            0,
@@ -182,8 +177,8 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 
 Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
                             const integer_t nrhs,
-                            complex_t *restrict xij,
-                            complex_t *restrict bij)
+                            complex_t *__restrict__ xij,
+                            complex_t *__restrict__ bij)
 {
 	/* update the value of rhs columns */
 	handler->nrhs = nrhs;
@@ -197,23 +192,23 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 	handler->h_bij = bij;
 
 	checkCudaErrors( cudaMalloc((void**) &handler->d_xij, handler->n * handler->nrhs * sizeof(complex_t)));
-	checkCudaErrors( cudaMalloc((void**) &handler->b_xij, handler->n * handler->nrhs * sizeof(complex_t)));
+	checkCudaErrors( cudaMalloc((void**) &handler->d_bij, handler->n * handler->nrhs * sizeof(complex_t)));
 
 	/* allocate memory for rhs vectors and solution on the device */
-	cudaMemcpy( handler->d_xij, h_xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice );
-	cudaMemcpy( handler->d_bij, h_bij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice );
+	cudaMemcpy( handler->d_xij, handler->h_xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice );
+	cudaMemcpy( handler->d_bij, handler->h_bij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice );
 
 	/* Forward and backward substitution */
 	checkCudaErrors( cusolverSpScsrqrSolve ( handler->cusolverHandle,
                            handler->n,
                            handler->n,
-                           handler->d_bij,
-                           handler->d_xij,
+                           (float*) handler->d_bij,
+                           (float*) handler->d_xij,
                            handler->csrqrInfo,
                            handler->d_work ));
 
 	/* transfer the solution back to the host */
-	cudaMemcpy( d_xij, xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyDeviceToHost );
+	cudaMemcpy( handler->d_xij, xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyDeviceToHost );
 
 	/* deallocate rhs vectors on the device */
 	spike_devNullify( handler->d_xij );
@@ -242,7 +237,7 @@ Error_t directSolver_Finalize( DirectSolverHander_t *handler )
 	// realloc is possible? -> spike_devNullify( handler->d_xij  );
 	// realloc is possible? -> spike_devNullify( handler->d_bij  );
 
-	checkCudaErrors( cusolverSpDestroyCsrqrInfo ( csrqrInfo ));
+	checkCudaErrors( cusolverSpDestroyCsrqrInfo ( handler->csrqrInfo ));
 
 	if ( handler->cusolverHandle ) { checkCudaErrors( cusolverSpDestroy      ( handler->cusolverHandle)); }
 	if ( handler->cusparseHandle ) { checkCudaErrors( cusparseDestroy        ( handler->cusparseHandle)); }
@@ -256,11 +251,11 @@ Error_t directSolver_Finalize( DirectSolverHander_t *handler )
  Error_t directSolver_Solve (integer_t n,
  							integer_t nnz,
  							integer_t nrhs,
- 							integer_t *restrict colind, // ja
-							integer_t *restrict rowptr, // ia
-							complex_t *restrict aij,
-							complex_t *restrict x,
-							complex_t *restrict b)
+ 							integer_t *__restrict__ colind, // ja
+							integer_t *__restrict__ rowptr, // ia
+							complex_t *__restrict__ aij,
+							complex_t *__restrict__ x,
+							complex_t *__restrict__ b)
 {
 	return (SPIKE_SUCCESS);
 };

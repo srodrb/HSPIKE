@@ -31,8 +31,8 @@
     /* Cuda 7.5 preview */
     #include "cusolverSp_LOWLEVEL_PREVIEW.h"
 
-    #include "helper_cuda.h"
-    #include "helper_cusolver.h"
+    // #include "helper_cuda.h"
+    // #include "helper_cusolver.h"
 
     extern unsigned int cnt_devMalloc;
     extern unsigned int cnt_devFree;
@@ -41,13 +41,13 @@
         According to the cuSolver API (section 1.4), these datatypes
         are used to work with complex numbers.
      */
-    #if defined (_DATATYPE_Z_) // double complex
-        #define  cuDoubleComplex complex_t
-     
-    #elif defined (_DATATYPE_C_) // complex float
-        #define  cuComplex       complex_t
 
-    #endif
+//    #if defined (_DATATYPE_Z_) // double complex
+//        #define  cuDoubleComplex complex_t
+//     
+//    #elif defined (_DATATYPE_C_) // complex float
+//        #define  cuComplex       complex_t
+//    #endif
 
     typedef struct {
 
@@ -68,10 +68,6 @@
         complex_t *h_aij;    /* host aij    pointer */
         complex_t *h_xij;    /* host xij pointer */
         complex_t *h_bij;    /* host bij pointer */
-
-        cuSolverStatus_t   status;              /* cuSolver status                   */
-        cuSolverSpHandle_t cuSolverHandler;     /* cuSolver handler (section 3.2.1 ) */
-        cusparseMatDescr_t matDescr;            /* cusparse matrix descriptor        */
 
         /* needed handlers */
         cusolverSpHandle_t cusolverHandle; /* cusolver handler */
@@ -114,14 +110,14 @@
     Error_t directSolver_Factorize(DirectSolverHander_t *handler,
     						const integer_t n,
     						const integer_t nnz,
-    						integer_t *restrict colind,
-    						integer_t *restrict rowptr,
-    						complex_t *restrict aij);
+    						integer_t *__restrict__ colind,
+    						integer_t *__restrict__ rowptr,
+    						complex_t *__restrict__ aij);
 
     Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
                                 const integer_t nrhs,
-                                complex_t *restrict xij,
-                                complex_t *restrict bij);
+                                complex_t *__restrict__ xij,
+                                complex_t *__restrict__ bij);
 
     Error_t directSolver_Finalize( DirectSolverHander_t *handler );
 
@@ -130,10 +126,10 @@
     Error_t directSolver_Solve (integer_t n,
                                 integer_t nnz,
                                 integer_t nrhs,
-                                integer_t *restrict colind, // ja
-                                integer_t *restrict rowptr, // ia
-                                complex_t *restrict aij,
-                                complex_t *restrict x,
-                                complex_t *restrict b);
+                                integer_t *__restrict__ colind, // ja
+                                integer_t *__restrict__ rowptr, // ia
+                                complex_t *__restrict__ aij,
+                                complex_t *__restrict__ x,
+                                complex_t *__restrict__ b);
 
 #endif /* end of _SPIKE_CUDA_H_ definition */

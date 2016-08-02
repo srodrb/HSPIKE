@@ -15,7 +15,6 @@
  *
  * =====================================================================================
  */
-
 #ifndef _SPIKE_ALGEBRA_H_
 	#define _SPIKE_ALGEBRA_H_
 
@@ -31,6 +30,8 @@
  		#include "spike_pardiso.h"
  	#elif defined (_SUPERLU_BACKEND_)
  		#include "spike_superlu.h"
+ 	#elif defined (_NVIDIA_BACKEND_)
+ 		#include "spike_cuda.h"
  	#endif
 
 

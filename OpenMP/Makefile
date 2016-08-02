@@ -1,7 +1,11 @@
+# options are <INTEL,GNU>
 COMPILER =INTEL
-BACKEND  =PARDISO
+
+# options are: <SUPERLU, CUSOLVER, PARDISO>
+BACKEND  =CUSOLVER 
+
+# options are <YES,NO>
 DEBUG    =NO
-CUDA     =YES
 
 # Data type definition
 DEFINES =-D_DATATYPE_D_
@@ -44,10 +48,23 @@ ifeq ($(BACKEND),SUPERLU)
 
 	
 	OBJS    += spike_superlu.o
-else
+
+else ifeq ($(BACKEND),PARDISO)
 	DEFINES += -D_PARDISO_BACKEND_
 	OBJS    += spike_pardiso.o
 
+else
+	NVCC     = nvcc
+	NVCFLAGS =-dlink -ccbin=icc #-Xcompiler -fopenmp -O2
+	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+	NVCINCS  +=-I/usr/local/cuda/include
+
+	CINCS   +=-I/usr/local/cuda/include
+	CLIBS   +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
+
+	DEFINES += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+
+	OBJS    += spike_cuda.o
 endif
 
 
@@ -56,30 +73,19 @@ ifeq ($(DEBUG),YES)
 endif
 
 
-ifeq ($(CUDA),YES)
-	NVCC     = nvcc
-	NVCFLAGS = #-Xcompiler -fopenmp -O2
-	NVCLIBS  =-L/usr/local/cuda/lib64 -lcusolver -lcusparse
-	NVCINCS  =-I/usr/local/cuda/include
-
-	DEFINES += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
-
-	OBJS    += spike_cuda.o
-endif
-
 
 TARTGET=main
 
 
 LIBSPIKE = libspike.a
 
-all:main tests
+all:main
 
 #main: main.o $(LIBSPIKE)
 #	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
 
 main: main.o $(OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) (NVCINCS) $+ -o $@ $(CLIBS) (NVCLIBS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 main.o:main.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
@@ -110,7 +116,7 @@ spike_superlu.o:spike_superlu.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_cuda.o:spike_cuda.c
-	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCINCS) $+ -c
+	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCLIBS) $+ -c
 
 spike_analysis.o:spike_analysis.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
