@@ -79,7 +79,7 @@ TARTGET=main
 
 LIBSPIKE = libspike.a
 
-all:main
+all:main tests
 
 #main: main.o $(LIBSPIKE)
 #	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
