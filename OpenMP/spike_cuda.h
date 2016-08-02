@@ -1,78 +1,101 @@
 /*
  * =====================================================================================
  *
- *       Filename:  spike_backend.h
+ *       Filename:  spike_cuda.h
  *
- *    Description:  Define a generic interface for multiple direct solvers back-ends.
+ *    Description:  Linear algebra backed based on NVidia cuSolver and cuSparse libraries.
  *
  *        Version:  1.0
  *        Created:  21/06/16 10:32:39
  *       Revision:  none
- *       Compiler:  icc
+ *       Compiler:  nvcc
  *
  *         Author:  Samuel Rodriguez Bernabeu
  *   Organization:  Barcelona Supercomputing Center
  *
+ * TODO: check CUDA version, should be >= 7.5 for optimum performance.
+ * TODO: use low-level API calls for reordering (see Low Level Function Reference)
+ *
  * =====================================================================================
  */
-#ifndef _SPIKE_PARDISO_H_
-    #define _SPIKE_PARDISO_H_
+#ifndef _SPIKE_CUDA_H_
+    #define _SPIKE_CUDA_H_
 
     #include "spike_datatypes.h"
     #include "spike_common.h"
     #include "spike_memory.h"
 
-    /* INTEL MKL interface */
-    #include "mkl_types.h"
-    #include "mkl_spblas.h"
-    #include "mkl.h"
-    #include "mkl_cblas.h"
+    #include "cusparse.h"
+    #include "cusolverSp.h"
 
-    /* Pardiso interface */
-    #include "mkl_pardiso.h"
+    /* Cuda 7.5 preview */
+    #include "cusolverSp_LOWLEVEL_PREVIEW.h"
+
+    #include "helper_cuda.h"
+    #include "helper_cusolver.h"
+
+    extern unsigned int cnt_devMalloc;
+    extern unsigned int cnt_devFree;
 
     /*
-       Depending on the back-end, the nature of the coeffient matrix is specified
-       differently. In general, each backend has a predefined list of integer values
-       to identify each type of matrix.
-       Here we support some of them.
+        According to the cuSolver API (section 1.4), these datatypes
+        are used to work with complex numbers.
      */
-    #ifndef _COMPLEX_ARITHMETIC_
-        #define MTYPE_STRUC_SYMM    1   /* Real and structurally symmetric          */
-        #define MTYPE_POSDEF        2   /* Real and symmetric positive definite     */
-        #define MTYPE_SYMM_INDEF   -2   /* Real and symmetric indefinite            */
-        #define MTYPE_GEN_NOSYMM   11   /* Real and nonsymmetric matrix             */
-    #else
-        #define MTYPE_STRUC_SYMM    3   /* Complex and structurally symmetric       */
-        #define MTYPE_HERM_POSDEF   4   /* Complex and Hermitian positive definite  */
-        #define MTYPE_HERM_INDEF   -4   /* Complex and Hermitian indefinite         */
-        #define MTYPE_SYMM          6   /* Complex and symmetric matrix             */
-        #define MTYPE_GEN_NOSYMM   13   /* Complex and nonsymmetric matrix          */
+    #if defined (_DATATYPE_Z_) // double complex
+        #define  cuDoubleComplex complex_t
+     
+    #elif defined (_DATATYPE_C_) // complex float
+        #define  cuComplex       complex_t
+
     #endif
 
-
     typedef struct {
-        integer_t n; /* matrix dimension */
-        integer_t nnz; /* number of non zero elements in the matrix */
-        integer_t nrhs;
 
-        integer_t *colind;
-        integer_t *rowptr;
-        complex_t *aij;
+        integer_t n;       /* coefficient matrix leading dimension      */
+        integer_t nnz;     /* number of non zero elements in the matrix */
+        integer_t nrhs;    /* number of right hand side columns         */
 
-        complex_t *xij;
-        complex_t *bij;
+        /* device pointers */
+        integer_t *d_colind; /* device colind pointer */
+        integer_t *d_rowptr; /* device rowptr pointer */
+        complex_t *d_aij;    /* device aij    pointer */
+        complex_t *d_xij;    /* device xij pointer */
+        complex_t *d_bij;    /* device bij pointer */
 
-        MKL_INT mtype;
+        /* host pointers */
+        integer_t *h_colind; /* host colind pointer */
+        integer_t *h_rowptr; /* host rowptr pointer */
+        complex_t *h_aij;    /* host aij    pointer */
+        complex_t *h_xij;    /* host xij pointer */
+        complex_t *h_bij;    /* host bij pointer */
 
-        MKL_INT *conf[64];
-        MKL_INT iparm[64];
+        cuSolverStatus_t   status;              /* cuSolver status                   */
+        cuSolverSpHandle_t cuSolverHandler;     /* cuSolver handler (section 3.2.1 ) */
+        cusparseMatDescr_t matDescr;            /* cusparse matrix descriptor        */
 
-        MKL_INT maxfct, mnum, error, msglvl;
+        /* needed handlers */
+        cusolverSpHandle_t cusolverHandle; /* cusolver handler */
+        cusparseHandle_t   cusparseHandle;/* cusparse handler */
+        cusparseMatDescr_t MatDescr; /* cuSparse matrix descriptor */
+
+        /* Low-level cusolver API structures */
+        csrqrInfo_t csrqrInfo;
+
+        /* Other local variables */
+        integer_t issym;            /* 1 if so, 0 otherwise                       */   
+        size_t internalDataInBytes; /* space for H matrix                         */
+        size_t workspaceInBytes;    /* space for QR factorization                 */
+        void   *d_work;             /* device workspace of workspaceInBytes bytes */
+
+
 
         /* -------------------------------------------------------------------- */
         /* .. Statistical variables                                             */
         /* -------------------------------------------------------------------- */
+        size_t freeMem;
+        size_t usedMem;
+
+        spike_timer_t transfer_t;
         spike_timer_t ordering_t;
         spike_timer_t factor_t;
         spike_timer_t solve_t;
@@ -113,4 +136,4 @@
                                 complex_t *restrict x,
                                 complex_t *restrict b);
 
-#endif /* end of _SPIKE_PARDISO_H_ definition */
+#endif /* end of _SPIKE_CUDA_H_ definition */

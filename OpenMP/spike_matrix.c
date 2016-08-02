@@ -518,6 +518,13 @@ block_t* block_CreateFromComponents(const integer_t n, const integer_t m, comple
 	return (B);
 };
 
+/*
+	This functions receives a sparse matrix and build inserts it into a dense block.
+	The block is returned.
+
+	It is intended to build the Bi / Ci dense blocks, needed to solve the linear system
+	Ai * Vi = Bi from the Bi/Ci sparse sub-matrices.  
+ */
 block_t* block_BuildBlockFromMatrix( matrix_t *M, blocktype_t type,
 	const integer_t n, const integer_t m, const integer_t ku, const integer_t kl )
 {

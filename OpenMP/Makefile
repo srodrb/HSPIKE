@@ -1,7 +1,7 @@
 COMPILER =INTEL
 BACKEND  =PARDISO
-DEBUG    =YES
-CUDA     =NO
+DEBUG    =NO
+CUDA     =YES
 
 # Data type definition
 DEFINES =-D_DATATYPE_D_
@@ -58,9 +58,9 @@ endif
 
 ifeq ($(CUDA),YES)
 	NVCC     = nvcc
-	NVCFLAGS = -Xcompiler -fopenmp -O2
-	NVCLIBS  =
-	NVCINCS  =
+	NVCFLAGS = #-Xcompiler -fopenmp -O2
+	NVCLIBS  =-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+	NVCINCS  =-I/usr/local/cuda/include
 
 	DEFINES += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
 
@@ -75,18 +75,18 @@ LIBSPIKE = libspike.a
 
 all:main tests
 
-main: main.o $(LIBSPIKE)
-	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
+#main: main.o $(LIBSPIKE)
+#	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS) -L. -lspike
 
-#main: main.o $(OBJS)
-#	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+main: main.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) (NVCINCS) $+ -o $@ $(CLIBS) (NVCLIBS)
 
 main.o:main.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
-libspike.a:$(OBJS)
-	ar rc $@ $+
-	ranlib libspike.a
+#libspike.a:$(OBJS)
+#	ar rc $@ $+
+#	ranlib libspike.a
 
 spike_interfaces.o:spike_interfaces.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
@@ -108,6 +108,9 @@ spike_pardiso.o:spike_pardiso.c
 
 spike_superlu.o:spike_superlu.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+spike_cuda.o:spike_cuda.c
+	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCINCS) $+ -c
 
 spike_analysis.o:spike_analysis.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
