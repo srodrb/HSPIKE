@@ -24,6 +24,15 @@
  	#include "mkl.h"
 	#include "mkl_cblas.h"
 
+ 	/* just for the host solver.. */
+     /* Pardiso interface */
+    #include "mkl_pardiso.h"
+    #ifndef _COMPLEX_ARITHMETIC_
+        #define MTYPE_GEN_NOSYMM   11   /* Real and nonsymmetric matrix             */
+    #else
+        #define MTYPE_GEN_NOSYMM   13   /* Complex and nonsymmetric matrix          */
+    #endif
+
  	/* The backend inclues also the definition of datatypes */
  	/* and other common headers                             */
  	#if defined (_PARDISO_BACKEND_)
@@ -122,5 +131,16 @@
 	real_t nrm2(const integer_t n, complex_t *restrict x, const integer_t incx);
 
 	Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, const integer_t incx, complex_t *restrict y, const integer_t incy);
+
+	/* host solver for the reduced system */
+	 Error_t directSolver_Host_Solve (integer_t n,
+ 							integer_t nnz,
+ 							integer_t nrhs,
+ 							integer_t *restrict colind, // ja
+							integer_t *restrict rowptr, // ia
+							complex_t *restrict aij,
+							complex_t *restrict x,
+							complex_t *restrict b);
+
 
 #endif /* end of _SPIKE_ALGEBRA_H_ definition */

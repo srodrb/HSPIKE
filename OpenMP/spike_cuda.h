@@ -79,7 +79,6 @@
 
         /* needed handlers */
         cusolverSpHandle_t cusolverHandle; /* cusolver handler */
-        cusparseHandle_t   cusparseHandle;/* cusparse handler */
         cusparseMatDescr_t MatDescr; /* cuSparse matrix descriptor */
 
         /* Low-level cusolver API structures */

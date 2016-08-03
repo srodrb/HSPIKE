@@ -134,9 +134,9 @@ int main(int argc, const char *argv[])
 	directSolver_Factorize( handler, A->n, A->nnz, A->colind, A->rowptr, A->aij );
 
 	/* solve for the different packs of RHS */
-	directSolver_SolveForRHS( handler, 1, x3->aij, b3->aij);
+	directSolver_SolveForRHS( handler, 2, x3->aij, b3->aij);
 
-	directSolver_SolveForRHS( handler, 1, &x3->aij[A->n], &b3->aij[A->n]);
+	// directSolver_SolveForRHS( handler, 1, &x3->aij[A->n], &b3->aij[A->n]);
 
 	/* check residual */
 	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x3->aij, b3->aij, A->n, b3->m );
@@ -153,7 +153,8 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up and resume                                             . */
 	/* -------------------------------------------------------------------- */
-	
+
+/*	
 	block_t* blockref = matrix_ExtractBlock ( A, 0, 5, 5, 7, _RHS_BLOCK_ );
 	block_Print( blockref, "reference block");
 
@@ -168,7 +169,7 @@ int main(int argc, const char *argv[])
 	// matrix_Deallocate( Bi );
 	block_Deallocate( foo );
 	block_Deallocate( blockref);
-
+*/
 
 	matrix_Deallocate( A );
 	fprintf(stderr, "\nTest finished finished\n");

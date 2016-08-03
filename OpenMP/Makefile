@@ -1,11 +1,11 @@
 # options are <INTEL,GNU>
-COMPILER =INTEL
+COMPILER=INTEL
 
 # options are: <SUPERLU, CUSOLVER, PARDISO>
-BACKEND  =CUSOLVER 
+BACKEND=PARDISO 
 
 # options are <YES,NO>
-DEBUG    =NO
+DEBUG=NO
 
 # Data type definition
 DEFINES =-D_DATATYPE_D_
@@ -49,11 +49,7 @@ ifeq ($(BACKEND),SUPERLU)
 	
 	OBJS    += spike_superlu.o
 
-else ifeq ($(BACKEND),PARDISO)
-	DEFINES += -D_PARDISO_BACKEND_
-	OBJS    += spike_pardiso.o
-
-else
+else ifeq ($(BACKEND),CUSOLVER)
 	NVCC     = nvcc
 	NVCFLAGS =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
 	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
@@ -65,6 +61,10 @@ else
 	DEFINES += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
 
 	OBJS    += spike_cuda.o
+
+else
+	DEFINES += -D_PARDISO_BACKEND_
+	OBJS    += spike_pardiso.o
 endif
 
 
