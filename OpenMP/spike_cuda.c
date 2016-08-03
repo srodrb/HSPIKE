@@ -3,6 +3,14 @@
 unsigned int cnt_devMalloc = 0;
 unsigned int cnt_devFree   = 0;
 
+/* ------------------------------------------------------------------------- */
+/* .. These macros are used to build the name of the API function according  */
+/* to the numerical precision at hand (i.e. single, double, etc.)            */
+/* ------------------------------------------------------------------------- */
+#define CAT_I(a,b,c) a##b##c
+#define CAT(a,b,c)   CAT_I(a,b,c)
+#define CUDA_KERNEL(lib,prec,call) CAT(lib,prec,call)
+
 static inline void checkCudaErrors( int status ) { /* TODO */ };
 
 static inline void spike_devMalloc( void* devPtr, const size_t nmemb, const size_t size )
@@ -37,13 +45,14 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
 	/* -------------------------------------------------------------------- */
 	/* .. Query used and free memory on the device. */
 	/* -------------------------------------------------------------------- */	
-	checkCudaErrors( cudaMemGetInfo( &handler->freeMem, &handler->usedMem ));
+	checkCudaErrors( cudaMemGetInfo( &handler->freeMem, &handler->usedMem ) );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Initilialize handlers.                                            */
 	/* -------------------------------------------------------------------- */
-	checkCudaErrors( cusolverSpCreate ( &handler->cusolverHandle));
-	checkCudaErrors( cusolverSpCreateCsrqrInfo ( &handler->csrqrInfo ));
+	checkCudaErrors( cusparseCreateMatDescr    (&handler->MatDescr        ) );
+	checkCudaErrors( cusolverSpCreate          ( &handler->cusolverHandle ) );
+	checkCudaErrors( cusolverSpCreateCsrqrInfo ( &handler->csrqrInfo      ) );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Setup matrix information.                                         */
@@ -93,6 +102,11 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	checkCudaErrors( cudaMemcpy( handler->d_colind, handler->h_colind,  handler->nnz    * sizeof(integer_t), cudaMemcpyHostToDevice ));
 	checkCudaErrors( cudaMemcpy( handler->d_rowptr, handler->h_rowptr, (handler->n + 1) * sizeof(integer_t), cudaMemcpyHostToDevice ));
 
+	/* allocate space for one x column and for one b column  */
+	checkCudaErrors( cudaMalloc((void**) &handler->d_xij, handler->n * sizeof(complex_t)));
+	checkCudaErrors( cudaMalloc((void**) &handler->d_bij, handler->n * sizeof(complex_t)));
+
+
 	/* -------------------------------------------------------------------- */
 	/* .. Verify if A is symmetric.                                         */
 	/* -------------------------------------------------------------------- */
@@ -113,7 +127,6 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 
     // TODO.
 
-
 	/* analyses sparsity pattern of H and Q matrices */
 	checkCudaErrors( cusolverSpXcsrqrAnalysis ( handler->cusolverHandle,
                            handler->n,
@@ -124,13 +137,16 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
                            handler->d_colind,
                            handler->csrqrInfo ));
 
+// 4 PRECISIONES
+
 	/* After the analysis, the size of working space to perform QR factorization can be retrieved */
-	checkCudaErrors( cusolverSpScsrqrBufferInfo ( handler->cusolverHandle,
+	checkCudaErrors( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrBufferInfo ) ( 
+						   handler->cusolverHandle,
                            handler->n,
                            handler->n,
                            handler->nnz,
                            handler->MatDescr,
-                           (const float*) handler->d_aij,
+                           (const complex_t*) handler->d_aij,
                            handler->d_rowptr,
                            handler->d_colind,
                            handler->csrqrInfo,
@@ -143,12 +159,13 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	/* This function shifts diagonal of A by parameter mu such that we can factorize */
 	/* For linear solver, the user just sets mu to zero.                             */ 
 	/* For eigenvalue solver, mu can be a value of shift in inverse-power method.    */
-	checkCudaErrors( cusolverSpScsrqrSetup ( handler->cusolverHandle,
+	checkCudaErrors( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSetup ) ( 
+						   handler->cusolverHandle,
                            handler->n,
                            handler->n,
                            handler->nnz,
                            handler->MatDescr,
-                           (const float*) handler->d_aij,
+                           (const complex_t*) handler->d_aij,
                            handler->d_rowptr,
                            handler->d_colind,
                            0,
@@ -160,7 +177,8 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	/* If both x and b are not nil, QR factorization and solve are combined together. b is over-    */
 	/* written by c and x is the solution of least-square.                                          */
 	/* pBuffer: buffer allocated by the user, the size is returned by cusolverSpXcsrqrBufferInfo(). */
-	checkCudaErrors( cusolverSpScsrqrFactor ( handler->cusolverHandle,
+	checkCudaErrors( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrFactor ) ( 
+						   handler->cusolverHandle,
                            handler->n,
                            handler->n,
                            handler->nnz,
@@ -180,6 +198,9 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
                             complex_t *__restrict__ xij,
                             complex_t *__restrict__ bij)
 {
+	/* local variables */
+	int rhsCol = 0;
+
 	/* update the value of rhs columns */
 	handler->nrhs = nrhs;
 
@@ -191,28 +212,25 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 	handler->h_xij = xij;
 	handler->h_bij = bij;
 
-	checkCudaErrors( cudaMalloc((void**) &handler->d_xij, handler->n * handler->nrhs * sizeof(complex_t)));
-	checkCudaErrors( cudaMalloc((void**) &handler->d_bij, handler->n * handler->nrhs * sizeof(complex_t)));
+	/* At the moment, the API is not able to handle multiple */
+	/* rhs at a time, so we have to iterate                 */
+	for(rhsCol=0; rhsCol < handler->nrhs; rhsCol++ ){
+		/* Transfer the arrays to the device memory */
+		cudaMemcpy( handler->d_bij, &handler->h_bij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyHostToDevice );
 
-	/* allocate memory for rhs vectors and solution on the device */
-	cudaMemcpy( handler->d_xij, handler->h_xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice );
-	cudaMemcpy( handler->d_bij, handler->h_bij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice );
+		/* Forward and backward substitution */
+		checkCudaErrors( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+							   handler->cusolverHandle,
+	                           handler->n,
+	                           handler->n,
+	                           handler->d_bij,
+	                           handler->d_xij,
+	                           handler->csrqrInfo,
+	                           handler->d_work ));
 
-	/* Forward and backward substitution */
-	checkCudaErrors( cusolverSpScsrqrSolve ( handler->cusolverHandle,
-                           handler->n,
-                           handler->n,
-                           (float*) handler->d_bij,
-                           (float*) handler->d_xij,
-                           handler->csrqrInfo,
-                           handler->d_work ));
-
-	/* transfer the solution back to the host */
-	cudaMemcpy( handler->d_xij, xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyDeviceToHost );
-
-	/* deallocate rhs vectors on the device */
-	spike_devNullify( handler->d_xij );
-	spike_devNullify( handler->d_bij );
+		/* transfer the solution back to the host */
+		cudaMemcpy( handler->d_xij, &xij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyDeviceToHost );
+	}
 
 	fprintf(stderr, "\n%s: %d WARNING! make sure you cant rehuse these buffers!", __FUNCTION__, __LINE__ );
 
@@ -230,19 +248,24 @@ Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
 
 Error_t directSolver_Finalize( DirectSolverHander_t *handler )
 {
+	/* synchronize CUDA device */
+	cudaDeviceSynchronize();
+
+	/* deallocate device memory */
 	spike_devNullify( handler->d_work  );
 	spike_devNullify( handler->d_colind);
 	spike_devNullify( handler->d_rowptr);
 	spike_devNullify( handler->d_aij   );
-	// realloc is possible? -> spike_devNullify( handler->d_xij  );
-	// realloc is possible? -> spike_devNullify( handler->d_bij  );
+	spike_devNullify( handler->d_xij  );
+	spike_devNullify( handler->d_bij  );
 
+	/* destroy cusolverSP and cusparse handlers */
 	checkCudaErrors( cusolverSpDestroyCsrqrInfo ( handler->csrqrInfo ));
-
 	if ( handler->cusolverHandle ) { checkCudaErrors( cusolverSpDestroy      ( handler->cusolverHandle)); }
 	if ( handler->cusparseHandle ) { checkCudaErrors( cusparseDestroy        ( handler->cusparseHandle)); }
 	if ( handler->MatDescr       ) { checkCudaErrors( cusparseDestroyMatDescr( handler->MatDescr      )); }
 
+	/* deallocate directSolver handler */
 	spike_nullify(handler);
 
 	return (SPIKE_SUCCESS);

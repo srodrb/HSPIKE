@@ -55,7 +55,7 @@ else ifeq ($(BACKEND),PARDISO)
 
 else
 	NVCC     = nvcc
-	NVCFLAGS =-dlink -ccbin=icc #-Xcompiler -fopenmp -O2
+	NVCFLAGS =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
 	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
 	NVCINCS  +=-I/usr/local/cuda/include
 

@@ -26,7 +26,7 @@
     #include "spike_memory.h"
 
     #include "cusparse.h"
-    #include "cusolverSp.h"
+    // #include "cusolverSp.h"
 
     /* Cuda 7.5 preview */
     #include "cusolverSp_LOWLEVEL_PREVIEW.h"
@@ -42,12 +42,20 @@
         are used to work with complex numbers.
      */
 
-//    #if defined (_DATATYPE_Z_) // double complex
-//        #define  cuDoubleComplex complex_t
-//     
-//    #elif defined (_DATATYPE_C_) // complex float
-//        #define  cuComplex       complex_t
-//    #endif
+    #if defined (_DATATYPE_Z_) // double complex
+        #define  SPIKE_CUDA_PREC     Z
+        #define  cuDoubleComplex     complex_t
+     
+    #elif defined (_DATATYPE_C_) // complex float
+        #define  SPIKE_CUDA_PREC     C
+        #define  cuComplex           complex_t
+    
+    #elif defined (_DATATYPE_D_) // double precision float
+        #define  SPIKE_CUDA_PREC     D
+    
+    #else // single precision float
+        #define  SPIKE_CUDA_PREC     S
+    #endif
 
     typedef struct {
 
