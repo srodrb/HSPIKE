@@ -21,9 +21,7 @@
 
 	#undef _COMPLEX_ARITHMETIC_
 
-	#if defined (_MPI_SUPPORT_)
-		#include <mpi.h>
-	#endif
+ 	#include <stdlib.h>
 
 
 
@@ -88,6 +86,8 @@
 	typedef int      Error_t;
 	typedef int      Bool_t;
 	typedef double   spike_timer_t;
+
+	typedef size_t   uLong_t;
 
 	#define _I_ "%d"
 

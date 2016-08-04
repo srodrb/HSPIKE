@@ -49,6 +49,12 @@
 							complex16 *restrict xij,
 							complex16 *restrict bij)
 {
+	// TODO: write a check params function 
+	if ( nnz < 0 ) {
+		fprintf(stderr, "\n%s: nnz must be a positive number (consider buffer overflow)\n", __FUNCTION__ );
+		abort();
+	}
+
 	// /gpfs/scratch/bsc21/bsc21253/tests/POC_FMD_3D_MZANZI_003/exec_input>
 	// /gpfs/scratch/bsc21/bsc21225/BSITLocal/trunk/system/main/kernel/bin/em.iso.gp.fm kernel.fm.prm.freq0.05Hz.000001
 	
@@ -82,11 +88,14 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 3);
+	S = spike_solve_analysis( A, nrhs, 12 );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
+	fprintf(stderr, "Created reduced system.\n");
+
 	xr = block_CreateReducedRHS( S->p, S->ku, S->kl, nrhs );
+	fprintf(stderr, "Created reduced system rhs.\n");
 
 	/* -------------------------------------------------------------------- */
 	/* .. Factorization Phase. */
@@ -107,6 +116,7 @@
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
+		fprintf(stderr, "Sub-matrix Aij extracted\n");
 		
 		directSolver_Factorize( handler, 
 								Aij->n,
@@ -115,6 +125,8 @@
 								Aij->rowptr, 
 								Aij->aij);
 
+		fprintf(stderr, "Matrix factorized\n");
+
 		/* -------------------------------------------------------------------- */
 		/* Solve Ai * yi = fi                                                   */
 		/* Extracts the fi portion from f, creates a yi block used as container */
@@ -122,12 +134,14 @@
 		/* -------------------------------------------------------------------- */
 		block_t*  fi  = block_ExtractBlock    ( f, r0, rf );
 		block_t*  yi  = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+		fprintf(stderr, "yi block created\n");
 
 		block_SetBandwidthValues( fi, A->ku, A->kl );
 		block_SetBandwidthValues( yi, A->ku, A->kl );
 
 		/* solve the system for the RHS value */
 		directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij );
+		fprintf(stderr, "Solved for RHS\n");
 
 
 		/* Extract the tips of the yi block */
@@ -150,16 +164,16 @@
 
 			/* solve Aij * Vi = Bi */
 			directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij );
+			block_Deallocate( Bi );
 
 			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
+			block_Deallocate( Vit);
 
 			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
-
-			block_Deallocate( Bi );
 			block_Deallocate( Vi );
-			block_Deallocate( Vit);
+
 			block_Deallocate( Vib);
 		}
 		else if ( p == ( S->p -1)){
@@ -168,17 +182,17 @@
 
 			/* solve Aij * Wi = Ci */
 			directSolver_SolveForRHS( handler, Wi->m, Wi->aij, Ci->aij );
+			block_Deallocate( Ci );
 
 			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
+			block_Deallocate( Wit);
 
 			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
-			
-			block_Deallocate( Ci );
-			block_Deallocate( Wi );
-			block_Deallocate( Wit);
 			block_Deallocate( Wib);
+			
+			block_Deallocate( Wi );
 		}
 		else{
 			block_t* Vi    = block_CreateEmptyBlock( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
@@ -186,34 +200,34 @@
 
 			/* solve Aij * Vi = Bi */
 			directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij );
+			block_Deallocate( Bi );
 
 			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
+			block_Deallocate( Vit);
 
 			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
-
-			block_Deallocate( Bi );
-			block_Deallocate( Vi );
-			block_Deallocate( Vit);
 			block_Deallocate( Vib);
+
+			block_Deallocate( Vi );
 
 			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );
 
 			/* solve Aij * Wi = Ci */
 			directSolver_SolveForRHS( handler, Wi->m, Wi->aij, Ci->aij );
+			block_Deallocate( Ci );
 
 			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
+			block_Deallocate( Wit);
 
 			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
-
-			block_Deallocate( Ci );
-			block_Deallocate( Wi );
-			block_Deallocate( Wit);
 			block_Deallocate( Wib);
+
+			block_Deallocate( Wi );
 		}
 
 		directSolver_ShowStatistics(handler);
@@ -312,12 +326,12 @@
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
+			block_Deallocate ( Ci );
+			block_Deallocate ( xb_prev); 
 
 			/* Solve Aij * ( f - Ci * xt ) */
 			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
 
-			block_Deallocate ( Ci );
-			block_Deallocate ( xb_prev); 
 		
 		}
 		else{
@@ -339,12 +353,11 @@
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
 
+			block_Deallocate ( Bi );
+			block_Deallocate ( xt_next); 
 
 			/* Solve Aij * ( f - Bi * xt ) */
 			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
-
-			block_Deallocate ( Bi );
-			block_Deallocate ( xt_next); 
 
 			block_t* Ci  = matrix_ExtractBlock ( A, obs, obs + S->kl[p], obs - S->kl[p], obs, _WHOLE_SECTION_ );			
 			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
@@ -363,12 +376,12 @@
 				fi->aij, 			 		    /* C block                    */
 				ni );		 					/* ldc - first dimension of C */
 
+			block_Deallocate ( Ci );
+			block_Deallocate ( xb_prev);
 
 			/* Solve Aij * ( f - Bi * xt ) */
 			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
 
-			block_Deallocate ( Ci );
-			block_Deallocate ( xb_prev);
 		}
 
 		block_AddBlockToRHS(x, xi, obs, obe);

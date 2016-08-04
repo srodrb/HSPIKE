@@ -30,7 +30,9 @@
 	#define ALIGN_REAL    (const int) 32
 	#define ALIGN_COMPLEX (const int) 32
 
-	void* spike_malloc    ( const int alignment, const int nmemb, const size_t size);
+ 	#define spike_malloc(alignemt, nmemb, size) _spike_malloc(alignemt, nmemb, size, __FUNCTION__, __LINE__ )
+
+	void* _spike_malloc   ( const int alignment, const size_t nmemb, const size_t size, const char* function, const int line);
 	void  spike_free      ( void* ptr );
 	void  spike_nullify   ( void* ptr );
 

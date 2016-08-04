@@ -61,7 +61,7 @@
 	 * Uses metis to compute a permutation that minizes the fill-in on the LU factors of A
 	 */
 	Error_t reorder_metis(  const integer_t n,
-							const integer_t nnz,
+							const uLong_t nnz,
 							integer_t *restrict colind,
 							integer_t *restrict rowptr,
 							complex_t *restrict aij,

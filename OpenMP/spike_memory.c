@@ -5,19 +5,32 @@ unsigned int cnt_alloc = 0;
 unsigned int cnt_free  = 0;
 
 // TODO provide a mechanism for malloc aligned memory with non-intel compilers
-
-void* spike_malloc( const int alignment, const int nmemb, const size_t size)
+void* _spike_malloc   ( const int alignment,
+						const size_t nmemb,
+						const size_t size,
+						const char* function,
+						const int line)
 {
+	fprintf(stderr, "Number of elements: %zu\n", nmemb);
+
+	size_t bytes = nmemb * size;
+
+	if ( nmemb < 0 || size < 0 || bytes < 0 ){
+		fprintf(stderr, "\n%s-%s from %d: Error: nmemb and size must be positive numbers (consider buffer overflow)\n",
+			__FUNCTION__, function, line );
+		abort();
+	}
 
 #ifdef __INTEL_COMPILER
-	void *buffer = _mm_malloc( size * nmemb, alignment );
+	void *buffer = _mm_malloc( bytes, alignment );
 #else
-	void *buffer = malloc( size * nmemb );
+	void *buffer = malloc( bytes );
 #endif
 
 	if ( buffer == NULL )
 	{
-		fprintf(stderr, "Cant allocate %d elements of size %lu correctly\n", nmemb, size);
+		fprintf(stderr, "\n%s-%s from %d: Cant allocate %zu elements of size %zu correctly\n",
+			__FUNCTION__, function, line ,nmemb, size );
 		abort();
 	}
 

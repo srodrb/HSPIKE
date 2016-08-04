@@ -11,7 +11,7 @@
 matrix_t* matrix_LoadCSR(const char* filename)
 {
 	/* local variables */
-	integer_t dtype;
+	integer_t dtype, nnz;
 
 	/* allocate matrix structure */
 	matrix_t* M = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
@@ -23,7 +23,9 @@ matrix_t* matrix_LoadCSR(const char* filename)
 	spike_fread( &M->n, sizeof(integer_t), 1, f );
 
 	/* load number of nnz elements */
-	spike_fread( &M->nnz, sizeof(integer_t), 1, f );
+	spike_fread( &nnz, sizeof(integer_t), 1, f );
+
+	M->nnz = (uLong_t) nnz;
 
 	// TODO read data type, just to check everything is fine
 	spike_fread( &dtype, sizeof(integer_t), 1, f );
@@ -43,6 +45,7 @@ matrix_t* matrix_LoadCSR(const char* filename)
 	/* clean up and resume */
 	spike_fclose(f);
 
+	fprintf(stderr, "Number of nnz elements %d, number of rows %d\n", M->nnz, M->n );
 
 	return (M);
 };
@@ -79,7 +82,7 @@ complex_t* vector_LoadRHS( const integer_t n, const char* filename )
 Error_t matrix_ExportBinary (matrix_t* M, const char* filename )
 {
 	/* local variables */
-	integer_t dtype = 0;
+	integer_t dtype = 0, nnz;
 
 	FILE* f = spike_fopen( filename, "wb");
 
@@ -87,7 +90,8 @@ Error_t matrix_ExportBinary (matrix_t* M, const char* filename )
 	spike_fwrite( &M->n, sizeof(integer_t), 1, f );
 
 	/* export number of nnz elements */
-	spike_fwrite( &M->nnz, sizeof(integer_t), 1, f );
+	nnz = (int) M->nnz;
+	spike_fwrite( &nnz, sizeof(integer_t), 1, f );
 
 	/* export coefficient data type */
 	spike_fwrite( &dtype, sizeof(integer_t), 1, f );
@@ -111,7 +115,7 @@ Error_t matrix_ExportBinary (matrix_t* M, const char* filename )
 /*
 	Creates an empty CSR sparse matriz of dimension n and nnz elements
 */
-matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const integer_t nnz )
+matrix_t* matrix_CreateEmptyMatrix( const size_t n, const uLong_t nnz )
 {
 	matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
 	R->n        = n;
@@ -122,10 +126,13 @@ matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const integer_t nnz )
 	R->rowptr   = (integer_t*) spike_malloc( ALIGN_INT    , R->n+1, sizeof(integer_t));
 	R->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->nnz, sizeof(complex_t));
 
+	fprintf(stderr, "Empty matrix allocated...\n");
+
 	memset( (void*) R->colind, 0, (R->nnz) * sizeof(integer_t));
 	memset( (void*) R->rowptr, 0, (R->n+1) * sizeof(integer_t));
 	memset( (void*) R->aij   , 0, (R->nnz) * sizeof(complex_t));
 
+	fprintf(stderr, "Empty matrix created\n");
 	return (R);
 };
 
@@ -135,7 +142,7 @@ matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const integer_t nnz )
 	structures that we use normally.
  */
 matrix_t* matrix_CreateFromComponents(const integer_t n, 
-	const integer_t nnz, 
+	const uLong_t nnz, 
 	integer_t *restrict colind, 
 	integer_t *restrict rowptr, 
 	complex_t *restrict aij)
@@ -170,6 +177,10 @@ Error_t matrix_Deallocate ( matrix_t* M )
  */
 Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 {
+	/* local variables */
+	uLong_t i;
+
+	/* function body */
 	if( A->n != B->n )
 	{
 		fprintf(stderr, "\n%s: dimension mismatch", __FUNCTION__ );
@@ -182,7 +193,7 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 		return (False);
 	}
 
-	for (integer_t i = 0; i < A->nnz; i++)
+	for (i = 0; i < A->nnz; i++)
 	{
 		if( number_IsEqual(A->aij[i],B->aij[i]) == False )
 		{
@@ -191,7 +202,7 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 		}
 	}
 
-	for (integer_t i = 0; i < A->nnz; i++)
+	for (i = 0; i < A->nnz; i++)
 	{
 		if( A->colind[i] != B->colind[i]  )
 		{
@@ -200,7 +211,7 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 		}
 	}
 
-	for (integer_t i = 0; i < A->n+1; i++)
+	for (i = 0; i < A->n+1; i++)
 	{
 		if( A->rowptr[i] != B->rowptr[i] )
 		{
@@ -214,7 +225,10 @@ Bool_t matrix_AreEqual ( matrix_t* A, matrix_t* B )
 
 Error_t matrix_PrintAsSparse(matrix_t* M, const char* msg)
 {
+	/* local variables */
+	uLong_t i = 0;
 
+	/* function body */
 	fprintf(stderr, "\n%s: %s", __FUNCTION__, msg);
 	
 	if ( M->n > _MAX_PRINT_DIMENSION_ ) {
@@ -226,7 +240,7 @@ Error_t matrix_PrintAsSparse(matrix_t* M, const char* msg)
 	fprintf(stderr, "\n\n\tMatrix dimension: "_I_", nnz: "_I_"\n", M->n, M->nnz);
 
 	fprintf(stderr, "\n\n\tMatrix coefficients\n");
-	for(integer_t i=0; i<M->nnz; i++){
+	for(i=0; i<M->nnz; i++){
 		#ifndef _COMPLEX_ARITHMETIC_
 			fprintf(stderr, "\t"_F_" ", M->aij[i] );
 		#else
@@ -235,11 +249,11 @@ Error_t matrix_PrintAsSparse(matrix_t* M, const char* msg)
 	}
 
 	fprintf(stderr, "\n\n\tIndices\n");
-	for(integer_t i=0; i<M->nnz; i++)
+	for(i=0; i<M->nnz; i++)
 		fprintf(stderr, "\t"_I_" ", M->colind[i]);
 
 	fprintf(stderr, "\n\n\tRow pointers\n");
-	for(integer_t i=0; i<M->n +1; i++)
+	for(i=0; i<M->n +1; i++)
 		fprintf(stderr, "\t"_I_" ", M->rowptr[i]);
 
 	fprintf(stderr,"\n\n");
@@ -313,7 +327,6 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 								blocktype_t type )
 {
 	// TODO: extract the sparse sub-block, transpose it and insert it faster!
-
 	integer_t row, col, idx;
 
 	// allocates the -dense- block
@@ -332,9 +345,8 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 
 	B->ku      = M->ku;
 	B->kl      = M->kl;
-
-	B->aij = (complex_t*) spike_malloc( ALIGN_COMPLEX, B->n * B->m, sizeof(complex_t));
-	memset((void*) B->aij, 0, B->n * B->m * sizeof(complex_t));
+	B->aij = (complex_t*) spike_malloc( ALIGN_COMPLEX, ((size_t) B->n) * B->m, sizeof(complex_t));
+	memset((void*) B->aij, 0, ((size_t) B->n) * B->m * sizeof(complex_t));
 
 	// extract the elements, correct the indices and insert them into the dense block
 	for(row=r0; row<rf; row++)
@@ -380,7 +392,7 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 
 	// local variables
 	spike_timer_t tstart, tend;
-	integer_t nnz;
+	uLong_t nnz;
 	integer_t rowind;
 	integer_t nrows;
  	integer_t	idx;
@@ -453,20 +465,32 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 									integer_t *ku, 
 									integer_t *kl )
 {
-	// local variables
-	integer_t nnz, rows;
+	/* local variables */
+	uLong_t nnz = 0;
+	integer_t rows = 0;
+
+	/* function body */
 
 	// compute matrix dimensions and allocate the structure
 	GetNnzAndRowsUpToPartition(TotalPartitions, TotalPartitions, ku, kl, &nnz, &rows );
+
+	fprintf(stderr, "nnz %zu, nrows %d \n", nnz, rows );
+
 	matrix_t* R = matrix_CreateEmptyMatrix( rows, nnz );
 
 	// reduced system dimensions
-	integer_t* nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
+	integer_t *nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
+
+	for(int i=0; i < TotalPartitions; i++ ){
+		fprintf(stderr, "%d value %d\n", i, nr[i]);
+	}
+
 
   // initialize blocks
   for(integer_t p=0; p < TotalPartitions; p++)
 	{
 		GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
+		fprintf(stderr, "%d Dimensions computed correctly, partition %d\n", __LINE__, p );
 
 		/* ------------- top spike elements ---------------- */
 		for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
@@ -493,6 +517,9 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
 		}
 
+		fprintf(stderr, "%d : Dimensions computed correctly, partition %d\n", __LINE__, p );
+
+
 		/* ------------- Bottom spike elements ---------------- */
 		for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
 			if ( p > 0 )// add Wi elements
@@ -517,6 +544,9 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 			else
 				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
 		}
+
+		fprintf(stderr, "%d. Dimensions computed correctly, partition %d\n", __LINE__, p );
+
 	}
 
 	/* clean up and resume */
@@ -536,6 +566,19 @@ block_t* block_CreateEmptyBlock (   const integer_t n,
 									blocktype_t type,
 									blocksection_t section)
 {
+	/* local variables */
+	size_t nmemb = ((size_t) n) * m;
+
+	fprintf(stderr, "%s(): nmemb value: %zu (n %d, m %d)\n", __FUNCTION__, nmemb, n, m);
+
+	/* check for buffer overflow problems */
+	if ( n < 0 || m < 0 || nmemb < 0 ) {
+		fprintf(stderr, "\n%s: ERROR, n and m must be positive numbers (consider buffer overflow)\n", __FUNCTION__ );
+		abort();
+	}
+
+
+	/* function body */
 	block_t* B  = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
 	B->type     = type;
 	B->section  = section;
@@ -543,9 +586,9 @@ block_t* block_CreateEmptyBlock (   const integer_t n,
 	B->m        = m;
 	B->ku       = ku;
 	B->kl       = kl;
-	B->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, n*m, sizeof(complex_t));
+	B->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, nmemb, sizeof(complex_t));
 
-	memset( (void*) B->aij, 0,  n * m * sizeof(complex_t));
+	memset( (void*) B->aij, 0,  nmemb * sizeof(complex_t));
 
 	return (B);
 };
@@ -935,8 +978,9 @@ static integer_t* ComputeReducedSytemDimensions(integer_t partitions,
 */
 static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions, 
 												const integer_t CurrentPartition, 
-												integer_t *ku, integer_t *kl, 
-												integer_t *nnz, 
+												integer_t *ku,
+												integer_t *kl, 
+												uLong_t *nnz, 
 												integer_t *FirstBlockRow )
 {
 	/* Compute the number of nnz elements up to the actual partition */
@@ -944,7 +988,7 @@ static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions,
   for(integer_t p = 0; p < CurrentPartition; p++)
   {
 		if ( p == 0 ){
-			*nnz += ku[p] * (ku[p] + kl[p]);
+			*nnz = ku[p] * (ku[p] + kl[p]);
 		}
 		else if ( p == (TotalPartitions -1)) {
 			*nnz += kl[p] * (ku[p] + kl[p]);
@@ -955,9 +999,9 @@ static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions,
 
 		/* add diagonal elements */
 		*nnz += (ku[p] + kl[p]);
+
+		fprintf(stderr, "\nValue of nnz up to %d partition is %zu\n", p, *nnz );
   }
-
-
 	/* Compute the number of rows optionally */
 	if ( FirstBlockRow != NULL ) {
 		*FirstBlockRow = 0;
@@ -982,7 +1026,8 @@ Error_t matrix_AddTipToReducedMatrix (const integer_t TotalPartitions,
 
 
 	// local variables
-	integer_t nnz, rows;
+	uLong_t   nnz;
+	integer_t rows;
 	integer_t BlockAijCount = 0;
 	integer_t p = CurrentPartition;
 

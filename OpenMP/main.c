@@ -64,12 +64,12 @@ int main(int argc, const char *argv[])
 #ifdef _BSIT_MATRIX_
 	const integer_t nrhs = 1;
 
-	matrix_t* A = matrix_LoadCSR("../Tests/BSIT/mzanzi_0017/permuted.bsit");
+	matrix_t* A = matrix_LoadCSR("../../Matrices/BSIT/mzanzi_017/permuted.bsit");
 
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
-	complex_t *rhs = vector_LoadRHS( A->n, "../Tests/BSIT/mzanzi_0017/rhs.bsit");
+	complex_t *rhs = vector_LoadRHS( A->n, "../../Matrices/BSIT/mzanzi_017/rhs.bsit");
 
 	/* copy the values to the rhs matrix */
 	memcpy( f->aij, rhs, A->n * sizeof(complex_t));
@@ -109,10 +109,14 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Check residual and compare against reference solver             . */
 	/* -------------------------------------------------------------------- */
+
+#ifndef _BSIT_MATRIX_
 	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
 	block_InitializeToValue( x, __zero  ); // solution of the system
 	block_InitializeToValue( f, __punit ); // rhs of the system
 	SolveOriginalSystem( A, x, f);
+#endif
+
 
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */

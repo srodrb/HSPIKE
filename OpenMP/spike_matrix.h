@@ -38,7 +38,7 @@
 	typedef struct
 	{
 		integer_t n;
-		integer_t nnz;
+		uLong_t   nnz;
 
 		integer_t ku;
 		integer_t kl;
@@ -83,10 +83,10 @@
 
 	Error_t           matrix_ExportBinary           ( matrix_t* M, const char* filename );
 
-	matrix_t*         matrix_CreateEmptyMatrix      (const integer_t n, const integer_t nnz );
+	matrix_t*         matrix_CreateEmptyMatrix      (const size_t n, const size_t nnz );
 
 	matrix_t*         matrix_CreateFromComponents  (const integer_t n, 
-													const integer_t nnz, 
+													const uLong_t nnz, 
 													integer_t *restrict colind, 
 													integer_t *restrict rowptr, 
 													complex_t *restrict aij);
@@ -185,8 +185,9 @@
 
 	static Error_t    GetNnzAndRowsUpToPartition       (const integer_t TotalPartitions, 
 														const integer_t CurrentPartition, 
-														integer_t *ku, integer_t *kl, 
-														integer_t *nnz, 
+														integer_t *ku,
+														integer_t *kl, 
+														uLong_t *nnz, 
 														integer_t *FirstBlockRow );
 
 	Error_t           matrix_AddTipToReducedMatrix   (const integer_t TotalPartitions,

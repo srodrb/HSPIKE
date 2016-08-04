@@ -1,7 +1,7 @@
 #include "spike_algebra.h"
 
 Error_t reorder_metis ( const integer_t n,
-						const integer_t nnz,
+						const uLong_t nnz,
 						integer_t *restrict colind,
 						integer_t *restrict rowptr,
 						complex_t *restrict aij,
@@ -89,7 +89,7 @@ Error_t matrix_ComputeBandwidth(const integer_t n,
 
 	tend = GetReferenceTime() - tstart;
 
-	fprintf(stderr, "\n%s: took %.6lf seconds", __FUNCTION__, tend);
+	fprintf(stderr, "\n%s: took %.6lf seconds (ku %d kl %d)", __FUNCTION__, tend, *ku, *kl);
 
 	return (SPIKE_SUCCESS);
 };

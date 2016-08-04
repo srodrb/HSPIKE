@@ -3,12 +3,12 @@
 # options are <YES,NO>
 
 COMPILER =intel
-BACKEND  =pardiso 
+BACKEND  =cusolver 
 DEBUG    =no
 
 
 # Data type definition
-DEFINES = -D_DATATYPE_Z_
+DEFINES = -D_DATATYPE_D_
 
 OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 		spike_algebra.o spike_analysis.o spike_common.o \
@@ -69,13 +69,12 @@ ifeq ($(BACKEND),cusolver)
 	OBJS     += spike_cuda.o
 endif
 
-DEFINES += -D_PARDISO_BACKEND_
-OBJS    += spike_pardiso.o
-
-
 ifeq ($(DEBUG),YES)
 	DEFINES += -D_ENABLE_TESTING_
 endif
+
+DEFINES += -D_PARDISO_BACKEND_
+OBJS    += spike_pardiso.o
 
 
 
