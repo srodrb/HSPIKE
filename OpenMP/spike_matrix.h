@@ -107,6 +107,14 @@
 									            	const integer_t cf,
 									            	blocktype_t type);
 
+	Error_t        matrix_ExtractBlock_blocking  (  matrix_t* M,
+													block_t* B,
+													const integer_t r0,
+													const integer_t rf,
+													const integer_t c0,
+													const integer_t cf,
+													blocktype_t type );
+
 	matrix_t*         matrix_ExtractMatrix 		   (matrix_t* M,
 													const integer_t r0,
 													const integer_t rf,
@@ -147,9 +155,23 @@
 
 	block_t*          block_ExtractTip              ( block_t* B, blocksection_t section, memlayout_t layout );
 
+	Error_t           block_ExtractTip_blocking   ( block_t *dst,
+													block_t *src, 
+													const integer_t c0,
+													const integer_t cf,
+													blocksection_t section,
+													memlayout_t layout );
+
 	block_t*          block_ExtractBlock            (block_t* B, 
 													const integer_t n0,
 													const integer_t nf);
+
+	Error_t           block_ExtractBlock_blocking ( block_t *dst, 
+													block_t *src, 
+													const integer_t n0, 
+													const integer_t nf,
+													const integer_t c0,
+													const integer_t cf );
 
 	Error_t           block_SetBandwidthValues      (block_t* B,
 													const integer_t ku,
@@ -165,6 +187,15 @@
 													integer_t          *kl,
 													block_t            *RHS,
 													block_t            *B);
+
+	Error_t           block_AddTipTOReducedRHS_blocking    ( const integer_t CurrentPartition,
+															const integer_t     c0,
+															const integer_t     cf,
+															integer_t          *ku,
+															integer_t          *kl,
+															block_t            *RHS,
+															block_t            *B);
+
 
 	Error_t           block_AddBlockToRHS          (block_t* x, block_t* xi,
 													const integer_t n0,

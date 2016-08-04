@@ -366,6 +366,46 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 };
 
 /*
+	Impllementation of matrix_ExtractBlock function for the column
+	blocking version.
+
+	In addition to the reference function, it also receives a block to
+	be used as buffer.
+
+	Extracts a block from an sparse matrix.
+	This function is intended to extract Wi and Vi blocks from the
+	sparse given matrix M.
+ */
+Error_t matrix_ExtractBlock_blocking  (  matrix_t* M,
+								block_t* B,
+								const integer_t r0,
+								const integer_t rf,
+								const integer_t c0,
+								const integer_t cf,
+								blocktype_t type )
+{
+	// TODO: extract the sparse sub-block, transpose it and insert it faster!
+	integer_t row, col, idx;
+
+	// extract the elements, correct the indices and insert them into the dense block
+	for(row=r0; row<rf; row++)
+	{
+		for(idx=M->rowptr[row]; idx<M->rowptr[row+1]; idx++)
+		{
+			col = M->colind[idx];
+
+			if ((col >= c0) && (col < cf)){
+				B->aij[ (row -r0) + (col - c0)*B->n] = M->aij[idx]; // CSC
+				//B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx]; // CSR
+			}
+		}
+	}
+
+	return (SPIKE_SUCCESS);
+};
+
+
+/*
 	Extracts a sparse matrix sub-block from a given sparse matrix M.
  */
 matrix_t* matrix_ExtractMatrix( matrix_t* M,
@@ -854,6 +894,67 @@ block_t* block_ExtractTip ( block_t* B, blocksection_t section, memlayout_t layo
 };
 
 /*
+	This is an extension of the block_ExtractTip function. Now, it receives a buffer
+	and copies to it a section of the input block (src) determined by the section
+	flag and the columns interval.
+ */
+Error_t block_ExtractTip_blocking ( block_t *dst,
+									block_t *src, 
+									const integer_t c0,
+									const integer_t cf,
+									blocksection_t section,
+									memlayout_t layout )
+{
+  	integer_t RowOffset; /* row offset on the src block */
+  	integer_t ChunkSize; /* chunksize to copy on the dst block */
+	integer_t col; 
+
+	/* add the section flag to the block. In this way, the routine */
+	/* that incorporates it to the reduced RHS is able to read the */
+	/* updated flag 											   */
+	dst->section = section;
+
+  	switch ( section ){
+	  	case _TOP_SECTION_ : {
+		    RowOffset = 0;
+		    ChunkSize = src->ku;
+	  		break;
+	  	}
+	  	case _BOTTOM_SECTION_ : {
+		    RowOffset = src->n - src->kl;
+		    ChunkSize = src->kl;
+	  		break;
+	  	}
+	  	case _CENTRAL_SECTION_ : {
+		    RowOffset = src->ku;
+		    ChunkSize = src->n - (src->ku + src->kl); 
+	  		break;
+	  	}
+	  	default: {
+	  		fprintf(stderr, "\n%s: ERROR: unrecognized block section value", __FUNCTION__ );
+	  		abort();
+  	}
+  } /* end of switch statement */
+  
+  for(col=c0; col < cf; col++)
+  	memcpy((void*) &dst->aij[col * dst->n], (const void*) &src->aij[col*src->n + RowOffset], ChunkSize * sizeof(complex_t));
+
+    // memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[col*src->n], ChunkSize * sizeof(complex_t));
+
+
+  /* 
+  	central section of the block is never transposed, since it is only
+	used as RHS of a linear system and sparse direct solvers require
+	column-major ordering.
+	It does not make sense to transpose a column vector neither.
+  */
+  if ( layout == _ROWMAJOR_ && src->m > 1 ) 
+  	block_Transpose( dst );
+  
+  return (SPIKE_SUCCESS);    
+};
+
+/*
 	Extracts a part of a given block.
 	The extracted block starts at the n0-th row and ends at the nf-th row.
 	Since we are not interested in extracting certain columns of a block, it goes
@@ -869,6 +970,36 @@ block_t* block_ExtractBlock (block_t* B, const integer_t n0, const integer_t nf 
 
 
 	return (SubBlock);
+};
+
+/*
+	Low-level implementation of the block_ExtractBlock routine.
+
+	It uses a buffer for storing the coefficients and limits the block
+	also on the column direction.
+
+	Extracts a part of a given block.
+	The extracted block starts at the n0-th row and ends at the nf-th row.
+	Since we are not interested in extracting certain columns of a block, it goes
+	through all the width of the block.
+ */
+Error_t block_ExtractBlock_blocking   ( block_t *dst, 
+										block_t *src, 
+										const integer_t n0, 
+										const integer_t nf,
+										const integer_t c0,
+										const integer_t cf )
+{
+	/* local variables */
+	integer_t col = 0;
+	integer_t nrows = nf - n0;
+
+	/* copy the elements from the reference block copying them to the subblock */
+	for(col=c0; col < cf; col++)
+    	memcpy((void*) &dst->aij[ (col-c0) * nrows], (const void*) &src->aij[col*src->n + n0], nrows * sizeof(complex_t));
+
+
+	return (SPIKE_SUCCESS);
 };
 
 /*
@@ -904,6 +1035,10 @@ block_t* block_CreateReducedRHS (const integer_t TotalPartitions,
 	return (B);
 };
 
+/*
+	Adds a block to the reduced system RHS. It is intended to
+	incorporate the tips of the RHS to the reduced RHS.
+ */
 Error_t block_AddTipTOReducedRHS   (const integer_t CurrentPartition,
 									integer_t          *ku,
 									integer_t          *kl,
@@ -927,6 +1062,41 @@ Error_t block_AddTipTOReducedRHS   (const integer_t CurrentPartition,
 	/* copy the elements from the reference block copying them to the subblock */
 	for(integer_t col=0; col < B->m; col++)
      	memcpy((void*) &RHS->aij[col * RHS->n + row], (const void*) &B->aij[col*B->n], B->n * sizeof(complex_t));
+
+	return (SPIKE_SUCCESS);
+};
+
+/*
+	Blocking version of the block_AddTipTOReducedRHS function.
+
+	It incorporates the range of columns to the original function.
+
+	Adds a block to the reduced system RHS. It is intended to
+	incorporate the tips of the RHS to the reduced RHS.
+ */
+Error_t block_AddTipTOReducedRHS_blocking   (const integer_t CurrentPartition,
+									const integer_t     c0,
+									const integer_t     cf,
+									integer_t          *ku,
+									integer_t          *kl,
+									block_t            *RHS,
+									block_t            *B)
+{
+	/* local variables */
+	integer_t col = 0, row = 0, i=0, chunksize;
+
+	/* how many elements should I copy */
+	chunksize = ( B->section == _TOP_SECTION_ ) ? B->ku : B->kl;
+
+	/* compute the row at which the previous parition ends */
+	for( i=0; i < CurrentPartition; i++ ) row += (ku[i] + kl[i]);
+
+	/* for bottom tips, we have to increase further the counter */
+	if ( B->section == _BOTTOM_SECTION_ ) row += ku[CurrentPartition];
+
+	/* copy the elements from the reference block copying them to the subblock */
+	for(col=c0; col < cf; col++)
+     	memcpy((void*) &RHS->aij[col * RHS->n + row], (const void*) &B->aij[ (col-c0) * B->n], chunksize * sizeof(complex_t));
 
 	return (SPIKE_SUCCESS);
 };
@@ -1015,6 +1185,99 @@ static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions,
 
 Error_t matrix_AddTipToReducedMatrix (const integer_t TotalPartitions,
 										const integer_t CurrentPartition,
+										integer_t          *n,
+										integer_t          *ku,
+										integer_t          *kl,
+										matrix_t           *R,
+										block_t            *B)
+{
+	complex_t *restrict __attribute__ ((aligned (ALIGN_COMPLEX))) Raij = R->aij;
+	complex_t *restrict __attribute__ ((aligned (ALIGN_COMPLEX))) Baij = B->aij;
+
+
+	// local variables
+	uLong_t   nnz;
+	integer_t rows;
+	integer_t BlockAijCount = 0;
+	integer_t p = CurrentPartition;
+
+	// reduced system dimensions
+	integer_t* nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
+
+	// initialize blocks
+	GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
+
+	/* ------------- top spike elements ---------------- */
+	for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
+		if ( p > 0 )// add Wi elements
+			if ( B->section == _TOP_SECTION_ )
+				if ( B->type == _W_BLOCK_ )
+					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++)
+						Raij[nnz++] = Baij[BlockAijCount++];
+			else
+				nnz += kl[p];
+		else
+			nnz += kl[p];
+			
+
+		nnz++;// add diagonal element
+
+		if ( p < (TotalPartitions - 1)) // add Vi elements
+			if ( B->section == _TOP_SECTION_ )
+				if ( B->type == _V_BLOCK_ )
+					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++)
+						Raij[nnz++] = Baij[BlockAijCount++];
+				else
+					nnz += ku[p];
+			else
+				nnz += ku[p];
+	}
+
+	/* ------------- Bottom spike elements ---------------- */
+	for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
+		if ( p > 0 )// add Wi elements
+			if ( B->section == _BOTTOM_SECTION_ )
+				if ( B->type == _W_BLOCK_ )
+					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) 
+						Raij[nnz++] = Baij[BlockAijCount++];
+				else
+					nnz += kl[p];
+			else
+				nnz += kl[p];
+			
+
+		nnz++; // add diagonal element
+
+
+		if ( p < (TotalPartitions - 1)) // add Vi elements
+			if ( B->section == _BOTTOM_SECTION_ )
+				if ( B->type == _V_BLOCK_ )
+					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) 
+						Raij[nnz++] = Baij[BlockAijCount++];
+				else
+					nnz += ku[p];
+			else
+				nnz += ku[p];
+	}
+
+	// clean up
+	spike_nullify( nr );
+
+  return (SPIKE_SUCCESS);
+};
+
+/*
+	This is the low-lelvel implementation of the matrix_AddTipToReducedMatrix
+	function.
+
+	This function implements a blocking strategy not only on the row direction
+	but on the column direction also. Hence, it needs to know the column interval
+	of the blocking.
+ */
+Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
+										const integer_t CurrentPartition,
+										const integer_t    c0,
+										const integer_t    cf,
 										integer_t          *n,
 										integer_t          *ku,
 										integer_t          *kl,

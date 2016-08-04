@@ -11,18 +11,14 @@ void* _spike_malloc   ( const int alignment,
 						const char* function,
 						const int line)
 {
-	fprintf(stderr, "Number of elements: %zu\n", nmemb);
-
-	size_t bytes = nmemb * size;
-
-	if ( nmemb < 0 || size < 0 || bytes < 0 ){
+	if ( nmemb < 0 || size < 0 ){
 		fprintf(stderr, "\n%s-%s from %d: Error: nmemb and size must be positive numbers (consider buffer overflow)\n",
 			__FUNCTION__, function, line );
 		abort();
 	}
 
 #ifdef __INTEL_COMPILER
-	void *buffer = _mm_malloc( bytes, alignment );
+	void *buffer = _mm_malloc( nmemb * size, alignment );
 #else
 	void *buffer = malloc( bytes );
 #endif

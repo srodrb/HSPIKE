@@ -529,7 +529,7 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 
 	/* At the moment, the API is not able to handle multiple */
 	/* rhs at a time, so we have to iterate                 */
-	for(rhsCol=0; rhsCol < nrhs; rhsCol++ ){
+	for(rhsCol=0; rhsCol < nrhs; rhsCol++ ) {
 		/* Transfer the arrays to the device memory */
 		checkCudaErrors( cudaMemcpy( handler->d_xij, &xij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
 		checkCudaErrors( cudaMemcpy( handler->d_bij, &bij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);

@@ -59,7 +59,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
-#define _BSIT_MATRIX_
+#undef _BSIT_MATRIX_
 
 #ifdef _BSIT_MATRIX_
 	const integer_t nrhs = 1;
@@ -83,13 +83,15 @@ int main(int argc, const char *argv[])
 
 #else
 
-	const integer_t nrhs = 1;
+	const integer_t nrhs = 2;
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
+
+	matrix_PrintAsDense(A, "Input matrix");
 
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
@@ -101,7 +103,7 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Call the direct solver using the high-level interface           . */
 	/* -------------------------------------------------------------------- */
-	zspike_core_host(A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
+	zspike_core_host_blocking (A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
 	
 	fprintf(stderr, "\nResidual outside the SPIKE call\n");
 	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, f->m );
