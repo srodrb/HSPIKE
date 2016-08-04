@@ -546,7 +546,6 @@
 				/* Extract the Bi sub-block */
 				matrix_ExtractBlock_blocking ( A, Bi, r0, rf, rf + col, rf + col + COLBLOCKINGDIST, _V_BLOCK_ );
 
-				// matrix_ExtractBlock_blocking ( A, Bi, r0, rf, (r0 - A->kl) + col, (r0 - A->kl) + col + COLBLOCKINGDIST, _V_BLOCK_ ); // TOOD !!
 				block_Print( Bi, "Bi slice");
 
 
@@ -555,77 +554,102 @@
 
 				/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
 				block_ExtractTip_blocking   ( Bi, Vi, 0, COLBLOCKINGDIST, _TOP_SECTION_, _ROWMAJOR_ );
-				// matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Bi );
 
 				/* extract the Vib tip using Bi as buffer, then, add it to the reduced system */
 				block_ExtractTip_blocking    ( Bi, Vi, 0, COLBLOCKINGDIST, _BOTTOM_SECTION_, _ROWMAJOR_ );
-				// matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Bi );
 			}
-				abort();
 
 			/* clean up */
 			block_Deallocate( Vi );
 			block_Deallocate( Bi );
 		}
 		else if ( p == ( S->p -1)){
-//			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
-//			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
-//
-//
-//			for(integer_t col = 0; col < rhs; col += COLBLOCKINGDIST ) {
-//				/* Extract the Ci sub-block */
-//				matrix_ExtractBlock_blocking (A, Ci, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );    // TODO!!!
-//
-//				/* solve Aij * Wi = Ci */
-//				directSolver_SolveForRHS( handler, COLBLOCKINGDIST, Wi->aij, Ci->aij );
-//
-//				/* extract the Wit tip using Ci as buffer, then, add it to the reduced system */
-//				block_ExtractTip_blocking ( Ci, Wi, _TOP_SECTION_, _ROWMAJOR_ );
-//				matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
-//
-//				/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
-//				block_ExtractTip_blocking ( Ci, Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
-//				matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
-//			}
-//			
-//			/* clean up */			
-//			block_Deallocate( Wi );
-//			block_Deallocate( Ci );
+			block_t* Ci = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Wi = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
+
+
+			for(integer_t col = 0; col < A->kl; col += COLBLOCKINGDIST ) {
+				block_InitializeToValue( Ci, __zero  ); // TODO: optimize using memset
+
+				/* Extract the Ci sub-block */
+				matrix_ExtractBlock_blocking (A, Ci, r0, rf, (r0 - A->kl) + col, (r0 - A->kl) + col + COLBLOCKINGDIST, _W_BLOCK_ );    // TODO!!!
+
+				/* solve Aij * Wi = Ci */
+				directSolver_SolveForRHS( handler, COLBLOCKINGDIST, Wi->aij, Ci->aij );
+
+				/* extract the Wit tip using Ci as buffer, then, add it to the reduced system */
+				block_ExtractTip_blocking ( Ci, Wi, 0, COLBLOCKINGDIST, _TOP_SECTION_, _ROWMAJOR_ );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Ci );
+
+				/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
+				block_ExtractTip_blocking ( Ci, Wi, 0, COLBLOCKINGDIST, _BOTTOM_SECTION_, _ROWMAJOR_ );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Ci );
+			}
+			
+			/* clean up */			
+			block_Deallocate( Wi );
+			block_Deallocate( Ci );
 		}
 		else{
-//			block_t* Vi    = block_CreateEmptyBlock( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
-//			block_t* Bi    = matrix_ExtractBlock   (A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
-//
-//			/* solve Aij * Vi = Bi */
-//			directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij );
-//			block_Deallocate( Bi );
-//
-//			block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
-//			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vit );
-//			block_Deallocate( Vit);
-//
-//			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
-//			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
-//			block_Deallocate( Vib);
-//
-//			block_Deallocate( Vi );
-//
-//			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
-//			block_t* Ci = matrix_ExtractBlock(A, r0, rf, r0 - A->kl, r0, _W_BLOCK_ );
-//
-//			/* solve Aij * Wi = Ci */
-//			directSolver_SolveForRHS( handler, Wi->m, Wi->aij, Ci->aij );
-//			block_Deallocate( Ci );
-//
-//			block_t* Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
-//			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wit );
-//			block_Deallocate( Wit);
-//
-//			block_t* Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
-//			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Wib );
-//			block_Deallocate( Wib);
-//
-//			block_Deallocate( Wi );
+			/* blocking buffer */
+			block_t* Vi = block_CreateEmptyBlock ( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Bi = block_CreateEmptyBlock ( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
+			
+			for(integer_t col = 0; col < A->ku; col += COLBLOCKINGDIST ) {	
+				block_InitializeToValue( Bi, __zero  ); // TODO: optimize using memset
+		
+				/* Extract the Bi sub-block */
+				matrix_ExtractBlock_blocking ( A, Bi, r0, rf, rf + col, rf + col + COLBLOCKINGDIST, _V_BLOCK_ );
+
+				block_Print( Bi, "Bi slice");
+
+
+				/* solve Aij * Vi = Bi */
+				directSolver_SolveForRHS( handler, COLBLOCKINGDIST, Vi->aij, Bi->aij );
+
+				/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
+				block_ExtractTip_blocking   ( Bi, Vi, 0, COLBLOCKINGDIST, _TOP_SECTION_, _ROWMAJOR_ );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Bi );
+
+				/* extract the Vib tip using Bi as buffer, then, add it to the reduced system */
+				block_ExtractTip_blocking    ( Bi, Vi, 0, COLBLOCKINGDIST, _BOTTOM_SECTION_, _ROWMAJOR_ );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Bi );
+			}
+
+			/* clean up */
+			block_Deallocate( Vi );
+			block_Deallocate( Bi );
+
+
+
+			block_t* Ci = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
+			block_t* Wi = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
+
+
+			for(integer_t col = 0; col < A->kl; col += COLBLOCKINGDIST ) {
+				block_InitializeToValue( Ci, __zero  ); // TODO: optimize using memset
+
+				/* Extract the Ci sub-block */
+				matrix_ExtractBlock_blocking (A, Ci, r0, rf, (r0 - A->kl) + col, (r0 - A->kl) + col + COLBLOCKINGDIST, _W_BLOCK_ );    // TODO!!!
+
+				/* solve Aij * Wi = Ci */
+				directSolver_SolveForRHS( handler, COLBLOCKINGDIST, Wi->aij, Ci->aij );
+
+				/* extract the Wit tip using Ci as buffer, then, add it to the reduced system */
+				block_ExtractTip_blocking ( Ci, Wi, 0, COLBLOCKINGDIST, _TOP_SECTION_, _ROWMAJOR_ );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Ci );
+
+				/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
+				block_ExtractTip_blocking ( Ci, Wi, 0, COLBLOCKINGDIST, _BOTTOM_SECTION_, _ROWMAJOR_ );
+				matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Ci );
+			}
+			
+			/* clean up */			
+			block_Deallocate( Wi );
+			block_Deallocate( Ci );
+
 		}
 
 		directSolver_ShowStatistics(handler);

@@ -188,18 +188,28 @@
 													block_t            *RHS,
 													block_t            *B);
 
-	Error_t           block_AddTipTOReducedRHS_blocking    ( const integer_t CurrentPartition,
-															const integer_t     c0,
-															const integer_t     cf,
-															integer_t          *ku,
-															integer_t          *kl,
-															block_t            *RHS,
-															block_t            *B);
+Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
+										const integer_t CurrentPartition,
+										const integer_t    c0,
+										const integer_t    cf,
+										integer_t          *n,
+										integer_t          *ku,
+										integer_t          *kl,
+										matrix_t           *R,
+										block_t            *B);
 
 
 	Error_t           block_AddBlockToRHS          (block_t* x, block_t* xi,
 													const integer_t n0,
 													const integer_t nf);
+
+	Error_t block_AddTipTOReducedRHS_blocking   (const integer_t CurrentPartition,
+									const integer_t     c0,
+									const integer_t     cf,
+									integer_t          *ku,
+									integer_t          *kl,
+									block_t            *RHS,
+									block_t            *B);
 
 
 	/* -------------------------------------------------------------------- */
