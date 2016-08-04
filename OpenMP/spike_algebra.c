@@ -29,6 +29,30 @@ Error_t reorder_rcm (const integer_t n,
 	return (SPIKE_SUCCESS);
 };
 
+
+/* performs Matlab's v = v(p) */
+Error_t permute_vector( const integer_t flag, const integer_t n, integer_t m, integer_t *p, complex_t *v)
+{
+	integer_t i;
+	complex_t *work = (complex_t*) spike_malloc( ALIGN_COMPLEX, n, sizeof(complex_t));
+
+	if ( flag > 0 )
+		for(i = 0; i < n; i++)
+			work[i] = v[p[i]];
+
+	else
+		for(i = 0; i < n; i++ )
+			work[p[i]] = v[i];
+
+	/* copy the solution back to the original array */
+	memcpy( v, work, n * sizeof(complex_t));
+
+	/* clean up and resume execution */
+	spike_nullify( work );
+
+	return (SPIKE_SUCCESS);
+};
+
 Error_t matrix_ComputeBandwidth(const integer_t n,
 								integer_t *restrict colind,
 								integer_t *restrict rowptr,
@@ -53,8 +77,10 @@ Error_t matrix_ComputeBandwidth(const integer_t n,
 		{
 			col = colind[idx];
 
-			*ku = ((row - col) < *ku) ? (row - col) : *ku;
-			*kl = ((col - row) < *kl) ? (col - row) : *kl;
+			if ( row - col < *ku ) { *ku = (row - col); }
+			if ( col - row < *kl ) { *kl = (col - row); }
+			//*ku = ((row - col) < *ku) ? (row - col) : *ku;
+			//*kl = ((col - row) < *kl) ? (col - row) : *kl;
 		}
 	}
 
@@ -96,7 +122,12 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			memset((void*) Ax, 0, n * sizeof(complex_t));
 
 			/* compute Ax - b using mkl_cspblas_?csrgemv*/
-			CALL_LA_KERNEL(mkl_cspblas_,_PPREF_,csrgemv) ("N", &n, aij, rowptr, colind, &x[rhs * n], Ax);
+			CALL_LA_KERNEL(mkl_cspblas_,_PPREF_,csrgemv) ("N", 
+				&n, (const complex_t*) aij,
+				rowptr, 
+				colind, 
+				(const complex_t*) &x[rhs * n],
+				Ax);
 			
 			/* compute norm of b using cblas_?nrm2*/
 			bnorm = nrm2(n, &b[rhs * n], 1 );

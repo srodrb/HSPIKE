@@ -1,21 +1,21 @@
 # options are <INTEL,GNU>
-COMPILER=INTEL
-
 # options are: <SUPERLU, CUSOLVER, PARDISO>
-BACKEND=PARDISO 
-
 # options are <YES,NO>
-DEBUG=NO
+
+COMPILER =intel
+BACKEND  =pardiso 
+DEBUG    =no
+
 
 # Data type definition
-DEFINES =-D_DATATYPE_D_
+DEFINES = -D_DATATYPE_Z_
 
 OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 		spike_algebra.o spike_analysis.o spike_common.o \
 		spike_interfaces.o
 
 
-ifeq ($(COMPILER),INTEL)
+ifeq ($(COMPILER),intel)
 	CC      =icc
 	CFLAGS  =-qopenmp -std=c99 -O3 -g -restrict
 	
@@ -33,7 +33,7 @@ else
 	CINCS   =
 endif
 
-ifeq ($(BACKEND),SUPERLU)
+ifeq ($(BACKEND),superlu)
 	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt_openmp
 	#CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_mkl/SRC
 
@@ -48,24 +48,29 @@ ifeq ($(BACKEND),SUPERLU)
 
 	
 	OBJS    += spike_superlu.o
+endif
 
-else ifeq ($(BACKEND),CUSOLVER)
-	NVCC     = nvcc
-	NVCFLAGS =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
-	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
-	NVCINCS  +=-I/usr/local/cuda/include
-
-	CINCS   +=-I/usr/local/cuda/include
-	CLIBS   +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
-
-	DEFINES += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
-
-	OBJS    += spike_cuda.o
-
-else
+ifeq ($(BACKEND),pardiso)
 	DEFINES += -D_PARDISO_BACKEND_
 	OBJS    += spike_pardiso.o
 endif
+
+ifeq ($(BACKEND),cusolver)
+	NVCC      = nvcc
+	NVCFLAGS  =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
+	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+	NVCINCS  +=-I/usr/local/cuda/include
+
+	CINCS    +=-I/usr/local/cuda/include
+	CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
+
+	DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+
+	OBJS     += spike_cuda.o
+endif
+
+DEFINES += -D_PARDISO_BACKEND_
+OBJS    += spike_pardiso.o
 
 
 ifeq ($(DEBUG),YES)

@@ -594,3 +594,77 @@ Error_t directSolver_Finalize( DirectSolverHander_t *handler )
 {
 	return (SPIKE_SUCCESS);
 };
+
+Error_t cuda_standalone_symrcm (integer_t n,
+    							integer_t nnz,
+    							integer_t *__restrict__ rowptr,
+    							integer_t *__restrict__ colind)
+{
+	/* local variables */
+	size_t bufferSizeInBytes = 0;
+	integer_t *p             = NULL;
+	integer_t *pBuffer       = NULL;
+	integer_t *map           = NULL;
+
+	integer_t *p   = (integer_t*) spike_malloc( ALIGN_INT, n  , sizeof(integer_t));
+	integer_t *map = (integer_t*) spike_malloc( ALIGN_INT, nnz, sizeof(integer_t));
+
+	/* cuSolver handler */
+	cusolverSpHandle_t cusolverHandle = NULL;
+
+	/* cuSparse matrix descriptor */
+	cusparseMatDescr_t MatDescr = NULL;
+
+	/* The handle must be initialized prior to calling any other library function */
+	checkCudaErrors( cusolverSpCreate(&cusolverHandle));
+
+	/* Create matrix descriptor */
+	checkCudaErrors( cusparseCreateMatDescr  ( &handler->MatDescr), "cusparseCreateMatDescr", __LINE__ );
+	checkCudaErrors( cusparseSetMatType      ( MatDescr, CUSPARSE_MATRIX_TYPE_GENERAL ), "cusparseSetMatType", __LINE__ );
+	checkCudaErrors( cusparseSetMatIndexBase ( MatDescr, CUSPARSE_INDEX_BASE_ZERO ), "cusparseSetMatIndexBase", __LINE__ );
+
+	/* use reverse cuthill mkee algorithm to obtain a bandwidth minization permutation */
+	cusolverSpCheck( cusolverSpXcsrsymrcmHost(cusolverHandle,
+		n, 
+		nnz, 
+		MatDescr, 
+		rowptr, 
+		colind, 
+		p),
+		"cusolverSpXcsrsymrcmHost", __LINE__ );
+
+	/* query buffer size */
+	cusolverSpCheck( cusolverSpXcsrperm_bufferSizeHost(cusolverHandle, 
+		n, 
+		n, 
+		nnz, 
+		MatDescr, 
+		rowptr, 
+		colind, 
+		p, 
+		p, 
+		&bufferSizeInBytes);
+
+	/* allocate working space */
+	pBuffer = (integer_t*) spike_malloc( ALIGN_INT, 1, bufferSizeInBytes);
+
+	/* permute the matrix */
+	cusolverSpCheck( cusolverSpXcsrpermHost(cusolverHandle,
+		n,
+		n,
+		nnz,
+		MatDescr,
+		rowptr,
+		colind,
+		p,
+		p, // actually, q for nonsymmetric
+		map,
+		pBuffer),
+		"cusolverSpXcsrpermHost", __LINE__);
+
+
+	spike_nullify(p);
+	spike_nullify(pBuffer);
+
+	return (SPIKE_SUCCESS);
+};

@@ -423,7 +423,7 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
 
 def create_pentadiagonal(n, precision):
     '''
-    Crea un sistema tridiagonal de dimension N
+    Crea un sistema pentadiagonal de dimension N
     '''
     np.random.seed(314) # try to make it reproducible
 
@@ -454,6 +454,48 @@ def create_pentadiagonal(n, precision):
     print 'Datatype: ', type(A.data[0])
 
     if n < 20:
+        print A.todense()
+
+    A = A.tocsr()
+
+
+
+    # create rhs
+    # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
+
+    return (A)
+
+def create_tridiagonal(n, precision):
+    '''
+    Crea un sistema tridiagonal de dimension N
+    '''
+    np.random.seed(314) # try to make it reproducible
+
+    if precision == np.float64:
+        print 'Populating sparse matrix with real numbers'
+
+        A = sparse.diags(np.random.rand(n) +1.0, 0) + \
+            sparse.diags(np.random.rand(n-1), 1) + \
+            sparse.diags(np.random.rand(n-1),-1)
+
+    else:
+        print 'Populating sparse matrix with complex numbers'
+
+        d0 = np.random.rand(n)   + 1j * np.random.rand(n)
+        d1 = np.random.rand(n-1) + 1j * np.random.rand(n-1)
+        d2 = np.random.rand(n-1) + 1j * np.random.rand(n-1)
+
+        A = sparse.diags( d0, 0) + \
+            sparse.diags( d1, 1) + \
+            sparse.diags( d2,-1)
+
+    print 'Datatype: ', type(A.data[0])
+
+    if n < 20:
+        print A.data
+        print A.indices
+        print A.indptr
+
         print A.todense()
 
     A = A.tocsr()
@@ -575,18 +617,19 @@ if __name__ == '__main__':
     np.set_printoptions(precision=5, threshold=300, linewidth=300)
 
     # determine data type (real, complex..)
-    precision = np.float64
+    precision = np.complex128 #np.float64
 
     # generamos la semilla del generador de numeros aleatorios
     np.random.seed(314)
 
     # numero de particiones empleadas en el primer nivel
     p = 2
-    N = 10
+    N = 10000
 
     #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
-    A = create_pentadiagonal(N, precision)
-    export_csr2bin( A, "../Tests/pentadiagonal/small.bin")
+    A = create_tridiagonal(N, precision)
+    export_csr2bin( A, "../Tests/complex16/penta_10k.z")
+
 
     nrhs = 1
 
@@ -596,6 +639,10 @@ if __name__ == '__main__':
     b = np.ones(N*nrhs, dtype=precision).reshape(N, nrhs)
     b_superlu = b.copy()
     b_spike = b.copy()
+
+    LU = sla.splu(A)
+    x  = LU.solve(b)
+    print x
 
     # analysis.performance_analysis(A, b[:,0:2], 'analysis.rhs.1', pmin=1, pmax=50)
     # analysis.performance_analysis(A, b[:,0:45], 'analysis.rhs.45', pmin=1, pmax=50)

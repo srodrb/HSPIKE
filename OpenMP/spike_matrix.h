@@ -76,6 +76,13 @@
 
 	matrix_t*         matrix_LoadCSR                (const char* filename);
 
+
+	integer_t*        vector_LoadPermutationArray   (const integer_t n, const char* filename);
+
+	complex_t*        vector_LoadRHS                (const integer_t n, const char* filename );
+
+	Error_t           matrix_ExportBinary           ( matrix_t* M, const char* filename );
+
 	matrix_t*         matrix_CreateEmptyMatrix      (const integer_t n, const integer_t nnz );
 
 	matrix_t*         matrix_CreateFromComponents  (const integer_t n, 
@@ -85,7 +92,7 @@
 													complex_t *restrict aij);
 
 
-	Error_t           matrix_Deallocate             (matrix_t* M);
+	Error_t           matrix_Deallocate             (matrix_t* M );
 
 	Bool_t            matrix_AreEqual               (matrix_t* A, matrix_t* B );
 

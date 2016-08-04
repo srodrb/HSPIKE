@@ -59,24 +59,52 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
+#define _BSIT_MATRIX_
+
+#ifdef _BSIT_MATRIX_
 	const integer_t nrhs = 1;
-	//matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
-	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
+
+	matrix_t* A = matrix_LoadCSR("../Tests/BSIT/mzanzi_0017/permuted.bsit");
+
+	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+
+	complex_t *rhs = vector_LoadRHS( A->n, "../Tests/BSIT/mzanzi_0017/rhs.bsit");
+
+	/* copy the values to the rhs matrix */
+	memcpy( f->aij, rhs, A->n * sizeof(complex_t));
+
+	/* initialize solution block to zero */
+	block_InitializeToValue( x, __zero  ); // solution of the system
+
+	spike_nullify( rhs );
+
+	fprintf(stderr, "\nBSIT matrix imported correctly!\n");
+
+#else
+
+	const integer_t nrhs = 1;
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
 	block_InitializeToValue( x, __zero  ); // solution of the system
 	block_InitializeToValue( f, __punit ); // rhs of the system
-	
+
+#endif
 	/* -------------------------------------------------------------------- */
 	/* .. Call the direct solver using the high-level interface           . */
 	/* -------------------------------------------------------------------- */
 	zspike_core_host(A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
-
+	
+	fprintf(stderr, "\nResidual outside the SPIKE call\n");
+	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, f->m );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Check residual and compare against reference solver             . */

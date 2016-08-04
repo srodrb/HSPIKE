@@ -24,14 +24,6 @@
  	#include "mkl.h"
 	#include "mkl_cblas.h"
 
- 	/* just for the host solver.. */
-     /* Pardiso interface */
-    #include "mkl_pardiso.h"
-    #ifndef _COMPLEX_ARITHMETIC_
-        #define MTYPE_GEN_NOSYMM   11   /* Real and nonsymmetric matrix             */
-    #else
-        #define MTYPE_GEN_NOSYMM   13   /* Complex and nonsymmetric matrix          */
-    #endif
 
  	/* The backend inclues also the definition of datatypes */
  	/* and other common headers                             */
@@ -43,6 +35,16 @@
  		#include "spike_cuda.h"
  	#endif
 
+	/* just for the host solver.. */
+     /* Pardiso interface */
+	#ifndef _PARDISO_BACKEND_ 
+	    #include "mkl_pardiso.h"
+	    #ifndef _COMPLEX_ARITHMETIC_
+	        #define MTYPE_GEN_NOSYMM   11   /* Real and nonsymmetric matrix             */
+	    #else
+	        #define MTYPE_GEN_NOSYMM   13   /* Complex and nonsymmetric matrix          */
+	    #endif
+ 	#endif
 
  	/*
  		These macros are intended to build the name of the linear algebra backends
@@ -86,6 +88,24 @@
 						integer_t *restrict rowptr,
 						complex_t *restrict aij,
 						integer_t *restrict colperm);
+
+	/*
+		Permutes the vector v according to the permutation vector
+		p (i.e., performs v(p) Matlab's operation).
+		The result is stored in p at exit.
+
+		n (in) numer of columns of v
+		m (in) number of rows of m
+		p (in) integer array, dimension (n,1)
+		v (in/out) vector to permute, dimension (n,m)
+
+		The routine assumes that v is stored in Row-Major form.
+	 */
+	Error_t permute_vector( const integer_t flag,
+							const integer_t n,
+							const integer_t m,
+							integer_t *restrict p,
+							complex_t *restrict v );
 
 	/*
 	 * Computes the upper and lower bandwidth of the matrix A.

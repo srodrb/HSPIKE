@@ -10,41 +10,103 @@
 */
 matrix_t* matrix_LoadCSR(const char* filename)
 {
-	// local variables
+	/* local variables */
 	integer_t dtype;
 
+	/* allocate matrix structure */
 	matrix_t* M = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
 
-	// Open File
+	/* open file */
 	FILE* f = spike_fopen( filename, "rb");
 
-	// read number of rows
+	/* load number of rows /columns */
 	spike_fread( &M->n, sizeof(integer_t), 1, f );
 
-	// read number of nnz
+	/* load number of nnz elements */
 	spike_fread( &M->nnz, sizeof(integer_t), 1, f );
 
-	// read data type, just to check everything is fine
+	// TODO read data type, just to check everything is fine
 	spike_fread( &dtype, sizeof(integer_t), 1, f );
 
-	// allocate space for matrix coefficients and load them
+	/* allocate space for matrix coefficients and load them */
 	M->aij    = (complex_t*) spike_malloc( ALIGN_COMPLEX, M->nnz , sizeof(complex_t));
 	spike_fread( M->aij, sizeof(complex_t), M->nnz, f );
 
-	// allocate space for matrix indices and load them
+	/* allocate space for matrix indices and load them */
 	M->colind = (integer_t*) spike_malloc( ALIGN_INT, M->nnz , sizeof(integer_t));
 	spike_fread( M->colind, sizeof(integer_t), M->nnz, f );
 
-	// allocate space for matrix row pointers and load them
+	/* allocate space for matrix row pointers and load them */
 	M->rowptr = (integer_t*) spike_malloc( ALIGN_INT, M->n +1, sizeof(integer_t));
 	spike_fread( M->rowptr, sizeof(integer_t), M->n + 1, f );
 
-	// close file
+	/* clean up and resume */
 	spike_fclose(f);
 
 
 	return (M);
 };
+
+integer_t* vector_LoadPermutationArray(const integer_t n, const char* filename)
+{
+	FILE *f = spike_fopen( filename, "rb");
+
+	integer_t *p = spike_malloc( ALIGN_INT, n, sizeof(integer_t));
+
+	spike_fread( p, sizeof(integer_t), n, f);
+
+	spike_fclose( f );
+
+	return (p);
+};
+
+complex_t* vector_LoadRHS( const integer_t n, const char* filename )
+{
+	FILE *f = spike_fopen( filename, "rb");
+
+	complex_t *p = spike_malloc( ALIGN_COMPLEX, n, sizeof(complex_t));
+
+	spike_fread( p, sizeof(complex_t), n, f);
+
+	spike_fclose( f );
+
+	return (p);
+};
+
+/*
+	Exports a matrix structure to a binary file.
+ */
+Error_t matrix_ExportBinary (matrix_t* M, const char* filename )
+{
+	/* local variables */
+	integer_t dtype = 0;
+
+	FILE* f = spike_fopen( filename, "wb");
+
+	/* export number of rows/columns */
+	spike_fwrite( &M->n, sizeof(integer_t), 1, f );
+
+	/* export number of nnz elements */
+	spike_fwrite( &M->nnz, sizeof(integer_t), 1, f );
+
+	/* export coefficient data type */
+	spike_fwrite( &dtype, sizeof(integer_t), 1, f );
+
+	/* export matrix coefficients */
+	spike_fwrite( M->aij, sizeof(complex_t), M->nnz, f );
+
+	/* export matrix indices */
+	spike_fwrite( M->colind, sizeof(integer_t), M->nnz, f );
+
+	/* export matrix row pointers */
+	spike_fwrite( M->rowptr, sizeof(integer_t), M->n + 1, f );
+
+	/* clean up and resume */
+	spike_fclose(f);
+
+	return (SPIKE_SUCCESS);
+};
+
 
 /*
 	Creates an empty CSR sparse matriz of dimension n and nnz elements
@@ -93,7 +155,7 @@ matrix_t* matrix_CreateFromComponents(const integer_t n,
 	return (A);
 };
 
-Error_t matrix_Deallocate (matrix_t* M)
+Error_t matrix_Deallocate ( matrix_t* M )
 {
 	spike_nullify ( M->colind );
 	spike_nullify ( M->rowptr );
