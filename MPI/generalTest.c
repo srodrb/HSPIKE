@@ -52,23 +52,6 @@ static block_t* block_Synthetic(const integer_t n,
   return (B);
 };
 
-static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
-{
-	// local variables
-	double start_t, end_t;
-	Error_t error;
-
-	//fprintf(stderr, "\nSolving original linear system using reference direct solver");
-
-	start_t = GetReferenceTime();
-	error = system_solve( A->colind, A->rowptr, A->aij, x->aij, rhs->aij, A->n, rhs->m );
-	end_t = GetReferenceTime();
-
-	//fprintf(stderr, "\nReference direct solver took %.6lf seconds", end_t - start_t );
-
-	return (SPIKE_SUCCESS);
-};
-
 int main(int argc, char *argv[])
 {
 
@@ -174,7 +157,7 @@ int main(int argc, char *argv[])
 
 		for(integer_t p=0; p<schedule->p; p++){
 			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
-			block_t *V0 = recvBlockPacked(p+1);
+			block_t *V0 = recvBlockPacked(p+1,0);
 			if(block_AreEqual (V0Test, V0))printf("TEST Send Block Packed: \t%d PASSED\n", p+1);
 			block_Deallocate (V0Test);
 			block_Deallocate (V0);
@@ -198,7 +181,7 @@ int main(int argc, char *argv[])
 		//Block Testing
 		block_t *V0 = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
 		sendBlock(V0, master);
-		sendBlockPacked(V0, master);
+		sendBlockPacked(V0, master, 0);
 		block_Deallocate (V0);
 
 	}

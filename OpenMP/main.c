@@ -60,10 +60,13 @@ int main(int argc, const char *argv[])
 	/* .. Load and initalize the system Ax=f. */
 	/* -------------------------------------------------------------------- */
 	const integer_t nrhs = 1;
-	//matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.z");
+	// matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 
 	block_t*  x = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 	block_t*  f = block_CreateEmptyBlock( A->n, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
@@ -84,6 +87,7 @@ int main(int argc, const char *argv[])
 	block_InitializeToValue( x, __zero  ); // solution of the system
 	block_InitializeToValue( f, __punit ); // rhs of the system
 	SolveOriginalSystem( A, x, f);
+	block_Print(x, "Solucion del sistema");
 
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */

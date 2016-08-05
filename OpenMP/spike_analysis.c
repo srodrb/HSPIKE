@@ -22,6 +22,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	matrix_ComputeBandwidth( A->n, A->colind, A->rowptr, A->aij, &A->ku, &A->kl );
 
 	nreg = (A->n / p);
+
 	nrem = (A->n % p == 0) ? A->n/p : A->n - (A->n/p * (p-1));
 
 	fprintf(stderr, "\nRegular block dimension "_I_", remainder "_I_, nreg, nrem);

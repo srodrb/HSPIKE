@@ -1,14 +1,14 @@
 # options are <INTEL,GNU>
-COMPILER =INTEL
+COMPILER=INTEL
 
 # options are: <SUPERLU, CUSOLVER, PARDISO>
-BACKEND  =CUSOLVER 
+BACKEND=PARDISO
 
 # options are <YES,NO>
 DEBUG    =NO
 
 # Data type definition
-DEFINES =-D_DATATYPE_D_
+DEFINES =-D_DATATYPE_Z_
 
 OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 		spike_algebra.o spike_analysis.o spike_common.o \

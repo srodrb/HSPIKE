@@ -229,6 +229,7 @@
 	yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );  
 	fprintf(stderr, "\nSolving reduced linear system\n");
 	directSolver_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
+	matrix_PrintAsDense(R, "Reduced System");
 
 	/* compute residual */
 	ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, yr->m );
