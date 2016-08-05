@@ -83,12 +83,12 @@ int main(int argc, const char *argv[])
 
 #else
 
-	const integer_t nrhs = 2;
+	const integer_t nrhs = 3;
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/small.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	matrix_PrintAsDense(A, "Input matrix");
