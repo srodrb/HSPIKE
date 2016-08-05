@@ -22,6 +22,7 @@
 	#undef _COMPLEX_ARITHMETIC_
 
  	#include <stdlib.h>
+ 	#include <stdint.h>
 
 
 
@@ -87,7 +88,7 @@
 	typedef int      Bool_t;
 	typedef double   spike_timer_t;
 
-	typedef size_t   uLong_t;
+	typedef uint64_t   uLong_t;
 
 	#define _I_ "%d"
 

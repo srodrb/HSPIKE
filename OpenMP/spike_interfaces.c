@@ -435,7 +435,7 @@
 	}
 	
 	/* define column blocking size */
-	const integer_t COLBLOCKINGDIST = 1;
+	const integer_t COLBLOCKINGDIST = 2;
 
 	fprintf(stderr, "\n  SPIKE direct-direct solver (low-level, blocking implementation)\n");
 
@@ -451,6 +451,7 @@
 	/* -------------------------------------------------------------------- */
 	spike_timer_t start_t;
 	spike_timer_t end_t;
+	integer_t     col;
 
 	sm_schedule_t *S;
 
@@ -512,7 +513,7 @@
 		block_t *fi = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _RHS_BLOCK_, _WHOLE_SECTION_);
 		block_t *yi = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _RHS_BLOCK_, _WHOLE_SECTION_);
 		
-		for(integer_t col = 0; col < nrhs; col += COLBLOCKINGDIST ) {
+		for(col = 0; col < nrhs; col += COLBLOCKINGDIST ) {
 			block_InitializeToValue( yi, __zero  ); // TODO: optimize using memset
 
 			/* Extract the fi sub-block */
@@ -540,7 +541,7 @@
 			block_t* Vi = block_CreateEmptyBlock ( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Bi = block_CreateEmptyBlock ( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 			
-			for(integer_t col = 0; col < A->ku; col += COLBLOCKINGDIST ) {	
+			for(col = 0; col < A->ku; col += COLBLOCKINGDIST ) {	
 				block_InitializeToValue( Bi, __zero  ); // TODO: optimize using memset
 		
 				/* Extract the Bi sub-block */
@@ -570,7 +571,7 @@
 			block_t* Wi = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
 
 
-			for(integer_t col = 0; col < A->kl; col += COLBLOCKINGDIST ) {
+			for(col = 0; col < A->kl; col += COLBLOCKINGDIST ) {
 				block_InitializeToValue( Ci, __zero  ); // TODO: optimize using memset
 
 				/* Extract the Ci sub-block */
@@ -597,7 +598,7 @@
 			block_t* Vi = block_CreateEmptyBlock ( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t* Bi = block_CreateEmptyBlock ( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 			
-			for(integer_t col = 0; col < A->ku; col += COLBLOCKINGDIST ) {	
+			for(col = 0; col < A->ku; col += COLBLOCKINGDIST ) {	
 				block_InitializeToValue( Bi, __zero  ); // TODO: optimize using memset
 		
 				/* Extract the Bi sub-block */
@@ -628,7 +629,7 @@
 			block_t* Wi = block_CreateEmptyBlock( rf - r0, COLBLOCKINGDIST, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
 
 
-			for(integer_t col = 0; col < A->kl; col += COLBLOCKINGDIST ) {
+			for(col = 0; col < A->kl; col += COLBLOCKINGDIST ) {
 				block_InitializeToValue( Ci, __zero  ); // TODO: optimize using memset
 
 				/* Extract the Ci sub-block */

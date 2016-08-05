@@ -276,6 +276,9 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
             y[bs:be, :] = Ai[p].solve(f[bs:be, :])
             end_t = timer()
 
+            print 'Solution block'
+            print y[bs:be, :]
+
             print '\tSolve time for the f block %.5f s' %(end_t - start_t)
 
             # Resolvemos para B->V
@@ -339,6 +342,14 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
 
     # -------------------------------------------- Solve stage
     R = R.tocsc()
+
+    print 'Reduced system RHS '
+    print yr
+    print ''
+
+    print 'Reduced system matrix'
+    print R.todense()
+    print ''
 
     start_t = timer()
     lu = sla.splu(R)
@@ -420,6 +431,56 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
 
 
     return (x, total_nnz)
+
+def create_heptadiagonal(n, precision):
+    '''
+    Crea un sistema pentadiagonal de dimension N
+    '''
+    np.random.seed(314) # try to make it reproducible
+
+    if precision == np.float64:
+        print 'Populating sparse matrix with real numbers'
+
+        A = sparse.diags(np.random.rand(n) +1.0, 0) + \
+            sparse.diags(np.random.rand(n-1), 1) + \
+            sparse.diags(np.random.rand(n-1),-1) + \
+            sparse.diags(np.random.rand(n-2), 2) + \
+            sparse.diags(np.random.rand(n-2),-2) + \
+            sparse.diags(np.random.rand(n-3),-3) + \
+            sparse.diags(np.random.rand(n-3), 3)
+
+    else:
+        print 'Populating sparse matrix with complex numbers'
+
+        d0 = np.random.rand(n)   + 1j * np.random.rand(n)
+        d1 = np.random.rand(n-1) + 1j * np.random.rand(n-1)
+        d2 = np.random.rand(n-1) + 1j * np.random.rand(n-1)
+        d3 = np.random.rand(n-2) + 1j * np.random.rand(n-2)
+        d4 = np.random.rand(n-2) + 1j * np.random.rand(n-2)
+        d5 = np.random.rand(n-3) + 1j * np.random.rand(n-3)
+        d6 = np.random.rand(n-3) + 1j * np.random.rand(n-3)
+
+        A = sparse.diags( d0, 0) + \
+            sparse.diags( d1, 1) + \
+            sparse.diags( d2,-1) + \
+            sparse.diags( d3, 2) + \
+            sparse.diags( d4,-2) + \
+            sparse.diags( d5,-3) + \
+            sparse.diags( d6, 3)
+
+    print 'Datatype: ', type(A.data[0])
+
+    if n < 20:
+        print A.todense()
+
+    A = A.tocsr()
+
+
+
+    # create rhs
+    # B  = np.ones(shape=(n, nrhs), dtype=np.float64)
+
+    return (A)
 
 def create_pentadiagonal(n, precision):
     '''
@@ -617,18 +678,18 @@ if __name__ == '__main__':
     np.set_printoptions(precision=5, threshold=300, linewidth=300)
 
     # determine data type (real, complex..)
-    precision = np.complex128 #np.float64
+    precision = np.float64
 
     # generamos la semilla del generador de numeros aleatorios
     np.random.seed(314)
 
     # numero de particiones empleadas en el primer nivel
     p = 2
-    N = 10000
+    N = 10
 
     #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
-    A = create_tridiagonal(N, precision)
-    export_csr2bin( A, "../Tests/complex16/penta_10k.z")
+    A = create_heptadiagonal(N, precision)
+    export_csr2bin( A, "../Tests/heptadiagonal/small.bin")
 
 
     nrhs = 1

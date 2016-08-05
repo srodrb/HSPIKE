@@ -1309,13 +1309,10 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _TOP_SECTION_ )
 				if ( B->type == _W_BLOCK_ )
 					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++)
-						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock ){
-							fprintf(stderr, "Entramos\n");
+						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock )
 							Raij[nnz++] = Baij[BlockAijCount++];
-						}
-						else{
-							nnz           += 1;
-						}
+						else
+							nnz += 1;
 			else
 				nnz += kl[p];
 		else
@@ -1328,13 +1325,10 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _TOP_SECTION_ )
 				if ( B->type == _V_BLOCK_ )
 					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++)
-						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) ){
-							fprintf(stderr, "Entramos\n");
+						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) )
 							Raij[nnz++] = Baij[BlockAijCount++];
-						}
-						else{
-							nnz           += 1;
-						}
+						else
+							nnz += 1;
 				else
 					nnz += ku[p];
 			else
@@ -1347,13 +1341,10 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _BOTTOM_SECTION_ )
 				if ( B->type == _W_BLOCK_ )
 					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) 
-						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock ){
-							fprintf(stderr, "Entramos\n");
+						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock )
 							Raij[nnz++] = Baij[BlockAijCount++];
-						}
-						else{
-							nnz           += 1;
-						}
+						else
+							nnz += 1;
 				else
 					nnz += kl[p];
 			else
@@ -1367,13 +1358,10 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _BOTTOM_SECTION_ )
 				if ( B->type == _V_BLOCK_ )
 					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) 
-						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) ){
-							fprintf(stderr, "Entramos\n");
+						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) )
 							Raij[nnz++] = Baij[BlockAijCount++];
-						}
-						else{
-							nnz           += 1;
-						}
+						else
+							nnz += 1;
 				else
 					nnz += ku[p];
 			else
