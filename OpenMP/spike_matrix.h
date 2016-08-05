@@ -38,7 +38,7 @@
 	typedef struct
 	{
 		integer_t n;
-		integer_t nnz;
+		uLong_t   nnz;
 
 		integer_t ku;
 		integer_t kl;
@@ -76,16 +76,23 @@
 
 	matrix_t*         matrix_LoadCSR                (const char* filename);
 
-	matrix_t*         matrix_CreateEmptyMatrix      (const integer_t n, const integer_t nnz );
+
+	integer_t*        vector_LoadPermutationArray   (const integer_t n, const char* filename);
+
+	complex_t*        vector_LoadRHS                (const integer_t n, const char* filename );
+
+	Error_t           matrix_ExportBinary           ( matrix_t* M, const char* filename );
+
+	matrix_t*         matrix_CreateEmptyMatrix      (const size_t n, const size_t nnz );
 
 	matrix_t*         matrix_CreateFromComponents  (const integer_t n, 
-													const integer_t nnz, 
+													const uLong_t nnz, 
 													integer_t *restrict colind, 
 													integer_t *restrict rowptr, 
 													complex_t *restrict aij);
 
 
-	Error_t           matrix_Deallocate             (matrix_t* M);
+	Error_t           matrix_Deallocate             (matrix_t* M );
 
 	Bool_t            matrix_AreEqual               (matrix_t* A, matrix_t* B );
 
@@ -99,6 +106,14 @@
 									            	const integer_t c0,
 									            	const integer_t cf,
 									            	blocktype_t type);
+
+	Error_t        matrix_ExtractBlock_blocking  (  matrix_t* M,
+													block_t* B,
+													const integer_t r0,
+													const integer_t rf,
+													const integer_t c0,
+													const integer_t cf,
+													blocktype_t type );
 
 	matrix_t*         matrix_ExtractMatrix 		   (matrix_t* M,
 													const integer_t r0,
@@ -140,9 +155,23 @@
 
 	block_t*          block_ExtractTip              ( block_t* B, blocksection_t section, memlayout_t layout );
 
+	Error_t           block_ExtractTip_blocking   ( block_t *dst,
+													block_t *src, 
+													const integer_t c0,
+													const integer_t cf,
+													blocksection_t section,
+													memlayout_t layout );
+
 	block_t*          block_ExtractBlock            (block_t* B, 
 													const integer_t n0,
 													const integer_t nf);
+
+	Error_t           block_ExtractBlock_blocking ( block_t *dst, 
+													block_t *src, 
+													const integer_t n0, 
+													const integer_t nf,
+													const integer_t c0,
+													const integer_t cf );
 
 	Error_t           block_SetBandwidthValues      (block_t* B,
 													const integer_t ku,
@@ -159,9 +188,28 @@
 													block_t            *RHS,
 													block_t            *B);
 
+	Error_t           matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
+													const integer_t CurrentPartition,
+													const integer_t    c0,
+													const integer_t    cf,
+													integer_t          *n,
+													integer_t          *ku,
+													integer_t          *kl,
+													matrix_t           *R,
+													block_t            *B);
+
+
 	Error_t           block_AddBlockToRHS          (block_t* x, block_t* xi,
 													const integer_t n0,
 													const integer_t nf);
+
+	Error_t block_AddTipTOReducedRHS_blocking   	(const integer_t CurrentPartition,
+													const integer_t     c0,
+													const integer_t     cf,
+													integer_t          *ku,
+													integer_t          *kl,
+													block_t            *RHS,
+													block_t            *B);
 
 
 	/* -------------------------------------------------------------------- */
@@ -178,8 +226,9 @@
 
 	static Error_t    GetNnzAndRowsUpToPartition       (const integer_t TotalPartitions, 
 														const integer_t CurrentPartition, 
-														integer_t *ku, integer_t *kl, 
-														integer_t *nnz, 
+														integer_t *ku,
+														integer_t *kl, 
+														uLong_t *nnz, 
 														integer_t *FirstBlockRow );
 
 	Error_t           matrix_AddTipToReducedMatrix   (const integer_t TotalPartitions,

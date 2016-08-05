@@ -24,6 +24,7 @@
  	#include "mkl.h"
 	#include "mkl_cblas.h"
 
+
  	/* The backend inclues also the definition of datatypes */
  	/* and other common headers                             */
  	#if defined (_PARDISO_BACKEND_)
@@ -34,6 +35,16 @@
  		#include "spike_cuda.h"
  	#endif
 
+	/* just for the host solver.. */
+     /* Pardiso interface */
+	#ifndef _PARDISO_BACKEND_ 
+	    #include "mkl_pardiso.h"
+	    #ifndef _COMPLEX_ARITHMETIC_
+	        #define MTYPE_GEN_NOSYMM   11   /* Real and nonsymmetric matrix             */
+	    #else
+	        #define MTYPE_GEN_NOSYMM   13   /* Complex and nonsymmetric matrix          */
+	    #endif
+ 	#endif
 
  	/*
  		These macros are intended to build the name of the linear algebra backends
@@ -50,7 +61,7 @@
 	 * Uses metis to compute a permutation that minizes the fill-in on the LU factors of A
 	 */
 	Error_t reorder_metis(  const integer_t n,
-							const integer_t nnz,
+							const uLong_t nnz,
 							integer_t *restrict colind,
 							integer_t *restrict rowptr,
 							complex_t *restrict aij,
@@ -77,6 +88,24 @@
 						integer_t *restrict rowptr,
 						complex_t *restrict aij,
 						integer_t *restrict colperm);
+
+	/*
+		Permutes the vector v according to the permutation vector
+		p (i.e., performs v(p) Matlab's operation).
+		The result is stored in p at exit.
+
+		n (in) numer of columns of v
+		m (in) number of rows of m
+		p (in) integer array, dimension (n,1)
+		v (in/out) vector to permute, dimension (n,m)
+
+		The routine assumes that v is stored in Row-Major form.
+	 */
+	Error_t permute_vector( const integer_t flag,
+							const integer_t n,
+							const integer_t m,
+							integer_t *restrict p,
+							complex_t *restrict v );
 
 	/*
 	 * Computes the upper and lower bandwidth of the matrix A.
@@ -122,5 +151,16 @@
 	real_t nrm2(const integer_t n, complex_t *restrict x, const integer_t incx);
 
 	Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, const integer_t incx, complex_t *restrict y, const integer_t incy);
+
+	/* host solver for the reduced system */
+	 Error_t directSolver_Host_Solve (integer_t n,
+ 							integer_t nnz,
+ 							integer_t nrhs,
+ 							integer_t *restrict colind, // ja
+							integer_t *restrict rowptr, // ia
+							complex_t *restrict aij,
+							complex_t *restrict x,
+							complex_t *restrict b);
+
 
 #endif /* end of _SPIKE_ALGEBRA_H_ definition */

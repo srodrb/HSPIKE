@@ -25,15 +25,9 @@
     #include "spike_common.h"
     #include "spike_memory.h"
 
-    #include "cusparse.h"
-    #include "cusolverSp.h"
 
-    /* Cuda 7.5 preview */
-    #include "cusolverSp_LOWLEVEL_PREVIEW.h"
 
-    // #include "helper_cuda.h"
-    // #include "helper_cusolver.h"
-
+    /* local alloca and free counters for device memory */
     extern unsigned int cnt_devMalloc;
     extern unsigned int cnt_devFree;
 
@@ -41,13 +35,26 @@
         According to the cuSolver API (section 1.4), these datatypes
         are used to work with complex numbers.
      */
+    #if defined (_DATATYPE_Z_) // double complex
+        /* complex numbers definition */
+        #define  SPIKE_CUDA_PREC     Z
+     
+    #elif defined (_DATATYPE_C_) // complex float
+        /* complex numbers definition */
+        #define  SPIKE_CUDA_PREC     C
+    
+    #elif defined (_DATATYPE_D_) // double precision float
+        #define  SPIKE_CUDA_PREC     D
+    
+    #else // single precision float
+        #define  SPIKE_CUDA_PREC     S
+    #endif
 
-//    #if defined (_DATATYPE_Z_) // double complex
-//        #define  cuDoubleComplex complex_t
-//     
-//    #elif defined (_DATATYPE_C_) // complex float
-//        #define  cuComplex       complex_t
-//    #endif
+    /* cusolver and Cuda 7.5 preview (low-level API) */
+    #include "cusparse.h"
+    #include "cusolverSp.h"
+    #include "cusolverSp_LOWLEVEL_PREVIEW.h"
+
 
     typedef struct {
 
@@ -71,7 +78,6 @@
 
         /* needed handlers */
         cusolverSpHandle_t cusolverHandle; /* cusolver handler */
-        cusparseHandle_t   cusparseHandle;/* cusparse handler */
         cusparseMatDescr_t MatDescr; /* cuSparse matrix descriptor */
 
         /* Low-level cusolver API structures */
@@ -126,10 +132,15 @@
     Error_t directSolver_Solve (integer_t n,
                                 integer_t nnz,
                                 integer_t nrhs,
-                                integer_t *__restrict__ colind, // ja
-                                integer_t *__restrict__ rowptr, // ia
+                                integer_t *__restrict__ colind,
+                                integer_t *__restrict__ rowptr,
                                 complex_t *__restrict__ aij,
                                 complex_t *__restrict__ x,
                                 complex_t *__restrict__ b);
+
+    Error_t cuda_standalone_symrcm(integer_t n,
+                                integer_t nnz,
+                                integer_t *__restrict__ rowptr,
+                                integer_t *__restrict__ colind);
 
 #endif /* end of _SPIKE_CUDA_H_ definition */
