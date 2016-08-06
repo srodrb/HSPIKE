@@ -3,7 +3,7 @@ BACKEND  =PARDISO
 DEBUG    =YES
 
 # Data type definition
-DEFINES =-D_DATATYPE_D_
+DEFINES =-D_DATATYPE_D_ -D_NDEBUG
 
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
 			 spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o

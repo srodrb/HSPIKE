@@ -126,13 +126,10 @@ matrix_t* matrix_CreateEmptyMatrix( const size_t n, const uLong_t nnz )
 	R->rowptr   = (integer_t*) spike_malloc( ALIGN_INT    , R->n+1, sizeof(integer_t));
 	R->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->nnz, sizeof(complex_t));
 
-	fprintf(stderr, "Empty matrix allocated...\n");
-
 	memset( (void*) R->colind, 0, (R->nnz) * sizeof(integer_t));
 	memset( (void*) R->rowptr, 0, (R->n+1) * sizeof(integer_t));
 	memset( (void*) R->aij   , 0, (R->nnz) * sizeof(complex_t));
 
-	fprintf(stderr, "Empty matrix created\n");
 	return (R);
 };
 
@@ -481,7 +478,7 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 	}
 	tend = GetReferenceTime() - tstart;
 
-	fprintf(stderr, "\n%s: took %.6lf seconds", __FUNCTION__, tend );
+//	fprintf(stderr, "\n%s: took %.6lf seconds.", __FUNCTION__, tend );
 
 	/* compute the bandwidth of the sub-block */	
 	matrix_ComputeBandwidth( B->n, B->colind, B->rowptr, B->aij, &B->ku, &B->kl );
@@ -514,23 +511,18 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 	// compute matrix dimensions and allocate the structure
 	GetNnzAndRowsUpToPartition(TotalPartitions, TotalPartitions, ku, kl, &nnz, &rows );
 
-	fprintf(stderr, "nnz %zu, nrows %d \n", nnz, rows );
+	fprintf(stderr, "\n%s: statistics: nnz %zu, nrows %d \n", __FUNCTION__, nnz, rows );
 
 	matrix_t* R = matrix_CreateEmptyMatrix( rows, nnz );
 
 	// reduced system dimensions
 	integer_t *nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
 
-	for(int i=0; i < TotalPartitions; i++ ){
-		fprintf(stderr, "%d value %d\n", i, nr[i]);
-	}
-
 
   // initialize blocks
   for(integer_t p=0; p < TotalPartitions; p++)
 	{
 		GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
-		fprintf(stderr, "%d Dimensions computed correctly, partition %d\n", __LINE__, p );
 
 		/* ------------- top spike elements ---------------- */
 		for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
@@ -557,8 +549,6 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
 		}
 
-		fprintf(stderr, "%d : Dimensions computed correctly, partition %d\n", __LINE__, p );
-
 
 		/* ------------- Bottom spike elements ---------------- */
 		for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
@@ -584,9 +574,6 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 			else
 				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
 		}
-
-		fprintf(stderr, "%d. Dimensions computed correctly, partition %d\n", __LINE__, p );
-
 	}
 
 	/* clean up and resume */

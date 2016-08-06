@@ -83,12 +83,6 @@ int main(int argc, const char *argv[])
 
 #else
 
-
-	get_maximum_av_host_memory();
-
-	abort();
-
-
 	const integer_t nrhs = 3;
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
@@ -145,3 +139,4 @@ int main(int argc, const char *argv[])
 	fprintf(stderr, "\nProgram finished\n");
 	return 0;
 }
+

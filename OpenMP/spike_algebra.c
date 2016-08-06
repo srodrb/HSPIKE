@@ -89,7 +89,7 @@ Error_t matrix_ComputeBandwidth(const integer_t n,
 
 	tend = GetReferenceTime() - tstart;
 
-	fprintf(stderr, "\n%s: took %.6lf seconds (ku %d kl %d)", __FUNCTION__, tend, *ku, *kl);
+//	fprintf(stderr, "\n%s: took %.6lf seconds (ku %d kl %d)", __FUNCTION__, tend, *ku, *kl);
 
 	return (SPIKE_SUCCESS);
 };
@@ -317,6 +317,10 @@ Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, co
 	msglvl    =  0;    /* Print statistical information in file */
 	error     =  0;    /* Initialize error flag */
 
+#ifdef _ENABLE_TESTING_
+	msglvl = 1;
+#endif
+
 
 	/* -------------------------------------------------------------------- */
 	/* .. Set the number of processors according to the OMP_NUM_THREADS   . */
@@ -349,10 +353,10 @@ Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, co
 	}
 	ordering_t = GetReferenceTime() - start_t;
 
-	fprintf(stderr, "\n%s: Reordering completed ... ", __FUNCTION__);
-	fprintf(stderr, "\n%s: Number of nonzeros in factors = %d", __FUNCTION__, iparm[17]);
-	fprintf(stderr, "\n%s: Number of factorization MFLOPS = %d", __FUNCTION__, iparm[18]);
-	fprintf(stderr, "\n%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
+	fprintf(stderr, "\n\t%s: Reordering completed ... ", __FUNCTION__);
+	fprintf(stderr, "\n\t%s: Number of nonzeros in factors = %d", __FUNCTION__, iparm[17]);
+	fprintf(stderr, "\n\t%s: Number of factorization MFLOPS = %d", __FUNCTION__, iparm[18]);
+	fprintf(stderr, "\n\t%s: Reordering and Symbolic Factorization time %.6lf", __FUNCTION__, ordering_t );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Numerical factorization. */
@@ -369,13 +373,13 @@ Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, co
 	}
 	factor_t = GetReferenceTime() - start_t;
 	
-	fprintf (stderr, "\n%s: Factorization completed ... ", __FUNCTION__);
-	fprintf (stderr, "\n%s: Numerical factorization time %.6lf", __FUNCTION__, factor_t );
+	fprintf (stderr, "\n\t%s: Factorization completed ... ", __FUNCTION__);
+	fprintf (stderr, "\n\t%s: Numerical factorization time %.6lf", __FUNCTION__, factor_t );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Back substitution and iterative refinement. */
 	/* -------------------------------------------------------------------- */
-	fprintf (stderr, "\n\n%s: Solving linear system...\n", __FUNCTION__ );
+	fprintf (stderr, "\n\t%s: Solving linear system...\n", __FUNCTION__ );
 
 	start_t = GetReferenceTime();
 	phase = 33;
@@ -396,7 +400,7 @@ Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, co
 	}
 	solve_t = GetReferenceTime() - start_t;
 	
-	fprintf(stderr, "\n%s: Solution time time %.6lf", __FUNCTION__, solve_t );
+	fprintf(stderr, "\n\t%s: Solution time time %.6lf", __FUNCTION__, solve_t );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Compute Residual. */
@@ -412,7 +416,7 @@ Error_t axpy(const integer_t n, const complex_t alpha, complex_t* restrict x, co
 					 iparm, &msglvl, &ddum, &ddum, &error);
 
 	/* print some efficiency statistics */
-	fprintf(stderr, "\n%s: Factor to solve ratio: %.6f\n", __FUNCTION__, factor_t / solve_t );
+	fprintf(stderr, "\n\t%s: Factor to solve ratio: %.6f\n", __FUNCTION__, factor_t / solve_t );
 
 	return (SPIKE_SUCCESS);
 };

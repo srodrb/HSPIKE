@@ -19,9 +19,12 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	// TODO: create a symbolic factorization routine
 	// design a solve strategy
 
+	get_maximum_av_host_memory();
+
 	matrix_ComputeBandwidth( A->n, A->colind, A->rowptr, A->aij, &A->ku, &A->kl );
 
 	nreg = (A->n / p);
+
 	nrem = (A->n % p == 0) ? A->n/p : A->n - (A->n/p * (p-1));
 
 	fprintf(stderr, "\nRegular block dimension "_I_", remainder "_I_, nreg, nrem);
@@ -101,15 +104,11 @@ void schedule_Print (sm_schedule_t* S)
 
 uLong_t get_maximum_av_host_memory( void )
 {
-	 /* Conversion constants. */
-	 const double gigaByte = 1024. * 1024. * 1024.;
-
-
 	 struct sysinfo si;
 	 sysinfo (&si);
 
-	 printf ("\tHost total RAM   : %5.2f GB\n", si.totalram / gigaByte);
-	 printf ("\tHost free RAM    : %5.2f GB\n", si.freeram  / gigaByte);
+	 printf ("\tHost total RAM   : %5.2f GB\n", bytesToGb( si.totalram));
+	 printf ("\tHost free RAM    : %5.2f GB\n", bytesToGb( si.freeram ));
 	
 	return ((uLong_t) si.freeram );
 };

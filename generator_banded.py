@@ -178,10 +178,10 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or float(sys.argv[1]) <= 0:
         raise ValueError('Dimension of the system must be supplied, and must be positive!')
 
-    dim = 20000 #int(sys.argv[1])
+    dim = 15000000 #int(sys.argv[1])
 
     A = create_pentadiagonal( dim )
-    export_csr2bin( A, "Tests/spike/small.bin")
+    export_csr2bin( A, "Tests/spike/15e10Matrix.bin")
 
     #Block = A[0:5,0:5]
 #

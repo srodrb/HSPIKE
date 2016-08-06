@@ -1,7 +1,3 @@
-# options are <INTEL,GNU>
-# options are: <SUPERLU, CUSOLVER, PARDISO>
-# options are <YES,NO>
-
 COMPILER =intel
 BACKEND  =cusolver 
 DEBUG    =no
@@ -74,15 +70,17 @@ ifeq ($(DEBUG),YES)
 endif
 
 
-NVCC      = nvcc
-NVCFLAGS  =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
-NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
-NVCINCS  +=-I/usr/local/cuda/include
-CINCS    +=-I/usr/local/cuda/include
-CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
-DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
-OBJS     += spike_cuda.o
+#NVCC      = nvcc
+#NVCFLAGS  =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
+#NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+#NVCINCS  +=-I/usr/local/cuda/include
+#CINCS    +=-I/usr/local/cuda/include
+#CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
+#DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+#OBJS     += spike_cuda.o
 
+DEFINES += -D_PARDISO_BACKEND_
+OBJS    += spike_pardiso.o
 
 
 TARTGET=main
