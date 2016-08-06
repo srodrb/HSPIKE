@@ -39,4 +39,6 @@
 
 	void CheckPreprocessorMacros(void);
 
+	double bytesToGb ( uLong_t bytes );
+
 #endif /* end of  _SPIKE_COMMON_H_ definition */

@@ -336,12 +336,12 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 	B->n       = rf - r0;
 	B->m       = cf - c0;
 
-	if ( M->ku <= 0 || M->kl <= 0 ){
-		fprintf(stderr, "\n%s: WARNING: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );
-		
-		/* force the computetion of the matrix bandwidth */	
-		matrix_ComputeBandwidth( M->n, M->colind, M->rowptr, M->aij, &M->ku, &M->kl );		
-	}
+//	if ( M->ku <= 0 || M->kl <= 0 ){
+//		fprintf(stderr, "\n%s: WARNING: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );
+//		
+//		/* force the computetion of the matrix bandwidth */	
+//		matrix_ComputeBandwidth( M->n, M->colind, M->rowptr, M->aij, &M->ku, &M->kl );		
+//	}
 
 	B->ku      = M->ku;
 	B->kl      = M->kl;
@@ -608,8 +608,6 @@ block_t* block_CreateEmptyBlock (   const integer_t n,
 {
 	/* local variables */
 	size_t nmemb = ((size_t) n) * m;
-
-	fprintf(stderr, "%s(): nmemb value: %zu (n %d, m %d)\n", __FUNCTION__, nmemb, n, m);
 
 	/* check for buffer overflow problems */
 	if ( n < 0 || m < 0 || nmemb < 0 ) {
@@ -1189,8 +1187,6 @@ static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions,
 
 		/* add diagonal elements */
 		*nnz += (ku[p] + kl[p]);
-
-		fprintf(stderr, "\nValue of nnz up to %d partition is %zu\n", p, *nnz );
   }
 	/* Compute the number of rows optionally */
 	if ( FirstBlockRow != NULL ) {

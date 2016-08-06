@@ -355,7 +355,11 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
 	/* -------------------------------------------------------------------- */
 	/* .. Query used and free memory on the device. */
 	/* -------------------------------------------------------------------- */	
-	checkCudaErrors( cudaMemGetInfo( &handler->freeMem, &handler->usedMem ), "cudaMemGetInfo", __LINE__  );
+	checkCudaErrors( cudaMemGetInfo( &handler->deviceFreeMemory, &handler->deviceTotalMemory ), "cudaMemGetInfo", __LINE__  );
+
+	fprintf(stderr, "\n\t Device memory counters ");
+	fprintf(stderr, "\n\t\t Device free memory : %5.2lf GB", bytesToGb(handler->deviceFreeMemory) );
+	fprintf(stderr, "\n\t\t Device free memory : %5.2lf GB", bytesToGb(handler->deviceFreeMemory) );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Initilialize handlers.                                            */
@@ -402,10 +406,14 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	handler->h_colind = colind;
 	handler->h_rowptr = rowptr;
 
+	/* update device free memory after copying the matrix to it */
+	
 	/* allocate memory for coefficient matrix on the device */
 	checkCudaErrors( cudaMalloc((void**) &handler->d_aij   , handler->nnz    * sizeof(complex_t)), "cudaMalloc", __LINE__);
 	checkCudaErrors( cudaMalloc((void**) &handler->d_colind, handler->nnz    * sizeof(integer_t)), "cudaMalloc", __LINE__);
 	checkCudaErrors( cudaMalloc((void**) &handler->d_rowptr, (handler->n +1) * sizeof(integer_t)), "cudaMalloc", __LINE__);
+
+
 
 
 
@@ -606,8 +614,8 @@ Error_t cuda_standalone_symrcm (integer_t n,
 	integer_t *pBuffer       = NULL;
 	integer_t *map           = NULL;
 
-	integer_t *p   = (integer_t*) spike_malloc( ALIGN_INT, n  , sizeof(integer_t));
-	integer_t *map = (integer_t*) spike_malloc( ALIGN_INT, nnz, sizeof(integer_t));
+	p   = (integer_t*) spike_malloc( ALIGN_INT, n  , sizeof(integer_t));
+	map = (integer_t*) spike_malloc( ALIGN_INT, nnz, sizeof(integer_t));
 
 	/* cuSolver handler */
 	cusolverSpHandle_t cusolverHandle = NULL;
@@ -616,10 +624,10 @@ Error_t cuda_standalone_symrcm (integer_t n,
 	cusparseMatDescr_t MatDescr = NULL;
 
 	/* The handle must be initialized prior to calling any other library function */
-	checkCudaErrors( cusolverSpCreate(&cusolverHandle));
+	checkCudaErrors( cusolverSpCreate(&cusolverHandle), "cusolverSpCreate", __LINE__ );
 
 	/* Create matrix descriptor */
-	checkCudaErrors( cusparseCreateMatDescr  ( &handler->MatDescr), "cusparseCreateMatDescr", __LINE__ );
+	checkCudaErrors( cusparseCreateMatDescr  ( &MatDescr), "cusparseCreateMatDescr", __LINE__ );
 	checkCudaErrors( cusparseSetMatType      ( MatDescr, CUSPARSE_MATRIX_TYPE_GENERAL ), "cusparseSetMatType", __LINE__ );
 	checkCudaErrors( cusparseSetMatIndexBase ( MatDescr, CUSPARSE_INDEX_BASE_ZERO ), "cusparseSetMatIndexBase", __LINE__ );
 
@@ -643,7 +651,8 @@ Error_t cuda_standalone_symrcm (integer_t n,
 		colind, 
 		p, 
 		p, 
-		&bufferSizeInBytes);
+		&bufferSizeInBytes),
+		"cusolverSpXcsrperm_bufferSizeHost", __LINE__);
 
 	/* allocate working space */
 	pBuffer = (integer_t*) spike_malloc( ALIGN_INT, 1, bufferSizeInBytes);

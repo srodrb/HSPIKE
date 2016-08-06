@@ -17,7 +17,7 @@ OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
 
 ifeq ($(COMPILER),intel)
 	CC      =icc
-	CFLAGS  =-qopenmp -std=c99 -O3 -g -restrict
+	CFLAGS  =-qopenmp -std=c99 -O2 -g -restrict
 	
 	# multi-threaded version
 	CLIBS   =-L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -ldl
@@ -73,8 +73,15 @@ ifeq ($(DEBUG),YES)
 	DEFINES += -D_ENABLE_TESTING_
 endif
 
-DEFINES += -D_PARDISO_BACKEND_
-OBJS    += spike_pardiso.o
+
+NVCC      = nvcc
+NVCFLAGS  =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
+NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+NVCINCS  +=-I/usr/local/cuda/include
+CINCS    +=-I/usr/local/cuda/include
+CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
+DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+OBJS     += spike_cuda.o
 
 
 

@@ -20,6 +20,7 @@
 	#define _SPIKE_ANALYSIS_H_
 
 	#include "spike_matrix.h"
+	#include <sys/sysinfo.h> /* memory structure */
 
 	/*
 	 * Shared memory version of the schedule structure
@@ -58,5 +59,15 @@
 	void schedule_Destroy( sm_schedule_t* S );
 
 	void schedule_Print(sm_schedule_t* S);
+
+	/*-------------------------------------------------------------------*/
+	uLong_t get_maximum_av_host_memory( void );
+
+	void compute_partition_table(const integer_t n,
+								const integer_t nnz,
+								const integer_t nrhs,
+								const integer_t ku,
+								const integer_t kl );
+
 
 #endif /* end of _SPIKE_ANALYSIS_H_ definition */

@@ -76,6 +76,10 @@
         complex_t *h_xij;    /* host xij pointer */
         complex_t *h_bij;    /* host bij pointer */
 
+        /* Max device memory and current memory usage */
+        size_t deviceTotalMemory;
+        size_t deviceFreeMemory;
+
         /* needed handlers */
         cusolverSpHandle_t cusolverHandle; /* cusolver handler */
         cusparseMatDescr_t MatDescr; /* cuSparse matrix descriptor */
@@ -94,9 +98,6 @@
         /* -------------------------------------------------------------------- */
         /* .. Statistical variables                                             */
         /* -------------------------------------------------------------------- */
-        size_t freeMem;
-        size_t usedMem;
-
         spike_timer_t transfer_t;
         spike_timer_t ordering_t;
         spike_timer_t factor_t;

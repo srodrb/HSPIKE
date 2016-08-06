@@ -13,14 +13,14 @@
 };
 
 
- Error_t dspike_core_host  (const integer_t n,
+ Error_t zspike_core_host  (const integer_t n,
 							const integer_t nnz,
 							const integer_t nrhs,
 							integer_t *restrict colind,
 							integer_t *restrict rowptr,
-							double     *restrict aij,
-							double     *restrict xij,
-							double     *restrict bij)
+							complex16 *restrict aij,
+							complex16 *restrict xij,
+							complex16 *restrict bij)
 {
 	return (SPIKE_SUCCESS);
 };
@@ -40,14 +40,15 @@
 
 
 
- Error_t zspike_core_host  (const integer_t n,
+ Error_t dspike_core_host  (const integer_t n,
 							const integer_t nnz,
 							const integer_t nrhs,
 							integer_t *restrict colind,
 							integer_t *restrict rowptr,
-							complex16 *restrict aij,
-							complex16 *restrict xij,
-							complex16 *restrict bij)
+							double *restrict aij,
+							double *restrict xij,
+							double *restrict bij,
+							const int partitions)
 {
 	// TODO: write a check params function 
 	if ( nnz < 0 ) {
@@ -88,7 +89,7 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 12 );
+	S = spike_solve_analysis( A, nrhs, partitions );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -418,15 +419,16 @@
 	return (SPIKE_SUCCESS);
 };
 
- Error_t zspike_core_host_blocking (
+ Error_t dspike_core_host_blocking (
  	const integer_t n,
 	const integer_t nnz,
 	const integer_t nrhs,
 	integer_t *restrict colind,
 	integer_t *restrict rowptr,
-	complex16 *restrict aij,
-	complex16 *restrict xij,
-	complex16 *restrict bij)
+	double *restrict aij,
+	double *restrict xij,
+	double *restrict bij,
+	const int partitions )
 {
 	// TODO: write a check params function 
 	if ( nnz < 0 ) {
@@ -435,7 +437,7 @@
 	}
 	
 	/* define column blocking size */
-	const integer_t COLBLOCKINGDIST = 4;
+	const integer_t COLBLOCKINGDIST = 10;
 
 	fprintf(stderr, "\n  SPIKE direct-direct solver (low-level, blocking implementation)\n");
 
@@ -464,7 +466,7 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 3 );
+	S = spike_solve_analysis( A, nrhs, partitions );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -899,11 +901,8 @@
 	fprintf(stderr, "\nSolving reduced linear system\n");
 	directSolver_Host_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
 
-	reduced_PrintAsDense ( R, yr, xr, "Reduced system");
-
-
 	/* compute residual */
-	ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, yr->m );
+	// ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, yr->m );
 
 	/* Free some memory, yr and R are not needed anymore */
 	block_Deallocate ( xr );

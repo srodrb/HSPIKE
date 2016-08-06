@@ -41,7 +41,8 @@
 									integer_t *restrict rowptr,
 									double    *restrict aij,
 									double    *restrict xij,
-									double    *restrict bij);
+									double    *restrict bij,
+									const int partitions);
 
  	Error_t    cspike_core_host    (const integer_t n,
 									const integer_t nnz,
@@ -62,15 +63,15 @@
 									complex16 *restrict bij);
 
  	/* column-blocking routines */
- 	Error_t zspike_core_host_blocking (
- 		const integer_t n,
-		const integer_t nnz,
-		const integer_t nrhs,
-		integer_t *restrict colind,
-		integer_t *restrict rowptr,
-		complex16 *restrict aij,
-		complex16 *restrict xij,
-		complex16 *restrict bij);
+ 	Error_t dspike_core_host_blocking (const integer_t n,
+									const integer_t nnz,
+									const integer_t nrhs,
+									integer_t *restrict colind,
+									integer_t *restrict rowptr,
+									double *restrict aij,
+									double *restrict xij,
+									double *restrict bij,
+									const int partitions);
 
 
 #endif /* end of _SPIKE_INTERFACES_ definition */

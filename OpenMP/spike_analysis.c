@@ -8,7 +8,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	}
 
 
-	// local variables
+	/* local variables */
 	integer_t i;
 	integer_t nreg;  // regular block dimension
 	integer_t nrem;  // irregular block dimension
@@ -64,6 +64,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	/* print schedule information */
 	schedule_Print(S);
 
+
 	return (S);
 };
 
@@ -92,3 +93,37 @@ void schedule_Print (sm_schedule_t* S)
 
 	fprintf(stderr,"\n\n");
 };
+
+/*
+	This function computes the max. free memory of the host no in bytes.
+	This number is used to compute the optimal solving strategy.
+ */
+
+uLong_t get_maximum_av_host_memory( void )
+{
+	 /* Conversion constants. */
+	 const double gigaByte = 1024. * 1024. * 1024.;
+
+
+	 struct sysinfo si;
+	 sysinfo (&si);
+
+	 printf ("\tHost total RAM   : %5.2f GB\n", si.totalram / gigaByte);
+	 printf ("\tHost free RAM    : %5.2f GB\n", si.freeram  / gigaByte);
+	
+	return ((uLong_t) si.freeram );
+};
+
+/*
+	Computes the memory requirements for each number of partitions.
+*/
+
+void compute_partition_table(const integer_t n,
+							const integer_t nnz,
+							const integer_t nrhs,
+							const integer_t ku,
+							const integer_t kl )
+{
+
+};
+

@@ -356,7 +356,10 @@ def spike_implicit_vw(A, f, ku, kl, partitions, fully_implicit=True):
     xred = lu.solve(yr)
     end_t = timer()
     print 'Factorization and solve time for the reduced system %.5f' % (end_t - start_t)
-
+    
+    print 'Reduced system solution '
+    print xred
+    print ''
 
     # -------------------------------------------- Back assembly stage
     #
@@ -446,8 +449,8 @@ def create_heptadiagonal(n, precision):
             sparse.diags(np.random.rand(n-1),-1) + \
             sparse.diags(np.random.rand(n-2), 2) + \
             sparse.diags(np.random.rand(n-2),-2) + \
-            sparse.diags(np.random.rand(n-3),-3) + \
-            sparse.diags(np.random.rand(n-3), 3)
+            sparse.diags(np.random.rand(n-250),-250) + \
+            sparse.diags(np.random.rand(n-250), 250)
 
     else:
         print 'Populating sparse matrix with complex numbers'
@@ -495,7 +498,7 @@ def create_pentadiagonal(n, precision):
             sparse.diags(np.random.rand(n-1), 1) + \
             sparse.diags(np.random.rand(n-1),-1) + \
             sparse.diags(np.random.rand(n-2), 2) + \
-            sparse.diags(np.random.rand(n-2),-2)
+            sparse.diags(np.random.rand(n-3),-3)
 
     else:
         print 'Populating sparse matrix with complex numbers'
@@ -685,11 +688,11 @@ if __name__ == '__main__':
 
     # numero de particiones empleadas en el primer nivel
     p = 2
-    N = 10
+    N = 10000
 
     #A = create_banded_matrix(N, [0, 90, 50, -40, -90])
     A = create_heptadiagonal(N, precision)
-    export_csr2bin( A, "../Tests/heptadiagonal/small.bin")
+    export_csr2bin( A, "../Tests/heptadiagonal/10k.bin")
 
 
     nrhs = 1
@@ -714,8 +717,10 @@ if __name__ == '__main__':
     # exit()
 
     print 'Using semi-implict SPIKE solver now...'
-    x_spike, spike_nnz = spike_implicit_vw (A.copy(), b_spike, 2, 2, p, fully_implicit=True )
+    x_spike, spike_nnz = spike_implicit_vw (A.copy(), b_spike, 3, 3, p, fully_implicit=True )
 
+
+    print x_spike
 
     for i in range( min(nrhs,10)):
         print '%.2d-th RHS - SPIKE error: %.2E' %(i, norm(b[:, i] - A.dot(x_spike[:, i])))

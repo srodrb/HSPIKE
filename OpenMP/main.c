@@ -83,12 +83,18 @@ int main(int argc, const char *argv[])
 
 #else
 
+
+	get_maximum_av_host_memory();
+
+	abort();
+
+
 	const integer_t nrhs = 3;
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/small.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/10k.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	matrix_PrintAsDense(A, "Input matrix");
@@ -103,20 +109,23 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Call the direct solver using the high-level interface           . */
 	/* -------------------------------------------------------------------- */
-	zspike_core_host_blocking (A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
+	const int partitions = 4;
+	//zspike_core_host (A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
+	// dspike_core_host          (A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij, partitions );
+	dspike_core_host_blocking (A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij, partitions );
 	
 	fprintf(stderr, "\nResidual outside the SPIKE call\n");
-	ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, f->m );
+	// ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, f->m );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Check residual and compare against reference solver             . */
 	/* -------------------------------------------------------------------- */
 
 #ifndef _BSIT_MATRIX_
-	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
-	block_InitializeToValue( x, __zero  ); // solution of the system
-	block_InitializeToValue( f, __punit ); // rhs of the system
-	SolveOriginalSystem( A, x, f);
+//	fprintf(stderr, "\nPARDISO REFERENCE SOLUTION...\n");
+//	block_InitializeToValue( x, __zero  ); // solution of the system
+//	block_InitializeToValue( f, __punit ); // rhs of the system
+//	SolveOriginalSystem( A, x, f);
 #endif
 
 
