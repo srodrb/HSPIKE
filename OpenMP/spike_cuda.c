@@ -350,14 +350,14 @@ DirectSolverHander_t *directSolver_CreateHandler(void)
 	return (handler);
 };
 
-Error_t directSolver_Configure( DirectSolverHander_t *handler )
+Error_t directSolver_Configure( DirectSolverHander_t *handler, const integer_t max_nrhs )
 {
 	/* -------------------------------------------------------------------- */
 	/* .. Query used and free memory on the device. */
 	/* -------------------------------------------------------------------- */	
 	checkCudaErrors( cudaMemGetInfo( &handler->deviceFreeMemory, &handler->deviceTotalMemory ), "cudaMemGetInfo", __LINE__  );
 
-	fprintf(stderr, "\n\t Device memory counters ");
+	fprintf(stderr, "\n\t Device memory at solver configuration stage:");
 	fprintf(stderr, "\n\t\t Device free memory : %5.2lf GB", bytesToGb(handler->deviceFreeMemory) );
 	fprintf(stderr, "\n\t\t Device free memory : %5.2lf GB", bytesToGb(handler->deviceFreeMemory) );
 
@@ -366,6 +366,25 @@ Error_t directSolver_Configure( DirectSolverHander_t *handler )
 	/* -------------------------------------------------------------------- */
 	cusolverSpCheck( cusolverSpCreate          ( &handler->cusolverHandle ), "cusolverSpCreate"         , __LINE__ );
 	cusolverSpCheck( cusolverSpCreateCsrqrInfo ( &handler->csrqrInfo      ), "cusolverSpCreateCsrqrInfo", __LINE__ );
+
+	/* -------------------------------------------------------------------- */
+	/* .. Set current CUDA stream                                           */
+	/* -------------------------------------------------------------------- */
+	// handler->stream = (cudaStream_t*) spike_malloc( ALIGN_INT, 1, sizeof(cudaStream_t));
+	checkCudaErrors( cudaStreamCreate( &handler->stream[0] ), "cudaStreamCreate", __LINE__ );
+
+	/* -------------------------------------------------------------------- */
+	/* .. No device memory is allocated for RHS blocks                      */ 
+	/* .. Set the number of RHS to a default value                          */
+	/* -------------------------------------------------------------------- */
+	handler->deviceMemForRHSisAllocated   =    False;
+	handler->max_nrhs                     = max_nrhs;    /* max number of rhs to solve for any linear sub-system */
+	handler->deviceRHSBlockDist           =       300;          /* optimal transfer to solve ratio */
+
+	/* -------------------------------------------------------------------- */
+	/* .. Associate CUDA stream to cusolver library                         */
+	/* -------------------------------------------------------------------- */
+	cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Setup matrix information.                                         */
@@ -395,6 +414,9 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 						integer_t *__restrict__ rowptr,
 						complex_t *__restrict__ aij)
 {
+	/* local variables */
+	integer_t i; 
+
 	/* matrix dimensions */
 	handler->n   = n;
 	handler->nnz = nnz;
@@ -406,25 +428,17 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	handler->h_colind = colind;
 	handler->h_rowptr = rowptr;
 
-	/* update device free memory after copying the matrix to it */
 	
 	/* allocate memory for coefficient matrix on the device */
 	checkCudaErrors( cudaMalloc((void**) &handler->d_aij   , handler->nnz    * sizeof(complex_t)), "cudaMalloc", __LINE__);
 	checkCudaErrors( cudaMalloc((void**) &handler->d_colind, handler->nnz    * sizeof(integer_t)), "cudaMalloc", __LINE__);
 	checkCudaErrors( cudaMalloc((void**) &handler->d_rowptr, (handler->n +1) * sizeof(integer_t)), "cudaMalloc", __LINE__);
 
-
-
-
-
 	/* transfer the arrays to the device memory */
-	checkCudaErrors( cudaMemcpy( handler->d_aij   , handler->h_aij   ,  handler->nnz    * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__ );
-	checkCudaErrors( cudaMemcpy( handler->d_colind, handler->h_colind,  handler->nnz    * sizeof(integer_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__ );
-	checkCudaErrors( cudaMemcpy( handler->d_rowptr, handler->h_rowptr, (handler->n + 1) * sizeof(integer_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__ );
+	checkCudaErrors( cudaMemcpyAsync( handler->d_aij   , handler->h_aij   ,  handler->nnz    * sizeof(complex_t), cudaMemcpyHostToDevice, handler->stream[0] ), "cudaMemcpyAsync", __LINE__ );
+	checkCudaErrors( cudaMemcpyAsync( handler->d_colind, handler->h_colind,  handler->nnz    * sizeof(integer_t), cudaMemcpyHostToDevice, handler->stream[0] ), "cudaMemcpyAsync", __LINE__ );
+	checkCudaErrors( cudaMemcpyAsync( handler->d_rowptr, handler->h_rowptr, (handler->n + 1) * sizeof(integer_t), cudaMemcpyHostToDevice, handler->stream[0] ), "cudaMemcpyAsync", __LINE__ );
 
-	/* allocate space for one x column and for one b column  */
-	checkCudaErrors( cudaMalloc((void**) &handler->d_xij, handler->n * sizeof(complex_t)), "cudaMalloc", __LINE__);
-	checkCudaErrors( cudaMalloc((void**) &handler->d_bij, handler->n * sizeof(complex_t)), "cudaMalloc", __LINE__);
 
 	/* -------------------------------------------------------------------- */
 	/* .. Verify if A is symmetric.                                         */
@@ -448,6 +462,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
     // TODO.
 
 	/* analyses sparsity pattern of H and Q matrices */
+	cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
 	cusolverSpCheck( cusolverSpXcsrqrAnalysis ( handler->cusolverHandle,
                            handler->n,
                            handler->n,
@@ -458,6 +473,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
                            handler->csrqrInfo ), "cusolverSpXcsrqrAnalysis", __LINE__);
 
 	/* After the analysis, the size of working space to perform QR factorization can be retrieved */
+	cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
 	cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrBufferInfo ) ( 
 						   handler->cusolverHandle,
                            handler->n,
@@ -471,17 +487,25 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
                            &handler->internalDataInBytes,
                            &handler->workspaceInBytes), "csrqrBufferInfo", __LINE__);
 
-	fprintf(stderr, "\nInternal data in bytes : %lu", handler->internalDataInBytes);
-	fprintf(stderr, "\nWorkspace in bytes     : %lu", handler->workspaceInBytes   );
 
-	/* allocate work space for factorization */
-	// checkCudaErrors( spike_devMalloc((void**) &handler->d_work, 1, handler->workspaceInBytes), "cudaMalloc", __LINE__ );
-	checkCudaErrors( cudaMalloc((void**) &handler->d_work, handler->workspaceInBytes), "cudaMalloc", __LINE__ );
+	/* -------------------------------------------------------------------- */
+	/* .. Check if there is enough space for factorization on the GPU.      */
+	/* If so, allocate the work buffer there                                */
+	/* -------------------------------------------------------------------- */	
+	checkCudaErrors( cudaMemGetInfo( &handler->deviceFreeMemory, &handler->deviceTotalMemory ), "cudaMemGetInfo", __LINE__  );
 
+	if( handler->deviceFreeMemory < handler->workspaceInBytes ){
+		fprintf(stderr, "\n ERROR: there is not enough space on the GPU for factorization.");
+		abort();
+	} else {
+		fprintf(stderr, "\n Device memory after factorization will be %.f GB", bytesToGb( handler->deviceFreeMemory - handler->workspaceInBytes ) );
+		checkCudaErrors( cudaMalloc((void**) &handler->d_work, handler->workspaceInBytes), "cudaMalloc", __LINE__ );
+	}
 	
 	/* This function shifts diagonal of A by parameter mu such that we can factorize */
 	/* For linear solver, the user just sets mu to zero.                             */ 
 	/* For eigenvalue solver, mu can be a value of shift in inverse-power method.    */
+	cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
 	cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSetup ) ( 
 						   handler->cusolverHandle,
                            handler->n,
@@ -500,6 +524,7 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	/* If both x and b are not nil, QR factorization and solve are combined together. b is over-    */
 	/* written by c and x is the solution of least-square.                                          */
 	/* pBuffer: buffer allocated by the user, the size is returned by cusolverSpXcsrqrBufferInfo(). */
+	cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
 	cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrFactor ) ( 
 						   handler->cusolverHandle,
                            handler->n,
@@ -515,12 +540,260 @@ Error_t directSolver_Factorize(DirectSolverHander_t *handler,
 	checkCudaErrors( spike_devNullify( handler->d_rowptr), "cudaFree", __LINE__ );
 	checkCudaErrors( spike_devNullify( handler->d_aij   ), "cudaFree", __LINE__ );
 
+	/* -------------------------------------------------------------------- */
+	/* .. Query used and free memory on the device. */
+	/* -------------------------------------------------------------------- */	
+	checkCudaErrors( cudaMemGetInfo( &handler->deviceFreeMemory, &handler->deviceTotalMemory ), "cudaMemGetInfo", __LINE__  );
+
+	/* compute the number of rhs that fits into the device memory */
+	handler->nrhs_fiffing = floor(  ((double) handler->deviceFreeMemory) / ((double) 2.f * handler->n * sizeof(complex_t)));
+	fprintf(stderr, "\nFree mem %5.2f GB. There is room for %d rhs on the device (%lf GB)", 
+		bytesToGb( handler->deviceFreeMemory), handler->nrhs_fiffing, bytesToGb( 2. * handler->n * handler->nrhs * sizeof(complex_t)));
+
+	/* Correct the blocking distance according to the number of RHS fitting on the device */
+	if ( handler->nrhs_fiffing < handler->deviceRHSBlockDist ){
+		handler->deviceRHSBlockDist = handler->nrhs_fiffing;
+		fprintf(stderr, "\n GPU col blocking has been corrected due to memory space issues.");
+	}
+
+	/* compute the number of streams to be used */
+	if ( handler->max_nrhs % handler->deviceRHSBlockDist == 0 ){
+		handler->nstreams = handler->max_nrhs / handler->deviceRHSBlockDist;
+	}
+	else {
+		handler->nstreams = ceil( ((double) handler->max_nrhs) / ((double) handler->deviceRHSBlockDist));
+	}
+
+	fprintf(stderr, "\n%s: %d streams will be used for solving a maximum number of %d rhs using a blocking distance of %d rhs\n", __FUNCTION__, handler->nstreams, handler->max_nrhs, handler->deviceRHSBlockDist );
+
+
+	if ( handler->deviceMemForRHSisAllocated == False ) {
+		/* allocate space for one x column and for one b column  */
+		checkCudaErrors( cudaMalloc((void**) &handler->d_xij, handler->n * handler->deviceRHSBlockDist * handler->nstreams * sizeof(complex_t)), "cudaMalloc", __LINE__);
+		checkCudaErrors( cudaMalloc((void**) &handler->d_bij, handler->n * handler->deviceRHSBlockDist * handler->nstreams * sizeof(complex_t)), "cudaMalloc", __LINE__);
+
+		/* set the flag to true for the next time */
+		handler->deviceMemForRHSisAllocated = True;
+	}
+
+	/* Create additional streams if needed */
+	if ( handler->nstreams > 1 ){
+		// handler->stream = (cudaStream_t*) realloc( handler->stream, handler->nstreams * sizeof(cudaStream_t));
+
+		for(i=1; i < handler->nstreams; i++ )
+			checkCudaErrors( cudaStreamCreate( &handler->stream[i] ), "cudaStreamCreate", __LINE__ );
+
+		fprintf(stderr, "\n %d CUDA streams were created\n", handler->nstreams );
+	}
+
 	/* resume and return */
 	return (SPIKE_SUCCESS);
 };
 
-
 Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
+                                const integer_t nrhs,
+                                complex_t *__restrict__ xij,
+                                complex_t *__restrict__ bij)
+{
+	directSolver_SolveForRHS_async_1 ( handler, nrhs, xij, bij);
+	// directSolver_SolveForRHS_sync    ( handler, nrhs, xij, bij);
+
+	return (SPIKE_SUCCESS);
+}
+
+Error_t directSolver_SolveForRHS_async_1 ( DirectSolverHander_t* handler,
+                            const integer_t nrhs,
+                            complex_t *__restrict__ xij,
+                            complex_t *__restrict__ bij)
+{
+		/* local variables */
+	int rhsCol = 0, rhs = 0, currentStream = 0;
+
+	/* update the value of rhs columns */
+	handler->nrhs = nrhs;
+
+	/* update statistics, keep track of RHS */
+	handler->rhs_block_count  += 1;
+	handler->rhs_column_count += nrhs;
+
+	if ( handler->nrhs <= handler->deviceRHSBlockDist ){
+		fprintf(stderr, "\n First case, nrhs < blocking distance");
+		/* Transfer the arrays to the device memory */
+		checkCudaErrors( cudaMemcpyAsync( handler->d_bij, bij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice, handler->stream[0] ), "cudaMemcpyAsync", __LINE__);
+		
+		for(rhs=0; rhs < nrhs; rhs++ ) {
+			/* Forward and backward substitution */
+			cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
+			cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+								   handler->cusolverHandle,
+		                           handler->n,
+		                           handler->n,
+		                           &handler->d_bij[ rhs * handler->n ],
+		                           &handler->d_xij[ rhs * handler->n ],
+		                           handler->csrqrInfo,
+		                           handler->d_work ), "csrqrSolve", __LINE__);
+		}
+		
+		/* transfer the solution back to the host */
+		checkCudaErrors( cudaMemcpyAsync( xij, handler->d_xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyDeviceToHost, handler->stream[0] ), "cudaMemcpyAsync", __LINE__);
+
+		fprintf(stderr, "\nFin del caso");
+	}
+	else{
+		for( rhsCol = 0; (rhsCol + handler->deviceRHSBlockDist) <= handler->nrhs; rhsCol += handler->deviceRHSBlockDist ){
+
+			/* set current stream */
+			currentStream = ( (currentStream +1) == handler->nstreams ) ? 0 : currentStream + 1;
+
+			fprintf(stderr, "\n Current stream %d", currentStream );
+
+			/* Transfer the arrays to the device memory */
+			checkCudaErrors( cudaMemcpyAsync( handler->d_bij, 
+				&bij[rhsCol * handler->n], 
+				handler->n  * handler->deviceRHSBlockDist * sizeof(complex_t),
+				cudaMemcpyHostToDevice,
+				handler->stream[currentStream]),
+				"cudaMemcpy", __LINE__);
+		
+			for(rhs=0; rhs < handler->deviceRHSBlockDist; rhs++ ) {
+				/* Forward and backward substitution */
+				cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[currentStream] ), "cusolverSpSetStream", __LINE__ );
+				cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+									   handler->cusolverHandle,
+			                           handler->n,
+			                           handler->n,
+			                           &handler->d_bij[ rhs * handler->n ],
+			                           &handler->d_xij[ rhs * handler->n ],
+			                           handler->csrqrInfo,
+			                           handler->d_work ), "csrqrSolve", __LINE__);
+			}
+		
+			/* transfer the solution back to the host */
+			checkCudaErrors( cudaMemcpyAsync( &xij[rhsCol * handler->n ],
+				handler->d_xij,
+				handler->n * handler->deviceRHSBlockDist * sizeof(complex_t),
+				cudaMemcpyDeviceToHost,
+				handler->stream[currentStream]),
+				"cudaMemcpy", __LINE__);
+		}
+
+
+
+		if ( rhsCol < handler->nrhs ){
+			/* set current stream */
+			currentStream = ( (currentStream +1) == handler->nstreams ) ? 0 : currentStream + 1;
+			fprintf(stderr, "\n Current stream %d", currentStream );
+
+			/* number of colums to process */
+			integer_t rhsToProcess = handler->nrhs - rhsCol;
+
+			/* Transfer the arrays to the device memory */
+			checkCudaErrors( cudaMemcpy( handler->d_bij, &bij[rhsCol * handler->n], handler->n * rhsToProcess * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
+		
+			for(rhs=0; rhs < rhsToProcess; rhs++ ) {
+				/* Forward and backward substitution */
+				cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
+				cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+									   handler->cusolverHandle,
+			                           handler->n,
+			                           handler->n,
+			                           &handler->d_bij[ rhs * handler->n ],
+			                           &handler->d_xij[ rhs * handler->n ],
+			                           handler->csrqrInfo,
+			                           handler->d_work ), "csrqrSolve", __LINE__);
+			}
+		
+			/* transfer the solution back to the host */
+			checkCudaErrors( cudaMemcpy( &xij[rhsCol * handler->n ], handler->d_xij, handler->n * rhsToProcess * sizeof(complex_t), cudaMemcpyDeviceToHost ), "cudaMemcpy", __LINE__);
+		}
+	}
+
+	return (SPIKE_SUCCESS);
+};
+
+Error_t directSolver_SolveForRHS_async_0 ( DirectSolverHander_t* handler,
+                            const integer_t nrhs,
+                            complex_t *__restrict__ xij,
+                            complex_t *__restrict__ bij)
+{
+	/* local variables */
+	int rhsCol = 0, rhs = 0;
+
+	/* update the value of rhs columns */
+	handler->nrhs = nrhs;
+
+	/* update statistics, keep track of RHS */
+	handler->rhs_block_count  += 1;
+	handler->rhs_column_count += nrhs;
+
+	if ( handler->nrhs <= handler->deviceRHSBlockDist){
+		/* Transfer the arrays to the device memory */
+		checkCudaErrors( cudaMemcpy( handler->d_bij, bij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
+		
+		for(rhs=0; rhs < nrhs; rhs++ ) {
+			/* Forward and backward substitution */
+			cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+								   handler->cusolverHandle,
+		                           handler->n,
+		                           handler->n,
+		                           &handler->d_bij[ rhs * handler->n ],
+		                           &handler->d_xij[ rhs * handler->n ],
+		                           handler->csrqrInfo,
+		                           handler->d_work ), "csrqrSolve", __LINE__);
+		}
+		
+		/* transfer the solution back to the host */
+		checkCudaErrors( cudaMemcpy( xij, handler->d_xij, handler->n * handler->nrhs * sizeof(complex_t), cudaMemcpyDeviceToHost ), "cudaMemcpy", __LINE__);
+	}
+	else{
+		for( rhsCol = 0; (rhsCol + handler->deviceRHSBlockDist) <= handler->nrhs; rhsCol += handler->deviceRHSBlockDist ){
+			/* Transfer the arrays to the device memory */
+			checkCudaErrors( cudaMemcpy( handler->d_bij, &bij[rhsCol * handler->n], handler->n * handler->deviceRHSBlockDist * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
+		
+			for(rhs=0; rhs < handler->deviceRHSBlockDist; rhs++ ) {
+				/* Forward and backward substitution */
+				cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+									   handler->cusolverHandle,
+			                           handler->n,
+			                           handler->n,
+			                           &handler->d_bij[ rhs * handler->n ],
+			                           &handler->d_xij[ rhs * handler->n ],
+			                           handler->csrqrInfo,
+			                           handler->d_work ), "csrqrSolve", __LINE__);
+			}
+		
+			/* transfer the solution back to the host */
+			checkCudaErrors( cudaMemcpy( &xij[rhsCol * handler->n ], handler->d_xij, handler->n * handler->deviceRHSBlockDist * sizeof(complex_t), cudaMemcpyDeviceToHost ), "cudaMemcpy", __LINE__);
+		}
+
+		if ( rhsCol < handler->nrhs ){
+			/* number of colums to process */
+			integer_t rhsToProcess = handler->nrhs - rhsCol;
+
+			/* Transfer the arrays to the device memory */
+			checkCudaErrors( cudaMemcpy( handler->d_bij, &bij[rhsCol * handler->n], handler->n * rhsToProcess * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
+		
+			for(rhs=0; rhs < rhsToProcess; rhs++ ) {
+				/* Forward and backward substitution */
+				cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
+									   handler->cusolverHandle,
+			                           handler->n,
+			                           handler->n,
+			                           &handler->d_bij[ rhs * handler->n ],
+			                           &handler->d_xij[ rhs * handler->n ],
+			                           handler->csrqrInfo,
+			                           handler->d_work ), "csrqrSolve", __LINE__);
+			}
+		
+			/* transfer the solution back to the host */
+			checkCudaErrors( cudaMemcpy( &xij[rhsCol * handler->n ], handler->d_xij, handler->n * rhsToProcess * sizeof(complex_t), cudaMemcpyDeviceToHost ), "cudaMemcpy", __LINE__);
+		}
+	}
+
+	return (SPIKE_SUCCESS);
+};
+
+Error_t directSolver_SolveForRHS_sync ( DirectSolverHander_t* handler,
                             const integer_t nrhs,
                             complex_t *__restrict__ xij,
                             complex_t *__restrict__ bij)
@@ -539,10 +812,11 @@ Error_t directSolver_SolveForRHS ( DirectSolverHander_t* handler,
 	/* rhs at a time, so we have to iterate                 */
 	for(rhsCol=0; rhsCol < nrhs; rhsCol++ ) {
 		/* Transfer the arrays to the device memory */
-		checkCudaErrors( cudaMemcpy( handler->d_xij, &xij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
+		//checkCudaErrors( cudaMemcpyAsync( handler->d_xij, &xij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyHostToDevice, handler->stream ), "cudaMemcpyAsync", __LINE__);
 		checkCudaErrors( cudaMemcpy( handler->d_bij, &bij[rhsCol * handler->n], handler->n * sizeof(complex_t), cudaMemcpyHostToDevice ), "cudaMemcpy", __LINE__);
 
 		/* Forward and backward substitution */
+		cusolverSpCheck( cusolverSpSetStream( handler->cusolverHandle, handler->stream[0] ), "cusolverSpSetStream", __LINE__ );
 		cusolverSpCheck( CUDA_KERNEL( cusolverSp,SPIKE_CUDA_PREC,csrqrSolve ) ( 
 							   handler->cusolverHandle,
 	                           handler->n,
@@ -570,8 +844,23 @@ Error_t directSolver_ShowStatistics( DirectSolverHander_t *handler )
 
 Error_t directSolver_Finalize( DirectSolverHander_t *handler )
 {
-	/* synchronize CUDA device */
-	// cudaDeviceSynchronize();
+	/* local variables */
+	integer_t i;
+
+	/* synchronize all streams */
+	cudaDeviceSynchronize();
+  	
+fprintf(stderr, "\n%s:%d destroy cuda streams", __FUNCTION__, __LINE__ );
+
+	/* synchronize and destroy streams */
+	for(i=0; i < handler->nstreams; i++ ){
+  		checkCudaErrors( cudaStreamSynchronize( handler->stream[i] ), "cudaStreamSynchronize", __LINE__ );
+  		checkCudaErrors( cudaStreamDestroy    ( handler->stream[i] ), "cudaStreamDestroy", __LINE__ );
+
+	}
+
+fprintf(stderr, "\n%s:%d destroy cuda streams", __FUNCTION__, __LINE__ );
+
 
 	/* deallocate device memory */
 	checkCudaErrors( spike_devNullify( handler->d_work  ), "cudaFree", __LINE__ );
@@ -582,6 +871,9 @@ Error_t directSolver_Finalize( DirectSolverHander_t *handler )
 	checkCudaErrors( cusparseDestroyMatDescr( handler->MatDescr      ), "cusparseDestroyMatDescr"   , __LINE__ );
 	cusolverSpCheck( cusolverSpDestroyCsrqrInfo ( handler->csrqrInfo ), "cusolverSpDestroyCsrqrInfo", __LINE__ );
 	checkCudaErrors( cusolverSpDestroy      ( handler->cusolverHandle), "cusolverSpDestroy"         , __LINE__ );
+
+	/* destroy CUDA stream array */
+// spike_nullify(handler->stream);
 
 	/* deallocate directSolver handler */
 	spike_nullify(handler);

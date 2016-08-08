@@ -47,8 +47,7 @@
 							integer_t *restrict rowptr,
 							double *restrict aij,
 							double *restrict xij,
-							double *restrict bij,
-							const int partitions)
+							double *restrict bij)
 {
 	// TODO: write a check params function 
 	if ( nnz < 0 ) {
@@ -89,7 +88,7 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, partitions );
+	S = spike_solve_analysis( A, nrhs );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -113,7 +112,7 @@
 		/* Set up solver handler */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 		
-		directSolver_Configure(handler);
+		directSolver_Configure(handler, S->max_nrhs );
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
@@ -144,7 +143,6 @@
 		directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij );
 		fprintf(stderr, "Solved for RHS\n");
 
-
 		/* Extract the tips of the yi block */
 		block_t* yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
 		block_t* yib = block_ExtractTip( yi, _BOTTOM_SECTION_, _COLMAJOR_ );
@@ -158,6 +156,7 @@
 		block_Deallocate (yi );
 		block_Deallocate (yit);
 		block_Deallocate (yib);
+
 
 		if ( p == 0 ){
 			block_t* Vi = block_CreateEmptyBlock ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
@@ -173,9 +172,9 @@
 
 			block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 			matrix_AddTipToReducedMatrix( S->p, p, S->n, S->ku, S->kl, R, Vib );
-			block_Deallocate( Vi );
-
 			block_Deallocate( Vib);
+
+			block_Deallocate( Vi );
 		}
 		else if ( p == ( S->p -1)){
 			block_t* Wi = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
@@ -271,7 +270,7 @@
 		/* allocate pardiso configuration parameters */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 
-		directSolver_Configure( handler );
+		directSolver_Configure( handler, S->max_nrhs );
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe);
@@ -427,17 +426,13 @@
 	integer_t *restrict rowptr,
 	double *restrict aij,
 	double *restrict xij,
-	double *restrict bij,
-	const int partitions )
+	double *restrict bij )
 {
 	// TODO: write a check params function 
 	if ( nnz < 0 ) {
 		fprintf(stderr, "\n%s: nnz must be a positive number (consider buffer overflow)\n", __FUNCTION__ );
 		abort();
 	}
-	
-	/* define column blocking size */
-	const integer_t COLBLOCKINGDIST = 10;
 
 	fprintf(stderr, "\n  SPIKE direct-direct solver (low-level, blocking implementation)\n");
 
@@ -466,7 +461,10 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, partitions );
+	S = spike_solve_analysis( A, nrhs );
+	
+	/* define column blocking size */
+	const integer_t COLBLOCKINGDIST = S->blockingDistance;
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -490,7 +488,7 @@
 		/* Set up solver handler */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 		
-		directSolver_Configure(handler);
+		directSolver_Configure(handler, S->max_nrhs);
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
@@ -928,7 +926,7 @@
 		/* allocate pardiso configuration parameters */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 
-		directSolver_Configure( handler );
+		directSolver_Configure( handler, S->max_nrhs );
 
 		/* factorize matrix */
 		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe);

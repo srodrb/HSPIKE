@@ -60,7 +60,7 @@ DirectSolverHander_t *directSolver_CreateHandler(void)
     return (handler);
 }
 
-Error_t directSolver_Configure( DirectSolverHander_t *handler )
+Error_t directSolver_Configure( DirectSolverHander_t *handler, const integer_t max_nrhs )
 {   
     /* create superlu structures from data */
     handler->nprocs     = 1;

@@ -35,9 +35,10 @@ int main(int argc, const char *argv[])
 	/* -------------------------------------------------------------------- */
 	/* .. Load reference matrix from file. */
 	/* -------------------------------------------------------------------- */
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/10k.bin");
 	matrix_PrintAsDense(A, "Test matrix");
-	
+
+#ifdef ALLTEST	
 	/* -------------------------------------------------------------------- */
 	/* .. CASE 1 Single RHS case */
 	/* -------------------------------------------------------------------- */
@@ -106,7 +107,7 @@ int main(int argc, const char *argv[])
 	/* clean up and resume */
 	block_Deallocate ( x2 );
 	block_Deallocate ( b2 );	
-	
+#endif
 
 	/* -------------------------------------------------------------------- */
 	/* .. CASE 3 Factorizes the matrix and then solves for multiple RHS   . */

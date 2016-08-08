@@ -6,7 +6,7 @@ DEBUG    =no
 # Data type definition
 DEFINES = -D_DATATYPE_D_
 
-OBJS  = spike_datatypes.o spike_memory.o spike_matrix.o \
+OBJS  = spike_datatypes.o spike_matrix.o \
 		spike_algebra.o spike_analysis.o spike_common.o \
 		spike_interfaces.o
 
@@ -48,12 +48,13 @@ endif
 
 ifeq ($(BACKEND),pardiso)
 	DEFINES += -D_PARDISO_BACKEND_
-	OBJS    += spike_pardiso.o
+	OBJS    += spike_pardiso.o spike_memory_host.o
 endif
 
 ifeq ($(BACKEND),cusolver)
 	NVCC      = nvcc
-	NVCFLAGS  =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
+	#–default-stream per-thread
+	NVCFLAGS  =-O3 --gpu-architecture=compute_37 -G -dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
 	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
 	NVCINCS  +=-I/usr/local/cuda/include
 
@@ -70,17 +71,18 @@ ifeq ($(DEBUG),YES)
 endif
 
 
-#NVCC      = nvcc
-#NVCFLAGS  =-dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
-#NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
-#NVCINCS  +=-I/usr/local/cuda/include
-#CINCS    +=-I/usr/local/cuda/include
-#CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
-#DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
-#OBJS     += spike_cuda.o
+NVCC      = nvcc
+NVCFLAGS  = -O3 --gpu-architecture=compute_37 -g --generate-line-info -dlink -ccbin=icc -Xcompiler 
+# -std=c99 #-Xcompiler -fopenmp -O2
+NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+NVCINCS  +=-I/usr/local/cuda/include
+CINCS    +=-I/usr/local/cuda/include
+CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
+DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+OBJS     += spike_cuda.o spike_memory_cuda.o
 
-DEFINES += -D_PARDISO_BACKEND_
-OBJS    += spike_pardiso.o
+#DEFINES += -D_PARDISO_BACKEND_
+#OBJS    += spike_pardiso.o spike_memory_host.o
 
 
 TARTGET=main
@@ -109,7 +111,7 @@ spike_interfaces.o:spike_interfaces.c
 spike_datatypes.o:spike_datatypes.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
-spike_memory.o:spike_memory.c
+spike_memory_host.o:spike_memory_host.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_matrix.o:spike_matrix.c
@@ -125,6 +127,9 @@ spike_superlu.o:spike_superlu.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_cuda.o:spike_cuda.c
+	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCLIBS) $+ -c
+
+spike_memory_cuda.o:spike_memory_cuda.c
 	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCLIBS) $+ -c
 
 spike_analysis.o:spike_analysis.c
@@ -144,6 +149,7 @@ innersolver: innersolvercheck.o $(OBJS) $(LIBSPIKE)
 
 innersolvercheck.o: innersolvercheck.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
 
 
 # inner solver solution test for small matrix

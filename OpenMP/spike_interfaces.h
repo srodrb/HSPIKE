@@ -41,8 +41,7 @@
 									integer_t *restrict rowptr,
 									double    *restrict aij,
 									double    *restrict xij,
-									double    *restrict bij,
-									const int partitions);
+									double    *restrict bij);
 
  	Error_t    cspike_core_host    (const integer_t n,
 									const integer_t nnz,
@@ -70,8 +69,7 @@
 									integer_t *restrict rowptr,
 									double *restrict aij,
 									double *restrict xij,
-									double *restrict bij,
-									const int partitions);
+									double *restrict bij);
 
 
 #endif /* end of _SPIKE_INTERFACES_ definition */

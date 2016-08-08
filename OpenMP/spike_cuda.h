@@ -25,7 +25,8 @@
     #include "spike_common.h"
     #include "spike_memory.h"
 
-
+    #define ASYNC_COPY 1
+    #define BLOCKING_GPU 1
 
     /* local alloca and free counters for device memory */
     extern unsigned int cnt_devMalloc;
@@ -76,9 +77,21 @@
         complex_t *h_xij;    /* host xij pointer */
         complex_t *h_bij;    /* host bij pointer */
 
+        /* Current CUDA stream */
+        cudaStream_t stream[10];
+
+        /* Flag to know whether the device memory for RHS has been allocated or not */
+        Bool_t deviceMemForRHSisAllocated;
+        integer_t deviceRHSBlockDist;
+
         /* Max device memory and current memory usage */
         size_t deviceTotalMemory;
         size_t deviceFreeMemory;
+
+        /* number of rhs fittin on the device after factorization */
+        integer_t nrhs_fiffing;
+        integer_t max_nrhs;
+        integer_t nstreams;
 
         /* needed handlers */
         cusolverSpHandle_t cusolverHandle; /* cusolver handler */
@@ -111,7 +124,7 @@
 
     DirectSolverHander_t *directSolver_CreateHandler(void);
 
-    Error_t directSolver_Configure( DirectSolverHander_t *handler );
+    Error_t directSolver_Configure( DirectSolverHander_t *handler, const integer_t max_nrhs );
 
 
     Error_t directSolver_Factorize(DirectSolverHander_t *handler,
@@ -125,6 +138,24 @@
                                 const integer_t nrhs,
                                 complex_t *__restrict__ xij,
                                 complex_t *__restrict__ bij);
+
+
+    Error_t directSolver_SolveForRHS_sync ( DirectSolverHander_t* handler,
+                                const integer_t nrhs,
+                                complex_t *__restrict__ xij,
+                                complex_t *__restrict__ bij);
+
+    Error_t directSolver_SolveForRHS_async_1 ( DirectSolverHander_t* handler,
+                                const integer_t nrhs,
+                                complex_t *__restrict__ xij,
+                                complex_t *__restrict__ bij);
+
+
+    Error_t directSolver_SolveForRHS_asyn_2 ( DirectSolverHander_t* handler,
+                                const integer_t nrhs,
+                                complex_t *__restrict__ xij,
+                                complex_t *__restrict__ bij);
+
 
     Error_t directSolver_Finalize( DirectSolverHander_t *handler );
 

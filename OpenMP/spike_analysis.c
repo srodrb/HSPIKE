@@ -1,17 +1,31 @@
 #include "spike_analysis.h"
 
-sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const integer_t p)
+sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
 {
-	if ( p > A->n ){
-		fprintf(stderr, "Number of partitions is too high. Unable to create the partition table.\n");
-		abort();
-	}
-
-
 	/* local variables */
 	integer_t i;
-	integer_t nreg;  // regular block dimension
-	integer_t nrem;  // irregular block dimension
+	integer_t nreg;    /* number of rows in a regular  block                     */
+	integer_t nrem;    /* number of rows in a iregular block                     */
+	uLong_t   HostMem; /* host available memory in bytes                         */
+	integer_t p;       /* optimal number of matrix partitions in terms of memory */
+	integer_t max_nrhs; /* maximum number of RHS on any sub-system                */
+
+	/* ------------------ function body --------------------------------- */
+
+	/* get host free memory resources */
+	HostMem = get_maximum_av_host_memory();
+
+	/* compute matrix bandwidth */
+	matrix_ComputeBandwidth( A->n, A->colind, A->rowptr, A->aij, &A->ku, &A->kl );
+
+	/* max_rhs is max(ku,kl,nrhs) */
+	max_nrhs = ( A->ku   > A->kl ) ? A->ku   : A->kl;
+	max_nrhs = ( max_nrhs > nrhs ) ? max_nrhs : nrhs;
+	fprintf(stderr, "\n The maximum number of RHS on any sub-linear system is %d", max_nrhs);
+
+	/* compute optimal number of partitions in terms of memory */
+	p = compute_optimal_number_of_partitions( A, nrhs, HostMem );
+
 
 	// gather information about hardware resources
 	// TODO: get the number of cores properly
@@ -19,9 +33,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 	// TODO: create a symbolic factorization routine
 	// design a solve strategy
 
-	get_maximum_av_host_memory();
 
-	matrix_ComputeBandwidth( A->n, A->colind, A->rowptr, A->aij, &A->ku, &A->kl );
 
 	nreg = (A->n / p);
 
@@ -29,19 +41,18 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs, const in
 
 	fprintf(stderr, "\nRegular block dimension "_I_", remainder "_I_, nreg, nrem);
 
-	if ( nreg != nrem )
-	{
-		fprintf(stderr,"\nWarning: possible work unbalance");
-	}
+	if ( nreg != nrem ) fprintf(stderr,"\nWarning: possible work unbalance");
 
 	sm_schedule_t* S = (sm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(sm_schedule_t));
-	S->max_n = ( nreg > nrem )   ? nreg : nrem;
-	S->max_m = ( A->ku > A->kl ) ? A->ku : A->kl;
-	S->p  = p;
-	S->n     = (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
-	S->r     = (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
-	S->ku    = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
-	S->kl    = (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
+	S->max_n    		= ( nreg > nrem )   ? nreg : nrem;
+	S->max_m    		= ( A->ku > A->kl ) ? A->ku : A->kl;
+	S->p  	    		= p;
+	S->max_nrhs         = max_nrhs;
+	S->blockingDistance = 50; 
+	S->n        		= (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
+	S->r        		= (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
+	S->ku       		= (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
+	S->kl       		= (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
 
 	memset(S->n, 0, (p +1) * sizeof(integer_t));
 	memset(S->r, 0, (p +1) * sizeof(integer_t));
@@ -115,14 +126,40 @@ uLong_t get_maximum_av_host_memory( void )
 
 /*
 	Computes the memory requirements for each number of partitions.
+
+	For now, I'll assume that ku and kl are equal and constant for the entire matrix.
 */
-
-void compute_partition_table(const integer_t n,
-							const integer_t nnz,
-							const integer_t nrhs,
-							const integer_t ku,
-							const integer_t kl )
+integer_t compute_optimal_number_of_partitions( matrix_t *A, integer_t nrhs, uLong_t HostMem )
 {
+	/* local variables */
+	integer_t i;           /* dummy integer                          */
+	integer_t p;           /* optimal number of partitions           */
+	integer_t p_max;       /* maximum theoretical number of parts.   */
+	uLong_t A_cost;        /* weigth in bytes of the entire A matrix */
+	uLong_t f_cost;
+	uLong_t x_cost;
 
+	integer_t ni; /* number of rows on a Aij sub-matrix */
+
+	/* compute base costs */
+	A_cost = A->nnz * sizeof(complex_t) + A->n * sizeof(complex_t) + (A->n + 1) * sizeof(complex_t);
+	x_cost = A->n   * sizeof(complex_t);
+	f_cost = A->n   * sizeof(complex_t);
+
+	/* compute maximum number of partitions                                   */
+	/* Instead of dividing by A->ku + A->kl y doble this number, this ensures */
+	/* a factor of 2 of the reduction ratio, at least                         */
+	p_max = floor( ((double) A->n) / ((double) ( A->ku + A->kl + A->ku + A->kl )) );
+
+	fprintf(stderr, "\n The maximum number of partitions is %d", p_max);
+
+	/* estimate the costs for different values of p */
+	for(i=0; i < p_max; i++){
+		ni = 3;
+	}
+
+
+	return (3);
 };
+
 

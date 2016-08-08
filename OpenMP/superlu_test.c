@@ -128,7 +128,7 @@ int main(int argc, const char *argv[])
 
 	DirectSolverHander_t *handler = directSolver_CreateHandler();
 
-	directSolver_Configure( handler );
+	directSolver_Configure( handler, 2 );
 
 	/* factorize, keeping the LU in memory */
 	directSolver_Factorize( handler, A->n, A->nnz, A->colind, A->rowptr, A->aij );
