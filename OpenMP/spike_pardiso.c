@@ -374,6 +374,9 @@ static Error_t pardiso_CleanUp( DirectSolverHander_t *handler )
 							complex_t *restrict x,
 							complex_t *restrict b)
 {
+#ifdef _PARDISO_BACKEND_
+	directSolver_Solve(n, nnz, nrhs, colind, rowptr, aij, x, b);
+#else
 	/* -------------------------------------------------------------------- */
 	/* .. Local variables. */
 	/* -------------------------------------------------------------------- */
@@ -509,13 +512,15 @@ static Error_t pardiso_CleanUp( DirectSolverHander_t *handler )
 	/* -------------------------------------------------------------------- */
 	/* .. Termination and release of memory. */
 	/* -------------------------------------------------------------------- */
-	phase = -1;           /* Release internal memory. */
+	phase = -1;           
 	PARDISO (pt, &maxfct, &mnum, &mtype, &phase,
 					 &n, &ddum, rowptr, colind, &idum, &nrhs,
 					 iparm, &msglvl, &ddum, &ddum, &error);
 
 	/* print some efficiency statistics */
 	fprintf(stderr, "\n%s: Factor to solve ratio: %.6f\n", __FUNCTION__, factor_t / solve_t );
+
+#endif
 
 	return (SPIKE_SUCCESS);
 };

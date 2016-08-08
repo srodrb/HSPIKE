@@ -119,7 +119,8 @@
 													const integer_t r0,
 													const integer_t rf,
 													const integer_t c0,
-													const integer_t cf );
+													const integer_t cf,
+													matrixtype_t type );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Functions affecting block structures.                             */

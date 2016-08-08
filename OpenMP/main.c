@@ -88,7 +88,9 @@ int main(int argc, const char *argv[])
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
+	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	matrix_PrintAsDense(A, "Input matrix");
@@ -120,6 +122,7 @@ int main(int argc, const char *argv[])
 #endif
 
 
+	block_Print( x, "Solution of the linear system");
 	/* -------------------------------------------------------------------- */
 	/* .. Clean up. */
 	/* -------------------------------------------------------------------- */

@@ -115,7 +115,7 @@
 		directSolver_Configure(handler);
 
 		/* factorize matrix */
-		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
+		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf, _DIAG_BLOCK_);
 		fprintf(stderr, "Sub-matrix Aij extracted\n");
 		
 		directSolver_Factorize( handler, 
@@ -273,7 +273,7 @@
 		directSolver_Configure( handler );
 
 		/* factorize matrix */
-		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe);
+		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe, _DIAG_BLOCK_);
 		directSolver_Factorize( handler, Aij->n, Aij->nnz, Aij->colind, Aij->rowptr, Aij->aij);
 
 		/* extract xi sub-block */
@@ -464,7 +464,7 @@
 	start_t = GetReferenceTime();
 
 	/* compute an optimal solving strategy */
-	S = spike_solve_analysis( A, nrhs, 2 );
+	S = spike_solve_analysis( A, nrhs, 4 );
 
 	/* create the reduced sytem in advanced, based on the solving strategy */
 	R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -491,7 +491,7 @@
 		directSolver_Configure(handler);
 
 		/* factorize matrix */
-		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf);
+		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf, _DIAG_BLOCK_);
 		fprintf(stderr, "Sub-matrix Aij extracted\n");
 		
 		directSolver_Factorize( handler, 
@@ -667,6 +667,8 @@
 	directSolver_Host_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij );
 
 	reduced_PrintAsDense ( R, NULL, yr, "Reduced system");
+	block_Print(xr, "X Reduced System");
+
 
 
 	/* compute residual */
@@ -699,7 +701,7 @@
 		directSolver_Configure( handler );
 
 		/* factorize matrix */
-		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe);
+		matrix_t* Aij = matrix_ExtractMatrix(A, obs, obe, obs, obe, _DIAG_BLOCK_);
 		directSolver_Factorize( handler, Aij->n, Aij->nnz, Aij->colind, Aij->rowptr, Aij->aij);
 
 		/* extract xi sub-block */
@@ -712,6 +714,9 @@
 
 			block_t* Bi  = matrix_ExtractBlock ( A, obe - S->ku[p], obe, obe, obe + S->ku[p], _WHOLE_SECTION_ );
 			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p+1]);
+
+			block_Print(Bi, "Bib Block");
+			block_Print(xt_next, "xt_next Block");
 
 			/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi using cblas_?gemm*/
 			gemm( _COLMAJOR_, _NOTRANSPOSE_, _NOTRANSPOSE_,
@@ -726,9 +731,13 @@
 				__punit, 						/* beta                       */
 				&fi->aij[ni - S->ku[p]], 		/* C block                    */
 				ni ); 					 		/* ldc - first dimension of C */
+			block_Print(fi, "Fi Block");
+			block_Print(xi, "xi Block");
 
 			/* Solve Aij * ( f - Bi * xt ) */
 			directSolver_SolveForRHS( handler, xi->m, xi->aij, fi->aij );
+			block_Print(fi, "Fi Block");
+			block_Print(xi, "xi Block");
 
 			block_Deallocate ( Bi );
 			block_Deallocate ( xt_next); 

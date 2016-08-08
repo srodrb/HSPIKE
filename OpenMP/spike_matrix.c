@@ -412,7 +412,8 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 								const integer_t r0,
 								const integer_t rf,
 								const integer_t c0,
-								const integer_t cf)
+								const integer_t cf,
+								matrixtype_t type)
 {
 	// complex_t* restrict aij    __attribute__ ((aligned (ALIGN_COMPLEX))) = M->aij;
 	// integer_t* restrict coling __attribute__ ((aligned (ALIGN_INT    ))) = M->colind;
@@ -457,6 +458,7 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 
 	// allocate matrix space
 	matrix_t* B = matrix_CreateEmptyMatrix( rf - r0, nnz );
+	B->type = type;
 
 	// extract elements and correct indices
 	nnz          = 0;
@@ -696,7 +698,7 @@ block_t* block_BuildBlockFromMatrix( matrix_t *M, blocktype_t type,
 
 
 	/* locate myself */
-	integer_t firstRow = (B->type ==  _V_BLOCK_) ? B->n - B->ku : 0;
+	integer_t firstRow = (B->type ==  _V_BLOCK_) ? B->n - B->ku-1 : 0;
 	integer_t lastRow  = (B->type ==  _V_BLOCK_) ? B->n         : B->kl;
 
 

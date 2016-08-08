@@ -66,13 +66,16 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 
 	MPI_Request request;	
 	integer_t position = 0, i;
-	integer_t buffSize = (Aij->n+1 + Aij->nnz + 5)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t);
+	integer_t buffSize = (Aij->n+1 + Aij->nnz + 4)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t) + sizeof(uint64_t);
 	char *buff = (char*) malloc(buffSize*sizeof(char));
 	
-	MPI_Pack(Aij		, 5		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(&Aij->n	, 1		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(&Aij->nnz	, 1		  			  ,_MPI_ULONG_	   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(&Aij->ku	, 3		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->colind, Aij->nnz			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->rowptr, Aij->n+1			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
+
 	debug("Values: %d, %d, %d, %d, %d, buffSize: %d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type, buffSize);
 
 	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
@@ -109,19 +112,23 @@ matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	
 	integer_t buffSize = 0, position = 0, i;
 	MPI_Status  status;
-	integer_t t[5];
+	integer_t t[3], n;
+	uLong_t nnz;
 
 	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
 	char* buff = (char*)malloc(sizeof(char) * buffSize);
 
 	MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status);
-	MPI_Unpack(buff, buffSize, &position, t, 5, MPI_INT, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, &n,   1, MPI_INT,    MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, &nnz, 1,_MPI_ULONG_, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, t,    3, MPI_INT,    MPI_COMM_WORLD);
+	debug("n:%d, nnz:%d, ku:%d, kl:%d, type:%d", n, nnz, t[0], t[1], t[2]);
 
-	matrix_t* Aij = matrix_CreateEmptyMatrix( t[0], t[1] );
-	Aij->ku = t[2];
-	Aij->kl = t[3];
-	Aij->type  = t[4];
+	matrix_t* Aij = matrix_CreateEmptyMatrix( n, nnz );
+	Aij->ku    = t[0];
+	Aij->kl    = t[1];
+	Aij->type  = t[2];
 	
 	MPI_Unpack(buff, buffSize, &position, Aij->colind, Aij->nnz			   , MPI_INT	   , MPI_COMM_WORLD);
 	MPI_Unpack(buff, buffSize, &position, Aij->rowptr, Aij->n+1			   , MPI_INT	   , MPI_COMM_WORLD);

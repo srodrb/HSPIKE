@@ -6,7 +6,8 @@ DEBUG    =YES
 DEFINES =-D_DATATYPE_D_ -D_NDEBUG
 
 OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
-			 spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o
+       spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o \
+	spike_dist_nonblocking.o spike_dist_blocking.o
 
 ifeq ($(COMPILER),INTEL)
 	CC      =mpiicc
@@ -89,6 +90,14 @@ spike_common.o:../OpenMP/spike_common.c
 
 spike_mpi.o:spike_mpi.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+spike_dist_nonblocking.o:spike_dist_nonblocking.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+spike_dist_blocking.o:spike_dist_blocking.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+
 
 
 # split test
