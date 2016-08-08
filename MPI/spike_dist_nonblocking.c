@@ -46,7 +46,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		start_t = GetReferenceTime();
 
 		/* compute an optimal solving strategy */
-		sm_schedule_t* S = spike_solve_analysis( A, nrhs, size );
+		sm_schedule_t* S = spike_solve_analysis( A, nrhs );
 
 		/* create the reduced sytem in advanced, based on the solving strategy */
 		matrix_t* R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
@@ -105,7 +105,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		/* Set up solver handler */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 		
-		directSolver_Configure(handler);
+		directSolver_Configure(handler, S->max_nrhs );
 
 		p = 0;
 		const integer_t r0 = S->n[p];
@@ -338,7 +338,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		/* Set up solver handler */
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
 		
-		directSolver_Configure(handler);
+		directSolver_Configure(handler, S->max_nrhs );
 
 		/*Wait for AIJ and factorize matrix */
 		matrix_t* Aij = recvMatrixPacked(master, AIJ_TAG);

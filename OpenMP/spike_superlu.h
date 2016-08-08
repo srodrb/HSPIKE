@@ -106,7 +106,7 @@
 
     DirectSolverHander_t *directSolver_CreateHandler(void);
 
-    Error_t directSolver_Configure( DirectSolverHander_t *handler );
+    Error_t directSolver_Configure( DirectSolverHander_t *handler, const integer_t max_nrhs );
 
 
     Error_t directSolver_Factorize(DirectSolverHander_t *handler,

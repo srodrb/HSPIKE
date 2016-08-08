@@ -154,6 +154,8 @@
 
 	static Error_t    block_Transpose               ( block_t* B );
 
+	static Error_t block_Transpose_blocking( complex_t* aij, const integer_t n, const integer_t m );
+
 	block_t*          block_ExtractTip              ( block_t* B, blocksection_t section, memlayout_t layout );
 
 	Error_t           block_ExtractTip_blocking   ( block_t *dst,

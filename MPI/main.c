@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 			block_InitializeToValue( f, __punit ); // rhs of the system
 
 			/* compute an optimal solving strategy */
-			sm_schedule_t* S = spike_solve_analysis( A, nrhs, size );
+			sm_schedule_t* S = spike_solve_analysis( A, nrhs );
 			
 			/* call MPI solver */
 			spike_dist_nonblocking ( A, x, f, nrhs );

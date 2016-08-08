@@ -126,13 +126,10 @@ matrix_t* matrix_CreateEmptyMatrix( const size_t n, const uLong_t nnz )
 	R->rowptr   = (integer_t*) spike_malloc( ALIGN_INT    , R->n+1, sizeof(integer_t));
 	R->aij      = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->nnz, sizeof(complex_t));
 
-	fprintf(stderr, "Empty matrix allocated...\n");
-
 	memset( (void*) R->colind, 0, (R->nnz) * sizeof(integer_t));
 	memset( (void*) R->rowptr, 0, (R->n+1) * sizeof(integer_t));
 	memset( (void*) R->aij   , 0, (R->nnz) * sizeof(complex_t));
 
-	fprintf(stderr, "Empty matrix created\n");
 	return (R);
 };
 
@@ -336,12 +333,12 @@ block_t* matrix_ExtractBlock (  matrix_t* M,
 	B->n       = rf - r0;
 	B->m       = cf - c0;
 
-	if ( M->ku <= 0 || M->kl <= 0 ){
-		fprintf(stderr, "\n%s: WARNING: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );
-		
-		/* force the computetion of the matrix bandwidth */	
-		matrix_ComputeBandwidth( M->n, M->colind, M->rowptr, M->aij, &M->ku, &M->kl );		
-	}
+//	if ( M->ku <= 0 || M->kl <= 0 ){
+//		fprintf(stderr, "\n%s: WARNING: Upper and Lower bandwidth are not determined for this matrix!", __FUNCTION__ );
+//		
+//		/* force the computetion of the matrix bandwidth */	
+//		matrix_ComputeBandwidth( M->n, M->colind, M->rowptr, M->aij, &M->ku, &M->kl );		
+//	}
 
 	B->ku      = M->ku;
 	B->kl      = M->kl;
@@ -483,7 +480,7 @@ matrix_t* matrix_ExtractMatrix( matrix_t* M,
 	}
 	tend = GetReferenceTime() - tstart;
 
-	fprintf(stderr, "\n%s: took %.6lf seconds", __FUNCTION__, tend );
+//	fprintf(stderr, "\n%s: took %.6lf seconds.", __FUNCTION__, tend );
 
 	/* compute the bandwidth of the sub-block */	
 	matrix_ComputeBandwidth( B->n, B->colind, B->rowptr, B->aij, &B->ku, &B->kl );
@@ -516,23 +513,18 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 	// compute matrix dimensions and allocate the structure
 	GetNnzAndRowsUpToPartition(TotalPartitions, TotalPartitions, ku, kl, &nnz, &rows );
 
-	fprintf(stderr, "nnz %zu, nrows %d \n", nnz, rows );
+	fprintf(stderr, "\n%s: statistics: nnz %zu, nrows %d \n", __FUNCTION__, nnz, rows );
 
 	matrix_t* R = matrix_CreateEmptyMatrix( rows, nnz );
 
 	// reduced system dimensions
 	integer_t *nr = ComputeReducedSytemDimensions( TotalPartitions, ku, kl);
 
-	for(int i=0; i < TotalPartitions; i++ ){
-		fprintf(stderr, "%d value %d\n", i, nr[i]);
-	}
-
 
   // initialize blocks
   for(integer_t p=0; p < TotalPartitions; p++)
 	{
 		GetNnzAndRowsUpToPartition(TotalPartitions, p, ku, kl, &nnz, NULL );
-		fprintf(stderr, "%d Dimensions computed correctly, partition %d\n", __LINE__, p );
 
 		/* ------------- top spike elements ---------------- */
 		for(integer_t row = nr[p]; row < (nr[p] + ku[p]); row++ ) {
@@ -559,8 +551,6 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
 		}
 
-		fprintf(stderr, "%d : Dimensions computed correctly, partition %d\n", __LINE__, p );
-
 
 		/* ------------- Bottom spike elements ---------------- */
 		for(integer_t row = (nr[p] + ku[p]); row < nr[p+1]; row++ ) {
@@ -586,9 +576,6 @@ matrix_t* matrix_CreateEmptyReducedSystem(const integer_t TotalPartitions,
 			else
 				R->rowptr[row+1] = R->rowptr[row] + (ku[p] + kl[p] +1);
 		}
-
-		fprintf(stderr, "%d. Dimensions computed correctly, partition %d\n", __LINE__, p );
-
 	}
 
 	/* clean up and resume */
@@ -610,8 +597,6 @@ block_t* block_CreateEmptyBlock (   const integer_t n,
 {
 	/* local variables */
 	size_t nmemb = ((size_t) n) * m;
-
-	fprintf(stderr, "%s(): nmemb value: %zu (n %d, m %d)\n", __FUNCTION__, nmemb, n, m);
 
 	/* check for buffer overflow problems */
 	if ( n < 0 || m < 0 || nmemb < 0 ) {
@@ -729,7 +714,7 @@ Error_t block_Print( block_t* B, const char* msg )
 	if ( msg ) fprintf(stderr, "\n%s:%s\n\t", __FUNCTION__, msg);
 	else       fprintf(stderr, "\n%s\n\t"   , __FUNCTION__     );
 
-	if ( nrows > _MAX_PRINT_DIMENSION_ ) {
+	if ( nrows > _MAX_PRINT_DIMENSION_ || ncols > _MAX_PRINT_DIMENSION_ ) {
 		fprintf(stderr, "\n%s: Block is too large to print it!", __FUNCTION__ );
 		return (SPIKE_SUCCESS);
 	}
@@ -839,6 +824,26 @@ static Error_t block_Transpose( block_t* B )
 	return (SPIKE_SUCCESS);
 };
 
+static Error_t block_Transpose_blocking( complex_t* aij, const integer_t n, const integer_t m )
+{
+	// TODO omatcopy2 and omatcopy are the out-of-place version of the transpose
+	// matrix operation and seems to achieve much higher throughput. Would be a good
+	// idea testing them.
+	// See "In-place transposition of rectangular matrices on accelerators (H.Whu)"
+
+	/* transpose the block using mkl_?imatcopy */
+	#ifdef __INTEL_MKL__
+		CALL_LA_KERNEL(mkl_,_PPREF_,imatcopy) ('C', 'T', n, m, __punit, aij, n, m );
+//		CALL_LA_KERNEL(mkl_,_PPREF_,imatcopy) ('C', 'T', 3, 2, __punit, aij, 3, 2 );
+	#else
+		fprintf(stderr, "%s: NOT IMPLEMENTED\n", __FUNCTION__);
+		abort();
+	#endif
+
+
+	return (SPIKE_SUCCESS);
+};
+
 /*
 	Extracts a section of the block and returns it as a block. 
 
@@ -906,6 +911,7 @@ Error_t block_ExtractTip_blocking ( block_t *dst,
 									const integer_t cf,
 									blocksection_t section,
 									memlayout_t layout )
+
 {
   	integer_t RowOffset; /* row offset on the src block */
   	integer_t ChunkSize; /* chunksize to copy on the dst block */
@@ -939,10 +945,9 @@ Error_t block_ExtractTip_blocking ( block_t *dst,
   } /* end of switch statement */
   
   for(col=c0; col < cf; col++)
-  	memcpy((void*) &dst->aij[col * dst->n], (const void*) &src->aij[col*src->n + RowOffset], ChunkSize * sizeof(complex_t));
+  	memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[col*src->n + RowOffset], ChunkSize * sizeof(complex_t));
 
     // memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[col*src->n], ChunkSize * sizeof(complex_t));
-
 
   /* 
   	central section of the block is never transposed, since it is only
@@ -951,7 +956,7 @@ Error_t block_ExtractTip_blocking ( block_t *dst,
 	It does not make sense to transpose a column vector neither.
   */
   if ( layout == _ROWMAJOR_ && src->m > 1 ) 
-  	block_Transpose( dst );
+  	block_Transpose_blocking( dst->aij, ChunkSize, cf - c0 );
   
   return (SPIKE_SUCCESS);    
 };
@@ -1098,7 +1103,7 @@ Error_t block_AddTipTOReducedRHS_blocking   (const integer_t CurrentPartition,
 
 	/* copy the elements from the reference block copying them to the subblock */
 	for(col=c0; col < cf; col++)
-     	memcpy((void*) &RHS->aij[col * RHS->n + row], (const void*) &B->aij[ (col-c0) * B->n], chunksize * sizeof(complex_t));
+     	memcpy((void*) &RHS->aij[col * RHS->n + row], (const void*) &B->aij[ (col-c0) * chunksize], chunksize * sizeof(complex_t));
 
 	return (SPIKE_SUCCESS);
 };
@@ -1171,8 +1176,6 @@ static Error_t    GetNnzAndRowsUpToPartition   (const integer_t TotalPartitions,
 
 		/* add diagonal elements */
 		*nnz += (ku[p] + kl[p]);
-
-		fprintf(stderr, "\nValue of nnz up to %d partition is %zu\n", p, *nnz );
   }
 	/* Compute the number of rows optionally */
 	if ( FirstBlockRow != NULL ) {
@@ -1311,10 +1314,12 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _TOP_SECTION_ )
 				if ( B->type == _W_BLOCK_ )
 					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++)
-						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock )
+						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock ){
 							Raij[nnz++] = Baij[BlockAijCount++];
-						else
-							nnz += 1;
+						}
+						else{
+							nnz           += 1;
+						}
 			else
 				nnz += kl[p];
 		else
@@ -1327,10 +1332,12 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _TOP_SECTION_ )
 				if ( B->type == _V_BLOCK_ )
 					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++)
-						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) )
+						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) ){
 							Raij[nnz++] = Baij[BlockAijCount++];
-						else
-							nnz += 1;
+						}
+						else{
+							nnz           += 1;
+						}
 				else
 					nnz += ku[p];
 			else
@@ -1343,10 +1350,12 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _BOTTOM_SECTION_ )
 				if ( B->type == _W_BLOCK_ )
 					for(integer_t col= (nr[p] - kl[p]); col < nr[p]; col++) 
-						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock )
+						if ( col >= (nr[p] - kl[p]) + c0 && col < (nr[p] - kl[p]) + c0 + colblock ){
 							Raij[nnz++] = Baij[BlockAijCount++];
-						else
-							nnz += 1;
+						}
+						else{
+							nnz           += 1;
+						}
 				else
 					nnz += kl[p];
 			else
@@ -1360,10 +1369,12 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 			if ( B->section == _BOTTOM_SECTION_ )
 				if ( B->type == _V_BLOCK_ )
 					for(integer_t col= nr[p+1]; col < (nr[p+1] + ku[p]); col++) 
-						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) )
+						if ( col >= (nr[p+1] + c0) && col < (nr[p+1] + c0 + colblock) ){
 							Raij[nnz++] = Baij[BlockAijCount++];
-						else
-							nnz += 1;
+						}
+						else{
+							nnz           += 1;
+						}
 				else
 					nnz += ku[p];
 			else

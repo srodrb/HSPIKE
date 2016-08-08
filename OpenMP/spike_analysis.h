@@ -20,6 +20,12 @@
 	#define _SPIKE_ANALYSIS_H_
 
 	#include "spike_matrix.h"
+ 	#include <math.h>
+	#include <sys/sysinfo.h> /* memory structure */
+
+	#ifdef _MPI_SUPPORT_
+		#include <mpi.h>
+	#endif
 
 	/*
 	 * Shared memory version of the schedule structure
@@ -33,8 +39,11 @@
 	{
 		integer_t p; /* number of partitions in which the matrix is divided */
 
-		integer_t max_n; // value of max rows
-		integer_t max_m; // value of max cols
+		integer_t max_n; // value of max rows 
+		integer_t max_m; // value of max colssy
+
+		integer_t max_nrhs;
+		integer_t blockingDistance;
 
 		integer_t *n;    /* index of last row of each block for the original system */
 		integer_t *r;    /* index of last row of each block for the reduced system */
@@ -53,10 +62,16 @@
 	 * On top of that, we'd like either to reduce the memory
 	 * consumption or solve the system faster.
 	 */
-	sm_schedule_t* spike_solve_analysis ( matrix_t* A, const integer_t nrhs, const integer_t p );
+	sm_schedule_t* spike_solve_analysis ( matrix_t* A, const integer_t nrhs );
 
 	void schedule_Destroy( sm_schedule_t* S );
 
 	void schedule_Print(sm_schedule_t* S);
+
+	/*-------------------------------------------------------------------*/
+	uLong_t get_maximum_av_host_memory( void );
+
+	integer_t compute_optimal_number_of_partitions( matrix_t *A, integer_t nrhs, uLong_t HostMem );
+
 
 #endif /* end of _SPIKE_ANALYSIS_H_ definition */

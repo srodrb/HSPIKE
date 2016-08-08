@@ -1,15 +1,15 @@
-COMPILER=INTEL
-BACKEND  =PARDISO
-DEBUG    =YES
+COMPILER =intel
+BACKEND  =pardiso
+DEBUG    =no
 
 # Data type definition
-DEFINES =-D_DATATYPE_D_ -D_NDEBUG
+DEFINES +=-D_MPI_SUPPORT_ -D_DATATYPE_D_ -D_NDEBUG
 
-OBJS = spike_datatypes.o spike_memory.o spike_matrix.o \
+OBJS = spike_datatypes.o spike_matrix.o \
        spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o \
-	spike_dist_nonblocking.o spike_dist_blocking.o
+	   spike_dist_nonblocking.o spike_dist_blocking.o
 
-ifeq ($(COMPILER),INTEL)
+ifeq ($(COMPILER),intel)
 	CC      =mpiicc
 	CFLAGS  =-qopenmp -std=c99 -O2 -g -restrict
 
@@ -29,7 +29,7 @@ else
 	CINCS   +=-I../OpenMP
 endif
 
-ifeq ($(BACKEND),SUPERLU)
+ifeq ($(BACKEND),superlu)
 	#CLIBS   +=-L/home/srodrigu/Software/SuperLU_MT_mkl/lib -lsuperlu_mt_openmp
 	#CINCS   +=-I/home/srodrigu/Software/SuperLU_MT_mkl/SRC
 
@@ -43,18 +43,34 @@ ifeq ($(BACKEND),SUPERLU)
 
 	
 	OBJS    += spike_superlu.o
-else
-	DEFINES +=-D_PARDISO_BACKEND_
-	OBJS    += spike_pardiso.o
-
 endif
 
-DEFINES +=-D_MPI_SUPPORT_
+ifeq ($(BACKED),pardiso)
+	DEFINES +=-D_PARDISO_BACKEND_
+	OBJS    += spike_pardiso.o spike_memory_host.o
+endif
+
+ifeq ($(BACKEND),cusolver)
+	NVCC      = nvcc
+	#–default-stream per-thread
+	NVCFLAGS  =-O3 --gpu-architecture=compute_37 -G -dlink -ccbin=icc -Xcompiler # -std=c99 #-Xcompiler -fopenmp -O2
+	NVCLIBS  +=-L/usr/local/cuda/lib64 -lcusolver -lcusparse
+	NVCINCS  +=-I/usr/local/cuda/include
+
+	CINCS    +=-I/usr/local/cuda/include
+	CLIBS    +=-L/usr/local/cuda/lib64 -lcudart -lcusolver -lcusparse
+
+	DEFINES  += -D_CUDA_ENABLED_ -D_NVIDIA_BACKEND_
+
+	OBJS     += spike_cuda.o spike_memory_cuda.o
+endif
 
 ifeq  ($(DEBUG),YES)
 	DEFINES += -D_ENABLE_TESTING_ -D_DEBUG
 endif
 
+DEFINES +=-D_PARDISO_BACKEND_
+OBJS    += spike_pardiso.o spike_memory_host.o
 
 TARTGET=main
 
@@ -73,7 +89,7 @@ spike_pardiso.o:../OpenMP/spike_pardiso.c
 spike_superlu.o:../OpenMP/spike_superlu.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
-spike_memory.o:../OpenMP/spike_memory.c
+spike_memory_host.o:../OpenMP/spike_memory_host.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_matrix.o:../OpenMP/spike_matrix.c
@@ -97,7 +113,11 @@ spike_dist_nonblocking.o:spike_dist_nonblocking.c
 spike_dist_blocking.o:spike_dist_blocking.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
+spike_cuda.o:spike_cuda.c
+	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCLIBS) $+ -c
 
+spike_memory_cuda.o:spike_memory_cuda.c
+	$(NVCC) $(NVCFLAGS) $(DEFINES) $(NVCLIBS) $+ -c
 
 
 # split test

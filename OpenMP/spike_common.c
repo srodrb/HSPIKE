@@ -116,3 +116,12 @@ void CheckPreprocessorMacros (void)
 		"Complex arithmetic  :        %s\n\n", 
 		__FUNCTION__, datatype, mpi_support, complex_support );
 };
+
+double bytesToGb ( uLong_t bytes )
+{
+	double factor = 1024. * 1024. * 1024.;
+
+	double gb = ((double) bytes) / factor;
+
+	return (gb); 
+};

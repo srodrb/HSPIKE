@@ -265,11 +265,11 @@ matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, inte
 void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 
 	integer_t buffSize;
-	buffSize = (3 + 2 + S->p*4)*sizeof(integer_t);
+	buffSize = (5 + 2 + S->p*4)*sizeof(integer_t);
 	char *buff = (char*) malloc(buffSize*sizeof(char));
 	
 	integer_t position = 0;
-	MPI_Pack(S, 	3, 		MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S, 	5, 		MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(S->n,  S->p+1, MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(S->r, 	S->p+1, MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(S->ku, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
@@ -293,11 +293,13 @@ sm_schedule_t* recvSchedulePacked(integer_t p){
 	//debug("Prepared to recv schedule with buffSize: %d ", buffSize);
 	MPI_Recv(buff, buffSize, MPI_PACKED, p, 0, MPI_COMM_WORLD, &status);
 
-	MPI_Unpack(buff, buffSize, &position, t, 3, MPI_INT, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, t, 5, MPI_INT, MPI_COMM_WORLD);
 	//debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", t[2], t[1], t[0]);
-	S->p = t[0];
-	S->max_n = t[1];
-	S->max_m = t[2];
+	S->p        = t[0];
+	S->max_n    = t[1];
+	S->max_m    = t[2];
+	S->max_nrhs = t[3];
+	S->blockingDistance = t[4];
 
 	S->n     = (integer_t*) spike_malloc(ALIGN_INT, S->p +1, sizeof(integer_t));
 	S->r     = (integer_t*) spike_malloc(ALIGN_INT, S->p +1, sizeof(integer_t));
