@@ -282,7 +282,7 @@ void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 
 sm_schedule_t* recvSchedulePacked(integer_t p){
 	
-	integer_t buffSize=0, position = 0, t[3];
+	integer_t buffSize=0, position = 0, t[5];
 	MPI_Status  status;
 	sm_schedule_t* S = (sm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(sm_schedule_t));
 

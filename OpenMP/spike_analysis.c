@@ -48,7 +48,7 @@ sm_schedule_t* spike_solve_analysis( matrix_t* A, const integer_t nrhs )
 	S->max_m    		= ( A->ku > A->kl ) ? A->ku : A->kl;
 	S->p  	    		= p;
 	S->max_nrhs         = max_nrhs;
-	S->blockingDistance = 50; 
+	S->blockingDistance = 5; 
 	S->n        		= (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
 	S->r        		= (integer_t*) spike_malloc(ALIGN_INT, p +1, sizeof(integer_t));
 	S->ku       		= (integer_t*) spike_malloc(ALIGN_INT, p, sizeof(integer_t));
@@ -104,8 +104,9 @@ void schedule_Print (sm_schedule_t* S)
 	for(integer_t i=0; i<S->p; i++)
 		fprintf(stderr,"\n\t"_I_"-th block goes from "_I_"-th to "_I_"-th row. ku "_I_" kl "_I_, i+1, S->r[i], S->r[i+1], S->ku[i], S->kl[i]);
 
+	fprintf(stderr, "\nReduced system dimensions:");
 
-	fprintf(stderr,"\n\n");
+	fprintf(stderr,"\n\nMax nrhs %d, blocking distance %d\n\n\n", S->max_nrhs, S->blockingDistance );
 };
 
 /*
@@ -164,7 +165,7 @@ integer_t compute_optimal_number_of_partitions( matrix_t *A, integer_t nrhs, uLo
 	MPI_Comm_size ( MPI_COMM_WORLD, &size);
 	return (size);
 #else	
-	return (3);
+	return (4);
 #endif
 };
 

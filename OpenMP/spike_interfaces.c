@@ -645,6 +645,7 @@
 
 					/* solve Aij * Vi = Bi */
 					directSolver_SolveForRHS( handler, A->ku - col, Vi->aij, Bi->aij );
+
 					/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
 					block_ExtractTip_blocking   ( Bi, Vi, 0, A->ku - col, _TOP_SECTION_, _ROWMAJOR_ );
 					matrix_AddTipToReducedMatrix_blocking( S->p, p, col, A->ku, S->n, S->ku, S->kl, R, Bi );
@@ -662,7 +663,6 @@
 		}
 
 		else if ( p == ( S->p -1)){
-
 			if ( A->kl < COLBLOCKINGDIST ) {
 
 				block_t* Ci = block_CreateEmptyBlock( rf - r0, A->kl, A->ku, A->kl, _W_BLOCK_, _WHOLE_SECTION_ );
@@ -741,7 +741,7 @@
 				/* blocking buffer */
 				block_t* Vi = block_CreateEmptyBlock ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
 				block_t* Bi = block_CreateEmptyBlock ( rf - r0, A->ku, A->ku, A->kl, _V_BLOCK_, _WHOLE_SECTION_ );
-
+				
 				block_InitializeToValue( Bi, __zero  ); // TODO: optimize using memset
 			
 				/* Extract the Bi sub-block */
@@ -776,9 +776,13 @@
 
 					/* solve Aij * Vi = Bi */
 					directSolver_SolveForRHS( handler, COLBLOCKINGDIST, Vi->aij, Bi->aij );
-
+fprintf(stderr, "Columna %d\n", col);
+					block_Print(Vi, "Solution of linear system");
 					/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
-					block_ExtractTip_blocking   ( Bi, Vi, 0, COLBLOCKINGDIST, _TOP_SECTION_, _ROWMAJOR_ );
+					block_ExtractTip_blocking   ( Bi, Vi
+
+
+, 0, COLBLOCKINGDIST, _TOP_SECTION_, _ROWMAJOR_ );
 					matrix_AddTipToReducedMatrix_blocking( S->p, p, col, col + COLBLOCKINGDIST, S->n, S->ku, S->kl, R, Bi );
 
 
@@ -794,9 +798,10 @@
 
 					/* Extract the Bi sub-block */
 					matrix_ExtractBlock_blocking ( A, Bi, r0, rf, rf + col, rf + A->ku, _V_BLOCK_ );
-
+block_Print(Bi, "block-");
 					/* solve Aij * Vi = Bi */
 					directSolver_SolveForRHS( handler, A->ku - col, Vi->aij, Bi->aij );
+block_Print(Vi, "Solution of linear system-");
 					/* extract the Vit tip using Bi as buffer, then, add it to the reduced system */
 					block_ExtractTip_blocking   ( Bi, Vi, 0, A->ku - col, _TOP_SECTION_, _ROWMAJOR_ );
 					matrix_AddTipToReducedMatrix_blocking( S->p, p, col, A->ku, S->n, S->ku, S->kl, R, Bi );

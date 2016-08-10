@@ -401,6 +401,59 @@ Error_t matrix_ExtractBlock_blocking  (  matrix_t* M,
 	return (SPIKE_SUCCESS);
 };
 
+/*
+	It takes a small matrix (ej. Bi, Ci, etc) and extracts certain columns defined
+	by c0,cf. The values on these columns are mapped over a dense block provided as
+	input.
+
+
+	Remark: in order to compute the starting row, correct values of
+	B->ku and B->kl as well as B->type are needed.
+ */
+Error_t block_BuildBlockFromMatrix_blocking (  matrix_t* M,
+								block_t* B,
+								const integer_t r0,
+								const integer_t rf,
+								const integer_t c0,
+								const integer_t cf,
+								blocktype_t type )
+{
+	/* local variables */
+	integer_t row, idx, col;
+
+
+	/* check input dimensions */
+	if ( B->m != (cf - c0)) {
+		fprintf(stderr, "\n%s: ERROR: dimension mismatch!", __FUNCTION__);
+		abort();
+	}
+
+	// allocates the -dense- block
+
+	/* compute starting row */
+	integer_t firstRow = (B->type ==  _V_BLOCK_) ? B->n - B->ku : 0;
+	integer_t lastRow  = (B->type ==  _V_BLOCK_) ? B->n         : B->kl;
+
+
+	// extract the elements, correct the indices and insert them into the dense block
+	for(row=0; row < M->n; row++)
+	{
+		for(idx=M->rowptr[row]; idx<M->rowptr[row+1]; idx++)
+		{
+			col = M->colind[idx];
+			
+			/* place the element in the block, only if it is inside the [c0,cf] range */
+			if ((col >= c0) && (col < cf)){
+				printf("here with col:%d, c0:%d, cf:%d\n", col, c0, cf);	
+				B->aij[ (col-c0) * B->n + (row + firstRow)] = M->aij[idx]; // CSC
+				//B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx]; // CSR
+			}
+		}
+	}
+
+	return (SPIKE_SUCCESS);
+};
+
 
 /*
 	Extracts a sparse matrix sub-block from a given sparse matrix M.
@@ -683,7 +736,7 @@ block_t* block_BuildBlockFromMatrix( matrix_t *M, blocktype_t type,
 
 
 	/* locate myself */
-	integer_t firstRow = (B->type ==  _V_BLOCK_) ? B->n - B->ku-1 : 0;
+	integer_t firstRow = (B->type ==  _V_BLOCK_) ? B->n - B->ku : 0;
 	integer_t lastRow  = (B->type ==  _V_BLOCK_) ? B->n         : B->kl;
 
 
@@ -695,10 +748,11 @@ block_t* block_BuildBlockFromMatrix( matrix_t *M, blocktype_t type,
 			col = M->colind[idx];
 			
 			/* place the element in the block */	
-			B->aij[ (row + firstRow) + col*B->n] = M->aij[idx]; // CSC
+			B->aij[ col * B->n + (row + firstRow)] = M->aij[idx]; // CSC
 			//B->aij[ (row -r0) * B->m + (col - c0)] = M->aij[idx]; // CSR
 		}
 	}
+
 
 	matrix_Deallocate(M);
 
@@ -805,7 +859,7 @@ Bool_t block_AreEqual( block_t* A, block_t* B )
 	Be aware that it is only needed to change the memory layout, not finding the
 	transpose of the matrix in the math sense. (i.e., conjugate transpose == transpose)
 */
-static Error_t block_Transpose( block_t* B )
+Error_t block_Transpose( block_t* B )
 {
 	// TODO omatcopy2 and omatcopy are the out-of-place version of the transpose
 	// matrix operation and seems to achieve much higher throughput. Would be a good
@@ -824,7 +878,7 @@ static Error_t block_Transpose( block_t* B )
 	return (SPIKE_SUCCESS);
 };
 
-static Error_t block_Transpose_blocking( complex_t* aij, const integer_t n, const integer_t m )
+Error_t block_Transpose_blocking( complex_t* aij, const integer_t n, const integer_t m )
 {
 	// TODO omatcopy2 and omatcopy are the out-of-place version of the transpose
 	// matrix operation and seems to achieve much higher throughput. Would be a good
@@ -904,6 +958,8 @@ block_t* block_ExtractTip ( block_t* B, blocksection_t section, memlayout_t layo
 	This is an extension of the block_ExtractTip function. Now, it receives a buffer
 	and copies to it a section of the input block (src) determined by the section
 	flag and the columns interval.
+
+	The values of src are copied to dst starting at dst->aij[0].
  */
 Error_t block_ExtractTip_blocking ( block_t *dst,
 									block_t *src, 
@@ -945,7 +1001,7 @@ Error_t block_ExtractTip_blocking ( block_t *dst,
   } /* end of switch statement */
   
   for(col=c0; col < cf; col++)
-  	memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[col*src->n + RowOffset], ChunkSize * sizeof(complex_t));
+  	memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[(col)*src->n + RowOffset], ChunkSize * sizeof(complex_t));
 
     // memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[col*src->n], ChunkSize * sizeof(complex_t));
 
@@ -960,6 +1016,71 @@ Error_t block_ExtractTip_blocking ( block_t *dst,
   
   return (SPIKE_SUCCESS);    
 };
+
+/*
+	This is an extension of the block_ExtractTip function. Now, it receives a buffer
+	and copies to it a section of the input block (src) determined by the section
+	flag and the columns interval.
+
+	The values of src are copied to dst starting at dst->aij[colOffset].
+ */
+Error_t block_ExtractTip_blocking_mpi ( block_t *dst,
+									block_t *src, 
+									const integer_t c0,
+									const integer_t cf,
+									const integer_t colOffset,
+									blocksection_t section,
+									memlayout_t layout )
+
+{
+  	integer_t RowOffset; /* row offset on the src block */
+  	integer_t ChunkSize; /* chunksize to copy on the dst block */
+	integer_t col; 
+
+	/* add the section flag to the block. In this way, the routine */
+	/* that incorporates it to the reduced RHS is able to read the */
+	/* updated flag 											   */
+	dst->section = section;
+
+  	switch ( section ){
+	  	case _TOP_SECTION_ : {
+		    RowOffset = 0;
+		    ChunkSize = src->ku;
+	  		break;
+	  	}
+	  	case _BOTTOM_SECTION_ : {
+		    RowOffset = src->n - src->kl;
+		    ChunkSize = src->kl;
+	  		break;
+	  	}
+	  	case _CENTRAL_SECTION_ : {
+		    RowOffset = src->ku;
+		    ChunkSize = src->n - (src->ku + src->kl); 
+	  		break;
+	  	}
+	  	default: {
+	  		fprintf(stderr, "\n%s: ERROR: unrecognized block section value", __FUNCTION__ );
+	  		abort();
+  	}
+  } /* end of switch statement */
+  
+  for(col=c0; col < cf; col++)
+  	memcpy((void*) &dst->aij[(col+colOffset) * ChunkSize], (const void*) &src->aij[(col)*src->n + RowOffset], ChunkSize * sizeof(complex_t));
+
+    // memcpy((void*) &dst->aij[col * ChunkSize], (const void*) &src->aij[col*src->n], ChunkSize * sizeof(complex_t));
+
+  /* 
+  	central section of the block is never transposed, since it is only
+	used as RHS of a linear system and sparse direct solvers require
+	column-major ordering.
+	It does not make sense to transpose a column vector neither.
+  */
+  if ( layout == _ROWMAJOR_ && src->m > 1 ) 
+  	block_Transpose_blocking( dst->aij, ChunkSize, cf - c0 );
+  
+  return (SPIKE_SUCCESS);    
+};
+
 
 /*
 	Extracts a part of a given block.
@@ -1389,6 +1510,10 @@ Error_t matrix_AddTipToReducedMatrix_blocking (const integer_t TotalPartitions,
 
 Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* msg)
 {
+	/* local variables */
+	Bool_t displayDots = False; /* only if there are too many rhs to print */
+	integer_t nrhs     = 0;
+
 	/* check correctness of dimensions */
 	if ( R->n != Y->n || R->n != Y->m ){
 		if ( X != NULL && (Y->n != X->n || Y->m != X->m ))
@@ -1398,6 +1523,15 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 		}
 	}
 
+	/* control the max. number of rhs for print */
+	if( Y->m > _MAX_PRINT_RHS_ ){
+		nrhs = _MAX_PRINT_RHS_;
+		displayDots = True;
+	}
+	else{
+		nrhs = Y->m;
+	}
+
 	if    (msg) { fprintf(stderr, "\n%s: %s\n\n", __FUNCTION__, msg);}
 	else        { fprintf(stderr, "\n%s\n\n"    , __FUNCTION__ ); }
 
@@ -1405,6 +1539,8 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 		fprintf(stderr, "\n%s: Matrix is too large to print it!", __FUNCTION__ );
 		return (SPIKE_SUCCESS);
 	}
+
+	fprintf(stderr, "\nMatrix dimension %d, nrhs %d\n", R->n, Y->m);
 
 	/* first, we need to convert the sparse matrix R to a dense representation */
 	complex_t *D = (complex_t*) spike_malloc( ALIGN_COMPLEX, R->n * R->n, sizeof(complex_t));
@@ -1441,9 +1577,10 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 
 		fprintf(stderr, "\t");
 
+	
 		/* print x block, if needed */
 		if ( X != NULL ){
-			for(integer_t col=0; col < X->m; col++) {
+			for(integer_t col=0; col < nrhs; col++) {
 				complex_t value = X->aij[row + X->n*col];
 	
 				if ( number_IsLessThan( value, __zero )){
@@ -1461,11 +1598,14 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 					#endif
 				}
 			}
+			
+			if ( displayDots ) {fprintf(stderr, " ..."); }
+
 			fprintf(stderr, "\t");
 		}
 
 		/* print y block */
-		for(integer_t col=0; col < Y->m; col++) {
+		for(integer_t col=0; col < nrhs; col++) {
 			complex_t value = Y->aij[row + Y->n*col];
 
 			if ( number_IsLessThan( value, __zero )){
@@ -1484,6 +1624,8 @@ Error_t reduced_PrintAsDense (matrix_t *R, block_t *X, block_t *Y, const char* m
 			}
 		}
 
+		if ( displayDots ) {fprintf(stderr, " ..."); }
+		
 		fprintf(stderr, "\n");
 	}	
 

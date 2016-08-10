@@ -72,7 +72,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 			
 			if(p == 0){
 
-				matrix_t* Bi = matrix_ExtractMatrix (A, r0, rf, rf, rf + A->ku, _B_BLOCK_);
+				matrix_t* Bi = matrix_ExtractMatrix (A, rf - A->ku, rf, rf, rf + A->ku, _B_BLOCK_);
 
 				sendMatrixPacked(Bi, p, BI_TAG);
 				matrix_Deallocate( Bi );
@@ -80,15 +80,17 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 
 			else if (p == ( S->p -1)){
 
-				matrix_t* Ci = matrix_ExtractMatrix (A, r0, rf, r0 - A->kl, r0, _C_BLOCK_);
+				matrix_t* Ci = matrix_ExtractMatrix (A, r0, r0 + A->kl, r0 - A->kl, r0 ,_C_BLOCK_);
 				sendMatrixPacked(Ci, p, CI_TAG);
 				matrix_Deallocate( Ci );
 			}
 
 			else{
 
-				matrix_t* Bi = matrix_ExtractMatrix(A, r0, rf, rf, rf + A->ku, _B_BLOCK_);
-				matrix_t* Ci = matrix_ExtractMatrix(A, r0, rf, r0 - A->kl, r0 ,_C_BLOCK_);
+				matrix_t* Bi = matrix_ExtractMatrix(A, rf - A->ku, rf, rf, rf + A->ku, _B_BLOCK_);
+				matrix_t* Ci = matrix_ExtractMatrix(A, r0, r0 + A->kl, r0 - A->kl, r0 ,_C_BLOCK_);
+				printf("a->ku:%d\n",A->ku);
+				matrix_PrintAsSparse(Bi, "Bi Sended");
 				matrix_PrintAsDense(Bi, "Bi Sended");
 				sendMatrixPacked(Bi, p, BI_TAG);				
 				sendMatrixPacked(Ci, p, CI_TAG);
@@ -390,12 +392,14 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 					block_t* Vi = block_CreateEmptyBlock ( rf - r0, S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _WHOLE_SECTION_ );
 					matrix_t* BiTmp = recvMatrixPacked(master, BI_TAG);
 					matrix_PrintAsDense(BiTmp, "Bi Recived");
-					block_t* Bi = block_BuildBlockFromMatrix(BiTmp, _V_BLOCK_, BiTmp->n, BiTmp->n, S->ku[p], S->kl[p]);
+					block_t* Bi = block_BuildBlockFromMatrix(BiTmp, _V_BLOCK_, Aij->n, Aij->n, S->ku[p], S->kl[p]);
 					block_Print(Bi, "Bi");
+					block_Print(Vi, "Vi");
 					//matrix_Deallocate( BiTmp );
 
 					/* solve Ai * Vi = Bi */
 					directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij);
+					block_Print(Vi, "Vi");
 
 					block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 					block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
@@ -416,7 +420,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 				{
 					block_t* Wi = block_CreateEmptyBlock( rf - r0, S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _WHOLE_SECTION_ );
 					matrix_t* CiTmp = recvMatrixPacked(master, CI_TAG);
-					block_t* Ci = block_BuildBlockFromMatrix(CiTmp, _W_BLOCK_, CiTmp->n, CiTmp->n, S->ku[p], S->kl[p]);
+					block_t* Ci = block_BuildBlockFromMatrix(CiTmp, _W_BLOCK_, Aij->n, Aij->n, S->ku[p], S->kl[p]);
 					block_Print(Ci, "Ci");
 					//matrix_Deallocate( CiTmp );
 

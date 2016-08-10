@@ -28,7 +28,8 @@
 	#include "mkl.h"
 	#include <string.h>
 
-	#define _MAX_PRINT_DIMENSION_ 25
+	#define _MAX_PRINT_DIMENSION_ 50
+	#define _MAX_PRINT_RHS_        3
 
  	typedef enum { _C_BLOCK_, _DIAG_BLOCK_, _B_BLOCK_ } matrixtype_t;
 
@@ -121,6 +122,21 @@
 													const integer_t c0,
 													const integer_t cf,
 													matrixtype_t type );
+Error_t block_BuildBlockFromMatrix_blocking (  matrix_t* M,
+								block_t* B,
+								const integer_t r0,
+								const integer_t rf,
+								const integer_t c0,
+								const integer_t cf,
+								blocktype_t type );
+
+Error_t block_ExtractTip_blocking_mpi ( block_t *dst,
+									block_t *src, 
+									const integer_t c0,
+									const integer_t cf,
+									const integer_t colOffset,
+									blocksection_t section,
+									memlayout_t layout );
 
 	/* -------------------------------------------------------------------- */
 	/* .. Functions affecting block structures.                             */
@@ -152,9 +168,9 @@
 
 	Bool_t            block_AreEqual                ( block_t* A, block_t* B );
 
-	static Error_t    block_Transpose               ( block_t* B );
+	Error_t    block_Transpose               ( block_t* B );
 
-	static Error_t block_Transpose_blocking( complex_t* aij, const integer_t n, const integer_t m );
+	Error_t block_Transpose_blocking( complex_t* aij, const integer_t n, const integer_t m );
 
 	block_t*          block_ExtractTip              ( block_t* B, blocksection_t section, memlayout_t layout );
 

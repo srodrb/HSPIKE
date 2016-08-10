@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const integer_t nrhs = 1;
+const integer_t nrhs = 50;
 
 static Error_t SolveOriginalSystem( matrix_t *A, block_t *x, block_t *rhs )
 {
@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
 	
 	if ( rank == 0) {
 			// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
-			matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+			// matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+			 matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
 			// matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 			matrix_PrintAsDense(A, NULL);
@@ -71,7 +72,7 @@ int main(int argc, char *argv[])
 			sm_schedule_t* S = spike_solve_analysis( A, nrhs );
 			
 			/* call MPI solver */
-			spike_dist_nonblocking ( A, x, f, nrhs );
+			spike_dist_blocking ( A, x, f, nrhs );
 
 			/* Compute residual of the linear system */
 			ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, nrhs);
@@ -86,7 +87,7 @@ int main(int argc, char *argv[])
 	}
 	else {
 		/* call MPI solver */
-		spike_dist_nonblocking ( NULL, NULL, NULL, nrhs );
+		spike_dist_blocking ( NULL, NULL, NULL, nrhs );
 	}
 
 	MPI_Finalize();

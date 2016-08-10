@@ -67,7 +67,8 @@ int main(int argc, char *argv[])
 	Error_t error;
 	char msg[200];
 
-	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 
 	integer_t  p     = size - 1;
@@ -79,11 +80,11 @@ int main(int argc, char *argv[])
 	sm_schedule_t* schedule;
 	if(rank == master){ //MASTER
 		start_t = GetReferenceTime();
-		schedule = spike_solve_analysis( A, nrhs, size-1); //Number of partitions
+		schedule = spike_solve_analysis( A, nrhs); //Number of partitions
 		matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);
 		integer_t r0,rf,c0,cf;
 		
-		for(integer_t p=0; p<schedule->p; p++){
+		for(integer_t p=0; p<schedule->p-1; p++){
 			int i, check = 0;
 			sendSchedulePacked(schedule, p+1);
 			sm_schedule_t* sTest = recvSchedulePacked(p+1);
@@ -116,12 +117,12 @@ int main(int argc, char *argv[])
 
 		}*/
 
-		for(integer_t p=0; p<schedule->p; p++){
+		for(integer_t p=0; p<schedule->p-1; p++){
 
 			r0 = schedule->n[p];
 			rf = schedule->n[p+1];
 
-			matrix_t* Aij2 = matrix_ExtractMatrix(A, r0, rf, r0, rf);
+			matrix_t* Aij2 = matrix_ExtractMatrix(A, r0, rf, r0, rf, _DIAG_BLOCK_);
 			
 			sendMatrixPacked(Aij2, p+1, 0);
 			matrix_t* test2 = recvMatrixPacked(p+1, 0);
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
 		}
 		*/
 		//Block Test
-		for(integer_t p=0; p<schedule->p; p++){
+		for(integer_t p=0; p<schedule->p-1; p++){
 			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t *V0 = recvBlock(p+1);
 			
@@ -156,7 +157,7 @@ int main(int argc, char *argv[])
 			block_Deallocate (V0);
 		}
 
-		for(integer_t p=0; p<schedule->p; p++){
+		for(integer_t p=0; p<schedule->p-1; p++){
 			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t *V0 = recvBlockPacked(p+1,0);
 			if(block_AreEqual (V0Test, V0))printf("TEST Send Block Packed: \t%d PASSED\n", p+1);

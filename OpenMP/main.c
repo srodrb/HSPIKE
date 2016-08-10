@@ -83,14 +83,14 @@ int main(int argc, const char *argv[])
 
 #else
 
-	const integer_t nrhs = 100;
+	const integer_t nrhs = 5;
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/small.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_15.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
 	// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	matrix_PrintAsDense(A, "Input matrix");
@@ -106,8 +106,8 @@ int main(int argc, const char *argv[])
 	/* .. Call the direct solver using the high-level interface           . */
 	/* -------------------------------------------------------------------- */
 	//zspike_core_host (A->n, A->nnz, nrhs, A->colind, A->rowptr, (complex16 *restrict) A->aij, (complex16 *restrict) x->aij, (complex16 *restrict) f->aij);
-	dspike_core_host          (A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij );
-	// dspike_core_host_blocking (A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij );
+	// dspike_core_host          (A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij );
+	dspike_core_host_blocking (A->n, A->nnz, nrhs, A->colind, A->rowptr, A->aij, x->aij, f->aij );
 	
 	fprintf(stderr, "\nResidual outside the SPIKE call\n");
 	// ComputeResidualOfLinearSystem( A->colind, A->rowptr, A->aij, x->aij, f->aij, A->n, f->m );
