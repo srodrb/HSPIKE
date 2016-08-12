@@ -84,7 +84,7 @@
 
 	Error_t           matrix_ExportBinary           ( matrix_t* M, const char* filename );
 
-	matrix_t*         matrix_CreateEmptyMatrix      (const size_t n, const size_t nnz );
+	matrix_t*         matrix_CreateEmptyMatrix      (const integer_t n, const uLong_t nnz );
 
 	matrix_t*         matrix_CreateFromComponents  (const integer_t n, 
 													const uLong_t nnz, 

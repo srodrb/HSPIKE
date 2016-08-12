@@ -83,7 +83,7 @@ int main(int argc, const char *argv[])
 
 #else
 
-	const integer_t nrhs = 5;
+	const integer_t nrhs = 2;
 	// matrix_t* A = matrix_LoadCSR("../Tests/spike/penta_10e7.d");
 	// matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large_10e6.d");
 	// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");

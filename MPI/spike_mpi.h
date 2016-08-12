@@ -50,7 +50,7 @@
 		#define _MPI_COUNT_ 1
 #endif
 
-#define _MPI_ULONG_ MPI_UINT64_T
+#define _MPI_ULONG_ MPI_LONG_LONG
 
 typedef int      integer_t;
 typedef int      Error_t;

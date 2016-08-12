@@ -66,7 +66,7 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 
 	MPI_Request request;	
 	integer_t position = 0, i;
-	integer_t buffSize = (Aij->n+1 + Aij->nnz + 4)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t) + sizeof(uint64_t);
+	integer_t buffSize = (Aij->n+1 + Aij->nnz + 4)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t) + sizeof(uLong_t);
 	char *buff = (char*) malloc(buffSize*sizeof(char));
 	
 	MPI_Pack(&Aij->n	, 1		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
@@ -75,11 +75,36 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 	MPI_Pack(Aij->colind, Aij->nnz			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->rowptr, Aij->n+1			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
-
-	debug("Values: %d, %d, %d, %d, %d, buffSize: %d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type, buffSize);
+	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
 
 	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
 };
+
+
+/* -------------------------------------------------------------------- */
+/* .. Function to send packed matrix_t to process p, p must recive 
+/* .. this matrix with recvMatrix function.
+/* -------------------------------------------------------------------- */
+/*
+void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
+
+	MPI_Request request;	
+	integer_t position = 0, i;
+	integer_t buffSize = (Aij->n+1 + Aij->nnz + 4)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t) + sizeof(uLong_t);
+	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
+	
+	MPI_Pack(&Aij->n	, 1		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(&Aij->nnz	, 1		  			  ,_MPI_ULONG_	   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(&Aij->ku	, 3		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(Aij->colind, Aij->nnz			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(Aij->rowptr, Aij->n+1			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
+	debug("BuffSize:%d", buffSize);
+
+	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
+	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
+
+};*/
 
 /* -------------------------------------------------------------------- */
 /* .. Function for recive matrix_t from process p, p must send 
@@ -100,9 +125,11 @@ matrix_t* recvMatrix (integer_t p){
 	MPI_CheckCall(MPI_Recv(Aij->colind, Aij->nnz, 	           MPI_INT,		   p, 0, MPI_COMM_WORLD, &status));
 	MPI_CheckCall(MPI_Recv(Aij->rowptr, Aij->n+1, 	     	   MPI_INT, 	   p, 0, MPI_COMM_WORLD, &status));
 	MPI_CheckCall(MPI_Recv(Aij->aij,    Aij->nnz*_MPI_COUNT_, _MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD, &status));
+	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
 
 	return Aij;
 }
+
 
 /* -------------------------------------------------------------------- */
 /* .. Function for recive matrix_t from process p, p must send 
@@ -112,18 +139,50 @@ matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	
 	integer_t buffSize = 0, position = 0, i;
 	MPI_Status  status;
-	integer_t t[3], n;
-	uLong_t nnz;
+	integer_t t[3], n, nnz;
 
 	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
 	char* buff = (char*)malloc(sizeof(char) * buffSize);
 
 	MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status);
-	MPI_Unpack(buff, buffSize, &position, &n,   1, MPI_INT,    MPI_COMM_WORLD);
-	MPI_Unpack(buff, buffSize, &position, &nnz, 1,_MPI_ULONG_, MPI_COMM_WORLD);
-	MPI_Unpack(buff, buffSize, &position, t,    3, MPI_INT,    MPI_COMM_WORLD);
-	debug("n:%d, nnz:%d, ku:%d, kl:%d, type:%d", n, nnz, t[0], t[1], t[2]);
+	MPI_Unpack(buff, buffSize, &position, &n,   1, MPI_INT, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, &nnz, 1, _MPI_ULONG_, MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, t,    3, MPI_INT, MPI_COMM_WORLD);
+
+	matrix_t* Aij = matrix_CreateEmptyMatrix( n, nnz );
+	Aij->ku = t[0];
+	Aij->kl = t[1];
+	Aij->type  = t[2];
+	
+	MPI_Unpack(buff, buffSize, &position, Aij->colind, Aij->nnz			   , MPI_INT	   , MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, Aij->rowptr, Aij->n+1			   , MPI_INT	   , MPI_COMM_WORLD);
+	MPI_Unpack(buff, buffSize, &position, Aij->aij	 , Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_, MPI_COMM_WORLD);
+	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
+	return Aij;
+}
+
+/* -------------------------------------------------------------------- */
+/* .. Function for recive matrix_t from process p, p must send 
+/* .. this matrix with sendMatrix function.
+/* -------------------------------------------------------------------- */
+/*matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
+	
+	integer_t buffSize = 0, position = 0, i;
+	MPI_Status  status;
+	integer_t t[3], n;
+	uLong_t nnz;
+
+	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
+	MPI_Get_count(&status, MPI_PACKED, &buffSize);
+	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
+	
+	debug("BuffSize:%d", buffSize);
+	MPI_CheckCall(MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status));
+	debug("n:%d, nnz:%lld, ku:%d, kl:%d, type:%d", n, nnz, t[0], t[1], t[2]);
+	MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, &n,   1, MPI_INT,    MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, &nnz, 1, MPI_INT, MPI_COMM_WORLD));
+	MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, t,    3, MPI_INT,    MPI_COMM_WORLD));
 
 	matrix_t* Aij = matrix_CreateEmptyMatrix( n, nnz );
 	Aij->ku    = t[0];
@@ -134,8 +193,10 @@ matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	MPI_Unpack(buff, buffSize, &position, Aij->rowptr, Aij->n+1			   , MPI_INT	   , MPI_COMM_WORLD);
 	MPI_Unpack(buff, buffSize, &position, Aij->aij	 , Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_, MPI_COMM_WORLD);
 
+	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
+	
 	return Aij;
-}
+}*/
 
 /* -------------------------------------------------------------------- */
 /* .. Function to send block_t to process p, p must recive 
@@ -173,13 +234,14 @@ void sendBlockPacked (block_t *b, integer_t p, integer_t tag){
 	MPI_Request request;	
 	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
 	integer_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
-	char *buff = (char*) malloc(buffSize*sizeof(char));
+	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
 	
 	integer_t position = 0;
 	MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
 	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
+
 }
 
 /* -------------------------------------------------------------------- */
@@ -213,7 +275,7 @@ block_t* recvBlockPacked (integer_t p, integer_t tag){
 
 	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
-	char* buff = (char*)malloc(sizeof(char) * buffSize);
+	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));	
 
 	MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status);
 
@@ -222,6 +284,7 @@ block_t* recvBlockPacked (integer_t p, integer_t tag){
 	block_t *b = block_CreateEmptyBlock(t[2], t[3], t[4], t[5], t[0], t[1]);
 	integer_t recvCount = (b->n)*(b->m)*_MPI_COUNT_;
 	MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD);
+
 	return b;
 }
 
@@ -245,7 +308,7 @@ matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, inte
 
 		MPI_CheckCall(MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status));
 		MPI_CheckCall(MPI_Get_count(&status, MPI_PACKED, &buffSize));
-		char* buff = (char*)malloc(sizeof(char) * buffSize);
+		char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
 
 		MPI_CheckCall(MPI_Recv(buff, buffSize, MPI_PACKED, status.MPI_SOURCE, status.MPI_TAG, MPI_COMM_WORLD, &status));
 
@@ -256,7 +319,6 @@ matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, inte
 		MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD));
 		matrix_AddTipToReducedMatrix(size-1, status.MPI_SOURCE-1, n, ku, kl, R, b);
 
-		free( buff );
 	}
 
 	return R;
@@ -266,7 +328,7 @@ void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 
 	integer_t buffSize;
 	buffSize = (5 + 2 + S->p*4)*sizeof(integer_t);
-	char *buff = (char*) malloc(buffSize*sizeof(char));
+	char *buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
 	
 	integer_t position = 0;
 	MPI_Pack(S, 	5, 		MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
@@ -278,6 +340,7 @@ void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 	debug("Prepared to send schedule with buffSize: %d ", buffSize);
 	debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", S->max_m, S->max_n, S->p);
 	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
+	
 }
 
 sm_schedule_t* recvSchedulePacked(integer_t p){
@@ -288,13 +351,11 @@ sm_schedule_t* recvSchedulePacked(integer_t p){
 
 	MPI_Probe(p, 0, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
-	char* buff = (char*)malloc(sizeof(char) * buffSize);
+	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
 	
-	//debug("Prepared to recv schedule with buffSize: %d ", buffSize);
 	MPI_Recv(buff, buffSize, MPI_PACKED, p, 0, MPI_COMM_WORLD, &status);
 
 	MPI_Unpack(buff, buffSize, &position, t, 5, MPI_INT, MPI_COMM_WORLD);
-	//debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", t[2], t[1], t[0]);
 	S->p        = t[0];
 	S->max_n    = t[1];
 	S->max_m    = t[2];

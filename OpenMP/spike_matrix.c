@@ -115,7 +115,7 @@ Error_t matrix_ExportBinary (matrix_t* M, const char* filename )
 /*
 	Creates an empty CSR sparse matriz of dimension n and nnz elements
 */
-matrix_t* matrix_CreateEmptyMatrix( const size_t n, const uLong_t nnz )
+matrix_t* matrix_CreateEmptyMatrix( const integer_t n, const uLong_t nnz )
 {
 	matrix_t* R = (matrix_t*) spike_malloc( ALIGN_INT, 1, sizeof(matrix_t));
 	R->n        = n;
@@ -423,8 +423,8 @@ Error_t block_BuildBlockFromMatrix_blocking (  matrix_t* M,
 
 
 	/* check input dimensions */
-	if ( B->m != (cf - c0)) {
-		fprintf(stderr, "\n%s: ERROR: dimension mismatch!", __FUNCTION__);
+	if ( (cf - c0) > B->m ) {
+		fprintf(stderr, "\n%s: ERROR: dimension mismatch! B->m = %d, (cf-c0) = %d", __FUNCTION__, B->m, (cf - c0));
 		abort();
 	}
 

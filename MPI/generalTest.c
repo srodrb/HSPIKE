@@ -68,7 +68,8 @@ int main(int argc, char *argv[])
 	char msg[200];
 
 	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
 
 	integer_t  p     = size - 1;
