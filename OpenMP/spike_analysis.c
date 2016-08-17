@@ -163,7 +163,7 @@ integer_t compute_optimal_number_of_partitions( matrix_t *A, integer_t nrhs, uLo
 #ifdef _MPI_SUPPORT_
 	int size;
 	MPI_Comm_size ( MPI_COMM_WORLD, &size);
-	return (size);
+	return (size-1);
 #else	
 	return (4);
 #endif

@@ -16,9 +16,9 @@
  * =====================================================================================
  */
 
-#include "spike_dist_interfaces.h"
+#include "spike_dm.h"
 
-Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
+Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 {
 
 	int rank, size, master = 0;
@@ -37,13 +37,15 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 	if(rank == master){
 
 
-		fprintf(stderr, "\nShared Memory Spike Solver.\n");
+		fprintf(stderr, "\nDistributed Memory Spike Solver.\n");
 		start_t = GetReferenceTime();
 
 		/* compute an optimal solving strategy */
+		debug("Solving analisis and generating schedule");
 		sm_schedule_t* S = spike_solve_analysis( A, nrhs );
 
 		/* create the reduced sytem in advanced, based on the solving strategy */
+		debug("Creating Reduced System");
 		matrix_t* R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
 		block_t*  xr = block_CreateReducedRHS( S->p, S->ku, S->kl, nrhs );
 
@@ -52,7 +54,9 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		directSolver_Configure(handler, S->max_nrhs );
 
 		/* Send structures to all nodes */
+		debug("Sending schedule to all nodes");
 		scatterSchedule(S);
+		debug("Sending Aij, Bi, Ci, Fi to all nodes");
 		scatterAijBiCiFi(S, A, f);
 
 		integer_t p = rank;
@@ -61,9 +65,13 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		block_t* Bib = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 
 		//Master Factorization and Solve Aij*fi and Aij*Bi.
-		masterWorkFactorize(handler, S, A, f, R, Bib, xr, nrhs);
+		if(MASTER_WORKING){
+			debug("Master WORKING NOW - Factorize");
+			masterWorkFactorize(handler, S, A, f, R, Bib, xr, nrhs);
+		}
 		
 		//Reciving blocks from all nodes and adding to R and xr.
+		debug("Reciving Reduced System");
 		gatherReducedSystem(S, R, xr);
 
 		//Sincronization of all nodes.
@@ -72,6 +80,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		/* -------------------------------------------------------------------- */
 		/* .. Solution of the reduced system.                                   */
 		/* -------------------------------------------------------------------- */
+		debug("Solving Reduced System");
 		block_t* yr = block_CreateEmptyBlock( xr->n, xr->m, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 
 		fprintf(stderr, "\nSolving reduced linear system\n");
@@ -87,13 +96,18 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		matrix_Deallocate( R  );
 
 		//Send x, f and tips: xt_next and xb_prev
+		debug("Sending solution of reduced system to all nodes");
 		scatterXiFi(S, x, f, yr);
 
 		//Solving Backward Solution.
-		masterWorkBackward(S, yr, f, x, Bib, handler);
+		if(MASTER_WORKING){
+			debug("Master WORKING NOW - Backward");
+			masterWorkBackward(S, yr, f, x, Bib, handler);
+		}
 		block_Deallocate(Bib);
 
 		//Recive all xi and add it to final solution x
+		debug("Reciving final solution");
 		gatherXi(S, x);
 
 		//Cleaning up
@@ -114,7 +128,15 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 	else{ //WORKERS
 
 		//Initializing values for workers
-		integer_t p = rank;
+		integer_t p;
+		if(MASTER_WORKING){
+			p = rank;
+		}
+		else
+		{	
+			p = rank -1;
+		}
+		debug("Reciving schedule");
 		sm_schedule_t* S = recvSchedulePacked(master);
 		block_t* Bib = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 		block_t* Cit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
@@ -124,10 +146,12 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		directSolver_Configure(handler, S->max_nrhs );
 
 		//Wait for AIJ and factorize matrix
+		debug("Reciving Aij and starting to factorize");
 		matrix_t* Aij = recvMatrixPacked(master, AIJ_TAG);
 		directSolver_Factorize( handler, Aij->n, Aij->nnz, Aij->colind, Aij->rowptr, Aij->aij);
 		
 		//Solve Aij*Bi, Aij*Ci and Aij*fi
+		debug("Solving AIJ Aij*Bi, Aij*Ci and Aij*fi");
 		workerSolveAndSendTips(S, master, nrhs, Aij, Bib, Cit, handler);
 
 		//Master Solving Reduced System.
@@ -136,6 +160,7 @@ Error_t spike_dist_nonblocking( matrix_t *A, block_t *x, block_t *f, const integ
 		MPI_Barrier(MPI_COMM_WORLD);
 		
 		//Solving Backward Solution.
+		debug("Solving Backward solution");
 		workerSolveBackward(S, Bib, Cit, master, handler);
 
 		/* Show statistics and clean up solver internal memory */

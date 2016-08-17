@@ -113,7 +113,7 @@ Error_t spike_dist_blocking ( matrix_t *A, block_t *x, block_t *f, const integer
 		block_t* yit = block_CreateEmptyBlock( S->kl[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _TOP_SECTION_ );
 		block_t* yib = block_CreateEmptyBlock( S->ku[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _BOTTOM_SECTION_ );
 
-		blockingFi(S, fi, yit, yib, nrhs, master, handler);
+		blockingFi(S, fi, yit, yib, nrhs, master, p, handler);
 
 		/* Extract the tips of the yi block */
 		block_AddTipTOReducedRHS(rank, S->ku, S->kl, xr, yit);
@@ -132,7 +132,7 @@ Error_t spike_dist_blocking ( matrix_t *A, block_t *x, block_t *f, const integer
 		block_t* Vit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 		block_t* Vib = block_CreateEmptyBlock( S->ku[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _BOTTOM_SECTION_ );
 
-		Bib = blockingBi(S, BiTmp, Vit, Vib, master, handler);
+		Bib = blockingBi(S, BiTmp, Vit, Vib, master, p, handler);
 			
 		matrix_AddTipToReducedMatrix( S->p, rank, S->n, S->ku, S->kl, R, Vit);
 		matrix_AddTipToReducedMatrix( S->p, rank, S->n, S->ku, S->kl, R, Vib);
@@ -342,7 +342,7 @@ Error_t spike_dist_blocking ( matrix_t *A, block_t *x, block_t *f, const integer
 					block_t* yit = block_CreateEmptyBlock( S->kl[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _TOP_SECTION_ );
 					block_t* yib = block_CreateEmptyBlock( S->ku[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _BOTTOM_SECTION_ );
 
-					blockingFi(S, fi, yit, yib, nrhs, master, handler);
+					blockingFi(S, fi, yit, yib, nrhs, master, p, handler);
 					
 					sendBlockPacked(yit, master, YI_TAG);
 					sendBlockPacked(yib, master, YI_TAG);
@@ -360,7 +360,7 @@ Error_t spike_dist_blocking ( matrix_t *A, block_t *x, block_t *f, const integer
 					block_t* Vit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 					block_t* Vib = block_CreateEmptyBlock( S->ku[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _BOTTOM_SECTION_ );
 
-					Bib = blockingBi(S, BiTmp, Vit, Vib, master, handler);
+					Bib = blockingBi(S, BiTmp, Vit, Vib, master, p,  handler);
 	
 					sendBlockPacked(Vit, master, VIWI_TAG);
 					sendBlockPacked(Vib, master, VIWI_TAG);
@@ -377,7 +377,7 @@ Error_t spike_dist_blocking ( matrix_t *A, block_t *x, block_t *f, const integer
 					block_t* Wit = block_CreateEmptyBlock( S->kl[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _TOP_SECTION_ );
 					block_t* Wib = block_CreateEmptyBlock( S->ku[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _BOTTOM_SECTION_ );
 
-					Cit = blockingCi(S, CiTmp, Wit, Wib, master, handler);
+					Cit = blockingCi(S, CiTmp, Wit, Wib, master, p, handler);
 
 					sendBlockPacked(Wit, master, VIWI_TAG);
 					sendBlockPacked(Wib, master, VIWI_TAG);

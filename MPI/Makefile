@@ -3,11 +3,11 @@ BACKEND  =pardiso
 DEBUG    =no
 
 # Data type definition
-DEFINES +=-D_MPI_SUPPORT_ -D_DATATYPE_D_ -D_NDEBUG
+DEFINES +=-D_MPI_SUPPORT_ -D_DATATYPE_Z_ -D_NDEBUG
 
 OBJS = spike_datatypes.o spike_matrix.o \
        spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o \
-	   spike_dist_nonblocking.o spike_dist_blocking.o spike_blocking.o
+	   spike_dm.o
 
 ifeq ($(COMPILER),intel)
 	CC      =mpiicc
@@ -107,10 +107,7 @@ spike_common.o:../OpenMP/spike_common.c
 spike_mpi.o:spike_mpi.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
-spike_dist_nonblocking.o:spike_dist_nonblocking.c
-	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
-
-spike_dist_blocking.o:spike_dist_blocking.c
+spike_dm.o:spike_dm.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_blocking.o:spike_blocking.c

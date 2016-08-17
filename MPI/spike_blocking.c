@@ -18,12 +18,11 @@
 #include "spike_blocking.h"
 #include <mpi.h>
 
-void blockingFi(sm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integer_t nrhs, integer_t master, DirectSolverHander_t *handler)
+void blockingFi(sm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integer_t nrhs, integer_t master, integer_t p, DirectSolverHander_t *handler)
 {
 	integer_t size, rank;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
-	integer_t p = rank;
 	const integer_t r0 = S->n[p];
 	const integer_t rf = S->n[p+1];
 	const integer_t COLBLOCKINGDIST = S->blockingDistance;
@@ -94,12 +93,11 @@ void blockingFi(sm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integ
 	block_Deallocate (yi );
 }
 
-block_t* blockingBi(sm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vib, integer_t master, DirectSolverHander_t *handler)
+block_t* blockingBi(sm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vib, integer_t master, integer_t p, DirectSolverHander_t *handler)
 {
 	integer_t size, rank;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
-	integer_t p = rank;
 	const integer_t r0 = S->n[p];
 	const integer_t rf = S->n[p+1];
 	const integer_t COLBLOCKINGDIST = S->blockingDistance;
@@ -180,12 +178,11 @@ block_t* blockingBi(sm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vi
 	return Bib;
 }
 
-block_t* blockingCi(sm_schedule_t* S, matrix_t* CiTmp, block_t* Wit, block_t* Wib, integer_t master, DirectSolverHander_t *handler){
+block_t* blockingCi(sm_schedule_t* S, matrix_t* CiTmp, block_t* Wit, block_t* Wib, integer_t master, integer_t p, DirectSolverHander_t *handler){
 
 	integer_t size, rank;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
-	integer_t p = rank;
 	const integer_t r0 = S->n[p];
 	const integer_t rf = S->n[p+1];
 	const integer_t COLBLOCKINGDIST = S->blockingDistance;

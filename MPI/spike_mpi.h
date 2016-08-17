@@ -80,7 +80,7 @@ typedef double   timer_t;
 #define XI_TAG		210
 
 #define BLOCKING 		0
-#define MASTER_WORKING 	1
+#define MASTER_WORKING 	0
 
 /*----------------------------------------------------
 -	Send and Recive Matrix Functions
