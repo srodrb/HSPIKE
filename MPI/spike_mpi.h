@@ -17,6 +17,7 @@
  */
 
 #include "spike_analysis.h"
+#include "spike_blocking.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,6 +79,9 @@ typedef double   timer_t;
 #define YI_TAG		205
 #define XI_TAG		210
 
+#define BLOCKING 		0
+#define MASTER_WORKING 	1
+
 /*----------------------------------------------------
 -	Send and Recive Matrix Functions
 -----------------------------------------------------*/
@@ -100,6 +104,21 @@ block_t* recvBlockPacked (integer_t p, integer_t tag);
 
 matrix_t* recvAndAddBlock		(integer_t *ku, integer_t *n, integer_t *kl); //NOT FINISHED
 matrix_t* recvAndAddBlockPacked (integer_t *ku, integer_t *n, integer_t *kl, integer_t numBlocks);
+
+/*----------------------------------------------------
+-	Complex Functions
+-----------------------------------------------------*/
+void scatterSchedule	(sm_schedule_t* S);
+void scatterAijBiCiFi	(sm_schedule_t* S, matrix_t* A, block_t* f);
+void gatherReducedSystem(sm_schedule_t* S, matrix_t* R, block_t* xr);
+void scatterXiFi		(sm_schedule_t* S, block_t* x, block_t* f, block_t* yr);
+void gatherXi			(sm_schedule_t* S, block_t* x);
+
+void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler);
+void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t master, DirectSolverHander_t *handler);
+
+void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix_t* A, block_t* f, matrix_t* R, block_t* Bib, block_t* xr, integer_t nrhs);
+void masterWorkBackward(sm_schedule_t* S, block_t* yr, block_t* f, block_t* x, block_t* Bib, DirectSolverHander_t *handler);
 
 /*----------------------------------------------------
 -	Debug Functions

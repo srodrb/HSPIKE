@@ -32,6 +32,17 @@ static void MPI_CheckCall( int err )
 	}
 };
 
+
+/*#########################################################################################################################
+
+												BASIC SEND AND RECV FUNCTIONS
+
+##########################################################################################################################*/
+
+/* -----------------------------------------------------------------------
+	- Send / Recv MATRIX
+---------------------------------------------------------------------- */
+
 /* -------------------------------------------------------------------- */
 /* .. Function to send matrix_t to process p, p must recive 
 /* .. this matrix with recvMatrix function.
@@ -80,32 +91,6 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
 };
 
-
-/* -------------------------------------------------------------------- */
-/* .. Function to send packed matrix_t to process p, p must recive 
-/* .. this matrix with recvMatrix function.
-/* -------------------------------------------------------------------- */
-/*
-void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
-
-	MPI_Request request;	
-	integer_t position = 0, i;
-	integer_t buffSize = (Aij->n+1 + Aij->nnz + 4)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t) + sizeof(uLong_t);
-	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
-	
-	MPI_Pack(&Aij->n	, 1		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(&Aij->nnz	, 1		  			  ,_MPI_ULONG_	   , buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(&Aij->ku	, 3		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(Aij->colind, Aij->nnz			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(Aij->rowptr, Aij->n+1			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
-	debug("BuffSize:%d", buffSize);
-
-	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
-	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
-
-};*/
-
 /* -------------------------------------------------------------------- */
 /* .. Function for recive matrix_t from process p, p must send 
 /* .. this matrix with sendMatrix function.
@@ -129,7 +114,6 @@ matrix_t* recvMatrix (integer_t p){
 
 	return Aij;
 }
-
 
 /* -------------------------------------------------------------------- */
 /* .. Function for recive matrix_t from process p, p must send 
@@ -162,41 +146,10 @@ matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	return Aij;
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Function for recive matrix_t from process p, p must send 
-/* .. this matrix with sendMatrix function.
-/* -------------------------------------------------------------------- */
-/*matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
-	
-	integer_t buffSize = 0, position = 0, i;
-	MPI_Status  status;
-	integer_t t[3], n;
-	uLong_t nnz;
 
-	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
-	MPI_Get_count(&status, MPI_PACKED, &buffSize);
-	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
-	
-	debug("BuffSize:%d", buffSize);
-	MPI_CheckCall(MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status));
-	debug("n:%d, nnz:%lld, ku:%d, kl:%d, type:%d", n, nnz, t[0], t[1], t[2]);
-	MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, &n,   1, MPI_INT,    MPI_COMM_WORLD));
-	MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, &nnz, 1, MPI_INT, MPI_COMM_WORLD));
-	MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, t,    3, MPI_INT,    MPI_COMM_WORLD));
-
-	matrix_t* Aij = matrix_CreateEmptyMatrix( n, nnz );
-	Aij->ku    = t[0];
-	Aij->kl    = t[1];
-	Aij->type  = t[2];
-	
-	MPI_Unpack(buff, buffSize, &position, Aij->colind, Aij->nnz			   , MPI_INT	   , MPI_COMM_WORLD);
-	MPI_Unpack(buff, buffSize, &position, Aij->rowptr, Aij->n+1			   , MPI_INT	   , MPI_COMM_WORLD);
-	MPI_Unpack(buff, buffSize, &position, Aij->aij	 , Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_, MPI_COMM_WORLD);
-
-	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
-	
-	return Aij;
-}*/
+/* -----------------------------------------------------------------------
+	-- Send / Recv BLOCK
+---------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------- */
 /* .. Function to send block_t to process p, p must recive 
@@ -225,22 +178,22 @@ void IsendBlock (block_t *b, integer_t p){
 
 }
 
-/* -----------------529--------------------------------------------------- */
+/* -------------------------------------------------------------------- */
 /* .. Function to send block_t to process p, p must recive 
 /* .. this matrix with recvBlock function.
 /* -------------------------------------------------------------------- */
 void sendBlockPacked (block_t *b, integer_t p, integer_t tag){
 	
 	MPI_Request request;	
-	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
-	integer_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
+	uLong_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
+	uLong_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
 	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
 	
 	integer_t position = 0;
 	MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
-	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
+	MPI_Isend(buff, buffSize/4, MPI_INT, p, tag, MPI_COMM_WORLD, &request);
 
 }
 
@@ -277,7 +230,7 @@ block_t* recvBlockPacked (integer_t p, integer_t tag){
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
 	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));	
 
-	MPI_Recv(buff, buffSize, MPI_PACKED, p, tag, MPI_COMM_WORLD, &status);
+	MPI_Recv(buff, buffSize, MPI_INT, p, tag, MPI_COMM_WORLD, &status);
 
 	MPI_Unpack(buff, buffSize, &position, t, 6, MPI_INT, MPI_COMM_WORLD);
 
@@ -286,42 +239,6 @@ block_t* recvBlockPacked (integer_t p, integer_t tag){
 	MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD);
 
 	return b;
-}
-
-/* -------------------------------------------------------------------- */
-/* .. Function for recive block_t from all workers in Asyncronous way,
-/* .. The sending process must send the block with sendBlockPacked function.
-/* -------------------------------------------------------------------- */
-matrix_t* recvAndAddBlockPacked(integer_t *ku, integer_t *n, integer_t *kl, integer_t numBlocks){
-	
-	integer_t rank, size, index, i,j;	
-	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-	MPI_Comm_size (MPI_COMM_WORLD, &size);
-	MPI_Status  status;
-	integer_t t[6];
-	integer_t position = 0, buffSize = 0;
-	matrix_t* R = matrix_CreateEmptyReducedSystem( size-1, n, ku, kl);
-
-	for(i=0; i<numBlocks; i++){
-
-		position = 0;
-
-		MPI_CheckCall(MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status));
-		MPI_CheckCall(MPI_Get_count(&status, MPI_PACKED, &buffSize));
-		char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
-
-		MPI_CheckCall(MPI_Recv(buff, buffSize, MPI_PACKED, status.MPI_SOURCE, status.MPI_TAG, MPI_COMM_WORLD, &status));
-
-		MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, t, 6, MPI_INT, MPI_COMM_WORLD));
-		block_t *b = block_CreateEmptyBlock(t[2], t[3], t[4], t[5], t[0], t[1]);
-		integer_t recvCount = (b->n)*(b->m)*_MPI_COUNT_;
-
-		MPI_CheckCall(MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD));
-		matrix_AddTipToReducedMatrix(size-1, status.MPI_SOURCE-1, n, ku, kl, R, b);
-
-	}
-
-	return R;
 }
 
 void sendSchedulePacked(sm_schedule_t* S, integer_t p){
@@ -337,8 +254,6 @@ void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 	MPI_Pack(S->ku, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(S->kl, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
 	
-	debug("Prepared to send schedule with buffSize: %d ", buffSize);
-	debug("Values of schedule: max_m:%d, max_n:%d, p:%d ", S->max_m, S->max_n, S->p);
 	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
 	
 }
@@ -375,54 +290,464 @@ sm_schedule_t* recvSchedulePacked(integer_t p){
 	return S;
 }
 
-/* -------------------------------------------------------------------- */
-/* NOT FINISHED: Classical implementation of asyncronous recive
-/* block_t. NOT FINISHED.
-/* -------------------------------------------------------------------- */
-matrix_t* recvAndAddBlock(integer_t *ku, integer_t *n, integer_t *kl){
+/*#########################################################################################################################
 
-	integer_t rank, size, index, i,j;	
+												COMPLEX SEND AND RECV FUNCTIONS
+
+##########################################################################################################################*/
+
+/* -------------------------------------------------------------------- 
+	Send schedule to all nodes.
+ -------------------------------------------------------------------- */
+void scatterSchedule(sm_schedule_t* S){
+	integer_t p;
+	for(p=1; p < S->p; p++) sendSchedulePacked(S, p);
+}
+
+/* -------------------------------------------------------------------- 
+	Asyncronous Send of Aij, Bi, Ci and fi to all nodes
+ -------------------------------------------------------------------- */
+void scatterAijBiCiFi(sm_schedule_t* S, matrix_t* A, block_t* f){
+	
+	integer_t p;
+	for(p=1; p < S->p; p++)
+	{
+		const integer_t r0 = S->n[p];
+		const integer_t rf = S->n[p+1];
+
+		matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf, _DIAG_BLOCK_);
+		sendMatrixPacked(Aij, p, AIJ_TAG);
+
+		block_t*  fi  = block_ExtractBlock( f, r0, rf );
+		block_SetBandwidthValues( fi, S->ku[p], S->kl[p] );
+		sendBlockPacked(fi, p, FI_TAG);
+
+		// Clean up
+		matrix_Deallocate( Aij);
+		block_Deallocate (fi );
+		
+		if(p == 0){
+			matrix_t* Bi = matrix_ExtractMatrix (A, rf - A->ku, rf, rf, rf + A->ku, _B_BLOCK_);
+			sendMatrixPacked(Bi, p, BI_TAG);
+			matrix_Deallocate( Bi );
+		}
+
+		else if (p == ( S->p -1)){
+			matrix_t* Ci = matrix_ExtractMatrix (A, r0, r0 + A->kl, r0 - A->kl, r0 ,_C_BLOCK_);
+			sendMatrixPacked(Ci, p, CI_TAG);
+			matrix_Deallocate( Ci );
+		}
+
+		else{
+			matrix_t* Bi = matrix_ExtractMatrix(A, rf - A->ku, rf, rf, rf + A->ku, _B_BLOCK_);
+			matrix_t* Ci = matrix_ExtractMatrix(A, r0, r0 + A->kl, r0 - A->kl, r0 ,_C_BLOCK_);
+			sendMatrixPacked(Bi, p, BI_TAG);				
+			sendMatrixPacked(Ci, p, CI_TAG);
+			matrix_Deallocate( Bi );
+			matrix_Deallocate( Ci );
+		}
+	}
+}
+
+/* -------------------------------------------------------------------- 
+	Asyncronous Recv of Aij, Bi, Ci and Fi from all nodes and
+	prepare the Reduced System to be solved.
+ -------------------------------------------------------------------- */
+void gatherReducedSystem(sm_schedule_t* S, matrix_t* R, block_t* xr){
+
+	integer_t i, size;
+	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	MPI_Status  status;
+
+	for(i=0; i<6*(size-1)-2; i++){
+		MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		switch(status.MPI_TAG) {
+			case VIWI_TAG:
+			{
+				block_t* b = recvBlockPacked(status.MPI_SOURCE, VIWI_TAG);
+				matrix_AddTipToReducedMatrix( S->p, status.MPI_SOURCE, S->n, S->ku, S->kl, R, b);
+				block_Deallocate(b);
+				break;
+			}
+			case YI_TAG:
+			{
+				block_t* b = recvBlockPacked(status.MPI_SOURCE, YI_TAG);
+				block_AddTipTOReducedRHS(status.MPI_SOURCE, S->ku, S->kl, xr, b);
+				block_Deallocate(b);
+				break;
+			}
+		}
+	}
+}
+
+/* -------------------------------------------------------------------- 
+	Asyncronous Send of Aij, Bi, Ci and fi to all nodes
+ -------------------------------------------------------------------- */
+void scatterXiFi(sm_schedule_t* S, block_t* x, block_t* f, block_t* yr){
+
+	integer_t p;
+	for(p=1; p < S->p; p++){
+		/* compute the limits of the blocks */
+		const integer_t obs = S->n[p];        		/* original system starting row */
+		const integer_t obe = S->n[p+1];	  		/* original system ending row   */
+		const integer_t rbs = S->r[p];		  		/* reduceed system starting row */
+		const integer_t rbe = S->r[p+1];			/* reduced system ending row    */
+		const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
+
+		/* allocate pardiso configuration parameters */
+		MKL_INT pardiso_conf[64];
+
+		/* extract xi sub-block */
+		block_t*  xi  = block_ExtractBlock(x, obs, obe );
+		sendBlockPacked(xi, p, XI_TAG);
+
+		/* extract fi sub-block */
+		block_t*  fi  = block_ExtractBlock(f, obs, obe );
+		sendBlockPacked(fi, p, FI_TAG);
+		
+		if ( p == 0 ){
+
+			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p]);
+			sendBlockPacked(xt_next, p,XT_NEXT_TAG);
+			block_Deallocate (xt_next);
+		}
+
+		else if ( p == ( S->p -1)){
+
+			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
+			sendBlockPacked(xb_prev, p, XT_PREV_TAG);
+			block_Deallocate (xb_prev);
+		}
+
+		else{
+			block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p]);
+			sendBlockPacked(xt_next, p, XT_NEXT_TAG);
+			block_Deallocate (xt_next);
+			
+			block_t* xb_prev = block_ExtractBlock ( yr, rbs - S->kl[p], rbs );
+			sendBlockPacked(xb_prev, p, XT_PREV_TAG);
+			block_Deallocate (xb_prev);
+		}
+		block_Deallocate( fi );
+		block_Deallocate( xi );
+	}
+}
+
+void gatherXi(sm_schedule_t* S, block_t* x){
+	integer_t p;
+	MPI_Status  status;
+	for(p=1; p < S->p; p++){
+		MPI_Probe(MPI_ANY_SOURCE, XI_TAG, MPI_COMM_WORLD, &status);
+		block_t* xi = recvBlockPacked(status.MPI_SOURCE, XI_TAG);
+		block_AddBlockToRHS(x, xi, S->n[status.MPI_SOURCE], S->n[status.MPI_SOURCE+1]);
+		block_Deallocate ( xi );
+	}
+}
+
+void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler){
+
+	block_t* Bib2;
+	block_t* Cit2;
+	
+	integer_t rank, size, i, max_work, p;
+	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
+	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	MPI_Status  status;
+	p = rank;
+	const integer_t r0 = S->n[p];
+	const integer_t rf = S->n[p+1];
+
+	if(rank == 0 || rank == size-1) max_work = 2;
+	else max_work = 3;
+
+	for(i=0; i<max_work; i+=1){
+		MPI_Probe(master, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		//printf("MPI_STATUS.TAG: %d, rank: %d\n", status.MPI_TAG, rank);
+		switch(status.MPI_TAG) {
+			case FI_TAG:
+			{
+				/* solve the system for the RHS value */
+				block_t*  fi = recvBlockPacked(master, FI_TAG);
+				block_t* yit;
+				block_t* yib;
+
+				if(!BLOCKING){
+					block_t*  yi = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+					block_SetBandwidthValues( yi, S->ku[p], S->kl[p] );
+
+					/* Solve Ai * yi = fi */
+					directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij);
+					yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
+					yib = block_ExtractTip( yi, _BOTTOM_SECTION_, _COLMAJOR_ );
+					block_Deallocate (yi );
+				}
+				else{
+	
+					yit = block_CreateEmptyBlock( S->kl[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _TOP_SECTION_ );
+					yib = block_CreateEmptyBlock( S->ku[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _BOTTOM_SECTION_ );
+					blockingFi(S, fi, yit, yib, nrhs, master, handler);
+				}
+
+				sendBlockPacked(yit, master, YI_TAG);
+				sendBlockPacked(yib, master, YI_TAG);
+
+				/* clean up */
+				block_Deallocate (fi);
+				block_Deallocate (yit);
+				block_Deallocate (yib);
+				
+				break;
+			}
+
+			case BI_TAG:
+			{
+				matrix_t* BiTmp = recvMatrixPacked(master, BI_TAG);
+				block_t* Vit;
+				block_t* Vib;
+
+				if(!BLOCKING){
+					block_t* Vi = block_CreateEmptyBlock ( rf - r0, S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _WHOLE_SECTION_ );
+					block_t* Bi = block_BuildBlockFromMatrix(BiTmp, _V_BLOCK_, Aij->n, Aij->n, S->ku[p], S->kl[p]);
+
+					/* solve Ai * Vi = Bi */
+					directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij);
+
+					Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
+					Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
+					Bib2 = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
+					block_Deallocate( Bi);
+					block_Deallocate( Vi);
+				}
+
+				else{
+
+					Vit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
+					Vib = block_CreateEmptyBlock( S->ku[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _BOTTOM_SECTION_ );
+					Bib2 = blockingBi(S, BiTmp, Vit, Vib, master, handler);
+				}
+
+				sendBlockPacked(Vit, master, VIWI_TAG);
+				sendBlockPacked(Vib, master, VIWI_TAG);
+
+				memcpy(Bib->aij, Bib2->aij, Bib->n*Bib->m*sizeof(complex_t));
+
+				block_Deallocate( Vit);
+				block_Deallocate( Vib);
+
+				break;
+			}
+
+			case CI_TAG:
+			{
+				matrix_t* CiTmp = recvMatrixPacked(master, CI_TAG);
+				block_t* Wit;
+				block_t* Wib;
+				if(!BLOCKING){
+					block_t* Wi = block_CreateEmptyBlock( rf - r0, S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _WHOLE_SECTION_ );
+					block_t* Ci = block_BuildBlockFromMatrix(CiTmp, _W_BLOCK_, Aij->n, Aij->n, S->ku[p], S->kl[p]);
+
+					/* solve Ai  * Wi = Ci */
+					directSolver_SolveForRHS( handler, Wi->m, Wi->aij, Ci->aij);
+		
+					Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
+					Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
+					Cit2 = block_ExtractTip(Ci, _TOP_SECTION_, _COLMAJOR_ );					
+					block_Deallocate( Ci );
+					block_Deallocate( Wi );					
+				}
+				else{
+					Wit = block_CreateEmptyBlock( S->kl[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _TOP_SECTION_ );
+					Wib = block_CreateEmptyBlock( S->ku[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _BOTTOM_SECTION_ );
+					Cit2 = blockingCi(S, CiTmp, Wit, Wib, master, handler);
+				}
+
+				sendBlockPacked(Wit, master, VIWI_TAG);
+				sendBlockPacked(Wib, master, VIWI_TAG);
+
+				memcpy(Cit->aij, Cit2->aij, Cit->n*Cit->m*sizeof(complex_t));
+	
+				block_Deallocate( Wit);
+				block_Deallocate( Wib);
+			
+				break;
+			}
+		}
+	}
+}
+
+void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t master, DirectSolverHander_t *handler){
+
+	integer_t max_work, i, p, rank, size;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
 	MPI_Status  status;
-	
-	integer_t buffSize = 4*(size-2);
-	MPI_Request *request = (MPI_Request *) spike_malloc( ALIGN_INT, buffSize, sizeof(MPI_Request));
-	block_t **recvBlocks = (block_t **) spike_malloc( ALIGN_INT, buffSize, sizeof(block_t*));
+	p = rank;
+	const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
 
-	integer_t **recvInfo = (integer_t **) spike_malloc( ALIGN_INT, buffSize, sizeof(integer_t*));
-	for(i = 0; i < buffSize; i++) recvInfo[i] = (integer_t *) spike_malloc( ALIGN_INT, 6, sizeof(integer_t));
+	if(rank == 0 || rank == size-1) max_work = 1;
+	else max_work = 2;
 
-	matrix_t* R = matrix_CreateEmptyReducedSystem( size-1, n, ku, kl );
-	
-	for(i=2; i<buffSize+2; i++){
-		MPI_CheckCall(MPI_Irecv(&recvInfo[i-2][0], 6, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &request[i-2]));
-		//debug("i: %d, recvInfo[%d], p:%d", i, i-2, i/4+1);
-	}
-	debug("-------------------------------------------------------------");
-	int k, recvCount;
-	for(i=0; i<buffSize; i++){
-		MPI_Waitany(buffSize, request, &index, &status);
-		//debug("Reciving Asyncronous Info from %d, index: %d, iter: %d", status.MPI_SOURCE, index, i);
-		debug("Recived Info: n:%d, m:%d, ku:%d, kl:%d, type:%d, section:%d", recvInfo[index][2], recvInfo[index][3], recvInfo[index][4], recvInfo[index][5], recvInfo[index][0], recvInfo[index][1]);
-		recvBlocks[index] = block_CreateEmptyBlock(recvInfo[index][2], recvInfo[index][3], recvInfo[index][4], recvInfo[index][5], recvInfo[index][0], recvInfo[index][1]);
-		//debug("Recived Block Info: n:%d, m:%d, ku:%d, kl:%d", recvBlocks[index]->n, recvBlocks[index]->m, recvBlocks[index]->ku, recvBlocks[index]->kl);
-	}
+	block_t* xi = recvBlockPacked(master, XI_TAG);
+	block_t* fi = recvBlockPacked(master, FI_TAG);
 
-	for(i=2; i<buffSize+2; i++){
-		recvCount = recvBlocks[i-2]->n * recvBlocks[i-2]->m * _MPI_COUNT_;
-		MPI_CheckCall(MPI_Irecv(recvBlocks[i-2]->aij, recvCount, _MPI_COMPLEX_T_, i/4+1, 1, MPI_COMM_WORLD, &request[i-2]));
+	for(i=0; i<max_work; i++){
+		MPI_Probe(master, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		switch(status.MPI_TAG) {
+			case XT_NEXT_TAG:
+			{
+				block_t* xt_next = recvBlockPacked(master, XT_NEXT_TAG);
+		
+				/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */
+				gemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+					Bib->n,    						/* m - number of rows of A    */
+					xt_next->m, 					/* n - number of columns of B */
+					Bib->m,    						/* k - number of columns of A */
+					__nunit,						/* alpha                      */
+					Bib->aij, 						/* A block                    */
+					Bib->n,    						/* lda - first dimension of A */
+					xt_next->aij, 					/* B block                    */
+					xt_next->n,    					/* ldb - first dimension of B */
+					__punit,						/* beta                       */
+					&fi->aij[ni - S->ku[p]], 		/* C block                    */
+					ni ); 					 		/* ldc - first dimension of C */
+		
+				/* Solve Ai * xi = fi */
+				directSolver_SolveForRHS(handler, xi->m, xi->aij, fi->aij);
+
+				block_Deallocate ( Bib );
+				block_Deallocate ( xt_next);
+
+				break;
+			}
+			case XT_PREV_TAG:
+			{
+				block_t* xb_prev = recvBlockPacked(master, XT_PREV_TAG);
+				/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */ 
+				gemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+					Cit->n,    						/* m - number of rows of A    */
+					xb_prev->m, 					/* n - number of columns of B */
+					Cit->m,    						/* k - number of columns of A */
+					__nunit,						/* alpha                      */
+					Cit->aij, 						/* A block                    */
+					Cit->n,    						/* lda - first dimension of A */
+					xb_prev->aij, 					/* B block                    */
+					xb_prev->n,    					/* ldb - first dimension of B */
+					__punit,						/* beta                       */
+					fi->aij, 			 		    /* C block                    */
+					ni );		 					/* ldc - first dimension of C */
+
+				/* Solve Ai * xi = fi */
+				directSolver_SolveForRHS(handler, xi->m, xi->aij, fi->aij);
+
+				block_Deallocate ( Cit );
+				block_Deallocate ( xb_prev);
+				break;
+			}
+		}
 	}
-	for(i=0; i<buffSize; i++){
-		MPI_Waitany(buffSize, request, &index, &status);
-		block_Print(recvBlocks[index], "Recived Block");
-		//recvCount = recvBlocks[index]->n * recvBlocks[index]->m * _MPI_COUNT_;
-		//debug("Reciving Asyncronous Data from %d", status.MPI_SOURCE);
-		matrix_AddTipToReducedMatrix(size-1, status.MPI_SOURCE-1, n, ku, kl, R, recvBlocks[index]);
-		debug("%d, %d, %d",size-1, status.MPI_SOURCE-1, index);
-		//for(k=0; k<recvCount; k++)printf("->%d, ", recvBlocks[index]->aij[k]);
-	}
-	return R;
+	sendBlockPacked(xi, master, XI_TAG);
+	block_Deallocate (xi);
+	block_Deallocate (fi);
+}
+
+void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix_t* A, block_t* f, matrix_t* R, block_t* Bib, block_t* xr, integer_t nrhs){
+
+	integer_t rank, size;
+	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	integer_t p = 0;
+	const integer_t r0 = S->n[p];
+	const integer_t rf = S->n[p+1];
+	matrix_t* Aij = matrix_ExtractMatrix(A, r0, rf, r0, rf, _DIAG_BLOCK_);
+	block_t* Bib2;
+
+	directSolver_Factorize( handler,
+		Aij->n,
+		Aij->nnz,
+		Aij->colind,
+		Aij->rowptr,
+		Aij->aij);
+
+	/* solve the system for the RHS value */
+	block_t*  fi = block_ExtractBlock( f, r0, rf );
+	block_t*  yi = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+	block_SetBandwidthValues( yi, S->ku[p], S->kl[p] );
+	block_SetBandwidthValues( fi, S->ku[p], S->kl[p] );
+
+	/* Solve Ai * yi = fi */
+	directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij);
+
+	/* Extract the tips of the yi block */
+	block_t* yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
+	block_t* yib = block_ExtractTip( yi, _BOTTOM_SECTION_, _COLMAJOR_ );
+	block_AddTipTOReducedRHS(rank, S->ku, S->kl, xr, yit);
+	block_AddTipTOReducedRHS(rank, S->ku, S->kl, xr, yib);
+
+	/* clean up */
+	block_Deallocate (yi );
+	block_Deallocate (yit);
+	block_Deallocate (yib);
+
+	block_t* Vi = block_CreateEmptyBlock ( rf - r0, S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _WHOLE_SECTION_ );
+	block_t* Bi = matrix_ExtractBlock    ( A, r0, rf, rf, rf + A->ku, _V_BLOCK_ );
+
+	/* solve Ai * Vi = Bi */
+	directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij);
+
+	block_t* Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
+	block_t* Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
+	matrix_AddTipToReducedMatrix( S->p, rank, S->n, S->ku, S->kl, R, Vit);
+	matrix_AddTipToReducedMatrix( S->p, rank, S->n, S->ku, S->kl, R, Vib);
+
+	Bib2 = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
+	memcpy(Bib->aij, Bib2->aij, Bib->n*Bib->m*sizeof(complex_t));
+
+	block_Deallocate( Bi );
+	block_Deallocate( Vi);
+	block_Deallocate( Vit);
+	block_Deallocate( Vib);
+	block_Deallocate( fi);
+	block_Deallocate (Bib2);
+}
+
+void masterWorkBackward(sm_schedule_t* S, block_t* yr, block_t* f, block_t* x, block_t* Bib, DirectSolverHander_t *handler){
+
+	integer_t rank, size;
+	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	integer_t p = 0; 
+	const integer_t obs = S->n[p];        		/* original system starting row */
+	const integer_t obe = S->n[p+1];	  		/* original system ending row   */
+	const integer_t rbs = S->r[p];		  		/* reduceed system starting row */
+	const integer_t rbe = S->r[p+1];			/* reduced system ending row    */
+	const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
+
+	block_t* xt_next = block_ExtractBlock ( yr, rbe, rbe + S->ku[p]);
+	block_t*  xi  = block_ExtractBlock(x, obs, obe );
+	block_t*  fi2  = block_ExtractBlock(f, obs, obe );
+
+	/* Backward substitution, implicit scheme: xi = -1.0 * Bi * xit  + fi */
+	gemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+		Bib->n,    						/* m - number of rows of A    */
+		xt_next->m, 					/* n - number of columns of B */
+		Bib->m,    						/* k - number of columns of A */
+		__nunit,						/* alpha                      */
+		Bib->aij, 						/* A block                    */
+		Bib->n,    						/* lda - first dimension of A */
+		xt_next->aij, 					/* B block                    */
+		xt_next->n,    					/* ldb - first dimension of B */
+		__punit,						/* beta                       */
+		&fi2->aij[ni - S->ku[p]], 		/* C block                    */
+		ni ); 					 		/* ldc - first dimension of C */
+
+	/* Solve Ai * xi = fi */
+	directSolver_SolveForRHS(handler, xi->m, xi->aij, fi2->aij);
+	// directSolver_Host_Solve ( Aij->n, Aij->nnz, fi2->m, Aij->colind, Aij->rowptr, Aij->aij, xi->aij, fi2->aij);
+	block_AddBlockToRHS(x, xi, S->n[rank], S->n[rank+1]);
+
+	block_Deallocate(xi);
+	block_Deallocate(fi2);
+	block_Deallocate(xt_next);
 }
 
 /* -------------------------------------------------------------------- */
