@@ -50,15 +50,14 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
 	MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-
-
 	
 	if ( rank == 0) {
 			// matrix_t* A = matrix_LoadCSR("../../Matrices/large_10e6.d");
 			// matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 			// matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
-			 matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
-			// matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
+			// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
+			 matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
+			// matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
 			// matrix_PrintAsDense( A, "Original coeffient matrix" );
 
 			matrix_PrintAsDense(A, NULL);

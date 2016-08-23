@@ -22,35 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mpi.h>
-
-static block_t* block_Synthetic(const integer_t n,
-                                const integer_t m,
-                                const integer_t ku,
-                                const integer_t kl, 
-                                const complex_t value, 
-                                blocktype_t type,
-                                blocksection_t section )
-{
-
-	block_t* B = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
-
-	B->type = type;
-	B->section = section;
-	B->n    = n;
-	B->m    = m;
-	B->ku   = ku;
-	B->kl   = kl;
-	B->aij  = (complex_t*) spike_malloc( ALIGN_COMPLEX, n * m, sizeof(complex_t));
-
-	for (integer_t row = 0; row < n; row++) {
-		for(integer_t col = 0; col < m; col++ ) {
-			B->aij[row + col * n] = (0.1 * (row +1)) + value;
-		}	
-	}
-
-  return (B);
-};
+#include <mpi.h> 
+		
 
 int main(int argc, char *argv[])
 {
@@ -69,8 +42,10 @@ int main(int argc, char *argv[])
 
 	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
+	//matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
 	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
+	matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	integer_t  p     = size - 1;
 	integer_t  ku[3] = {2, 1, 1};
@@ -82,7 +57,7 @@ int main(int argc, char *argv[])
 	if(rank == master){ //MASTER
 		start_t = GetReferenceTime();
 		schedule = spike_solve_analysis( A, nrhs); //Number of partitions
-		matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);
+		//matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);
 		integer_t r0,rf,c0,cf;
 		
 		for(integer_t p=0; p<schedule->p-1; p++){
@@ -102,7 +77,8 @@ int main(int argc, char *argv[])
 			schedule_Destroy( sTest );
 						
 		}
-
+		get_maximum_av_host_memory();
+		MPI_Barrier(MPI_COMM_WORLD);
 		/*for(integer_t p=0; p<schedule->p; p++){
 
 			r0 = schedule->n[p];
@@ -117,11 +93,11 @@ int main(int argc, char *argv[])
 			matrix_Deallocate(Aij);
 
 		}*/
-
+		/*
 		for(integer_t p=0; p<schedule->p-1; p++){
 
-			r0 = schedule->n[p];
-			rf = schedule->n[p+1];
+			r0 = schedule->n[0];
+			rf = schedule->n[1];
 
 			matrix_t* Aij2 = matrix_ExtractMatrix(A, r0, rf, r0, rf, _DIAG_BLOCK_);
 			
@@ -129,9 +105,14 @@ int main(int argc, char *argv[])
 			matrix_t* test2 = recvMatrixPacked(p+1, 0);
 		
 			if(matrix_AreEqual (test2, Aij2))printf("TEST send Matrix Packed: \t%d PASSED\n", p+1);
+			get_maximum_av_host_memory();
+			
 			matrix_Deallocate(Aij2);
+			matrix_Deallocate(test2);
 
 		}
+		MPI_Barrier(MPI_COMM_WORLD);
+		*/
 		/*
 		for(integer_t p=0; p<schedule->p; p++){
 
@@ -149,6 +130,7 @@ int main(int argc, char *argv[])
 		}
 		*/
 		//Block Test
+		/*
 		for(integer_t p=0; p<schedule->p-1; p++){
 			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
 			block_t *V0 = recvBlock(p+1);
@@ -157,11 +139,35 @@ int main(int argc, char *argv[])
 			block_Deallocate (V0Test);
 			block_Deallocate (V0);
 		}
-
+		*/
 		for(integer_t p=0; p<schedule->p-1; p++){
-			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
+			int r0 = schedule->n[p];
+			int rf = schedule->n[p+1];
+			block_t *V0Test = matrix_ExtractBlock (A, rf - A->ku, rf, rf, rf + A->ku, _B_BLOCK_);
+			//block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
+			sendBlockPacked(V0Test,p+1, 0);
 			block_t *V0 = recvBlockPacked(p+1,0);
 			if(block_AreEqual (V0Test, V0))printf("TEST Send Block Packed: \t%d PASSED\n", p+1);
+			block_Deallocate (V0Test);
+			block_Deallocate (V0);
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		for(integer_t p=0; p<schedule->p-1; p++){
+			int r0 = schedule->n[0];
+			int rf = schedule->n[1];
+			block_t*  yi = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
+			block_SetBandwidthValues( yi, schedule->ku[p], schedule->kl[p] );
+
+			block_t *V0Test = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
+			debug("Sending block");
+			sendBlockPacked(V0Test,p+1, 0);
+			debug("Reciving block");
+			block_t *V0 = recvBlockPacked(p+1,0);
+
+			if(block_AreEqual (V0Test, V0))printf("TEST Send Block Packed TIP: \t%d PASSED\n", p+1);
+
 			block_Deallocate (V0Test);
 			block_Deallocate (V0);
 		}
@@ -171,19 +177,24 @@ int main(int argc, char *argv[])
 	else{
 		sm_schedule_t* sTest = recvSchedulePacked(master);
 		sendSchedulePacked(sTest, master);
-		
+		MPI_Barrier(MPI_COMM_WORLD);
+
 		//Matrix Testing
 		//matrix_t* Aij = recvMatrix(master);
 		//sendMatrix(Aij, master);
-		matrix_t* Aij = recvMatrixPacked(master, 0);
-		sendMatrixPacked(Aij, master, 0);
+		//matrix_t* Aij = recvMatrixPacked(master, 0);
+		//sendMatrixPacked(Aij, master, 0);
 		//Aij = recvMatrix(master);
 		//IsendMatrix(Aij, master);
-		matrix_Deallocate(Aij);
+		//matrix_Deallocate(Aij);
+		//MPI_Barrier(MPI_COMM_WORLD);		
 
 		//Block Testing
-		block_t *V0 = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
-		sendBlock(V0, master);
+		block_t *V0 = recvBlockPacked(master,0);
+		sendBlockPacked(V0, master, 0);
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		V0 = recvBlockPacked(master,0);
 		sendBlockPacked(V0, master, 0);
 		block_Deallocate (V0);
 

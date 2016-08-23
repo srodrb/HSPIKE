@@ -34,19 +34,19 @@ static void MPI_CheckCall( int err )
 
 
 /*#########################################################################################################################
-
 												BASIC SEND AND RECV FUNCTIONS
-
 ##########################################################################################################################*/
 
 /* -----------------------------------------------------------------------
 	- Send / Recv MATRIX
 ---------------------------------------------------------------------- */
 
-/* -------------------------------------------------------------------- */
-/* .. Function to send matrix_t to process p, p must recive 
-/* .. this matrix with recvMatrix function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Send Matrix Aij to process p, p must recive 
+ * 				this matrix with recvMatrix function.
+ * @param Aij 	Matrix to send.
+ * @param p 	Destination.
+ */
 void sendMatrix (matrix_t *Aij, integer_t p){
 	
 	MPI_CheckCall(MPI_Send(Aij		   , 5,					   MPI_INT, 	   p, 0, MPI_COMM_WORLD));
@@ -55,10 +55,12 @@ void sendMatrix (matrix_t *Aij, integer_t p){
 	MPI_CheckCall(MPI_Send(Aij->aij,    Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_, p, 0, MPI_COMM_WORLD));
 };
 
-/* -------------------------------------------------------------------- */
-/* .. Function to send matrix_t to process p, p must recive 
-/* .. this matrix with recvMatrix function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Asyncronous send of Matrix Aij to process p, p must recive 
+ * 				this matrix with recvMatrix function.
+ * @param Aij 	Matrix to send.
+ * @param p 	Destination.
+ */
 void IsendMatrix (matrix_t *Aij, integer_t p){
 	
 	MPI_Request request;
@@ -69,10 +71,13 @@ void IsendMatrix (matrix_t *Aij, integer_t p){
 
 };
 
-/* -------------------------------------------------------------------- */
-/* .. Function to send packed matrix_t to process p, p must recive 
-/* .. this matrix with recvMatrix function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Asyncronous send of Matrix Aij to process p, p must recive 
+ * 				this matrix with recvMatrixPacked function.
+ * @param Aij 	Matrix to send.
+ * @param p 	Destination.
+ * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ */
 void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 
 	MPI_Request request;	
@@ -91,10 +96,12 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
 };
 
-/* -------------------------------------------------------------------- */
-/* .. Function for recive matrix_t from process p, p must send 
-/* .. this matrix with sendMatrix function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Recive Matrix from process p, p must send 
+ * 				this matrix from sendMatrix function.
+ * @param p 	From witch process.
+ * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ */
 matrix_t* recvMatrix (integer_t p){
 	
 	int t[5];
@@ -115,10 +122,12 @@ matrix_t* recvMatrix (integer_t p){
 	return Aij;
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Function for recive matrix_t from process p, p must send 
-/* .. this matrix with sendMatrix function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Recive Matrix from process p, p must send 
+ * 				this matrix from sendMatrixPacked function.
+ * @param p 	From witch process.
+ * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ */
 matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	
 	integer_t buffSize = 0, position = 0, i;
@@ -143,6 +152,7 @@ matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	MPI_Unpack(buff, buffSize, &position, Aij->rowptr, Aij->n+1			   , MPI_INT	   , MPI_COMM_WORLD);
 	MPI_Unpack(buff, buffSize, &position, Aij->aij	 , Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_, MPI_COMM_WORLD);
 	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
+	free(buff);
 	return Aij;
 }
 
@@ -151,10 +161,12 @@ matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	-- Send / Recv BLOCK
 ---------------------------------------------------------------------- */
 
-/* -------------------------------------------------------------------- */
-/* .. Function to send block_t to process p, p must recive 
-/* .. this matrix with recvBlock function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Send block b to process p, p must recive 
+ * 				this matrix with recvBlock function.
+ * @param b 	Block to send.
+ * @param p 	Destination.
+ */
 void sendBlock (block_t *b, integer_t p){
 	
 	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
@@ -164,10 +176,12 @@ void sendBlock (block_t *b, integer_t p){
 
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Function to send block_t to process p, p must recive 
-/* .. this matrix with recvBlock function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Asyncronous Send block b to process p, p must recive 
+ * 				this matrix with recvBlock function.
+ * @param b 	Block to send.
+ * @param p 	Destination.
+ */
 void IsendBlock (block_t *b, integer_t p){
 	
 	integer_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
@@ -178,30 +192,64 @@ void IsendBlock (block_t *b, integer_t p){
 
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Function to send block_t to process p, p must recive 
-/* .. this matrix with recvBlock function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Send block b to process p, p must recive 
+ * 				this matrix with recvBlockPacked function.
+ * @param b 	Block to send.
+ * @param p 	Destination.
+ * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ */
 void sendBlockPacked (block_t *b, integer_t p, integer_t tag){
 	
+	MPI_Datatype BIG;
+	MPI_Type_contiguous( BIG_MSG_SIZE, MPI_PACKED, &BIG );
+	MPI_Type_commit(&BIG);
 	MPI_Request request;
-	uLong_t sendCount = (b->n)*(b->m)*_MPI_COUNT_;
-	uLong_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
-	debug("b->n:%d, b->m:%d, b->ku:%d, b->kl:%d", b->n, b->m, b->ku, b->kl);
-	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
-	
-	integer_t position = 0;
-	MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
-	MPI_Isend(buff, buffSize/4, MPI_INT, p, tag, MPI_COMM_WORLD, &request);
+	uLong_t sendCount = ((uLong_t)b->n)*((uLong_t)b->m)*(uLong_t)sizeof(complex_t) ;
+
+	integer_t bigSize = (sendCount / BIG_MSG_SIZE)+1;
+	uLong_t total = (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE;
+
+	debug("SendCount: %llu bigSize: %d, Total: %llu", sendCount, bigSize, total);
+
+	char *buff = (char*) malloc (total*sizeof(char) + 6*sizeof(integer_t));
+
+	integer_t position = 0;
+	memcpy (&buff[position], b, 6*sizeof(integer_t) );
+	position = 6*sizeof(integer_t);
+
+	memcpy (&buff[position], b->aij, sendCount*sizeof(char));
+	debug("Sure3");
+
+	//MPI_Pack(b, 6, MPI_INT , buff, bigSize, &position, MPI_COMM_WORLD);
+	//position = 6*(sizeof(int));
+	//MPI_Pack(b->aij, bigSize, BIG, buff, bigSize, &position, MPI_COMM_WORLD);
+	
+
+	MPI_Isend(buff, bigSize, BIG, p, tag, MPI_COMM_WORLD, &request);
+
+	//uLong_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
+
+	//debug("BuffSize: %llu", buffSize);
+
+	//integer_t bigSize = (buffSize / BIG_MSG_SIZE);
+	//debug("bigSize: %d", bigSize);
+
+	//char* buff = (char*) spike_malloc(ALIGN_INT, (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE, sizeof(char));
+	//debug("BigSize*BIG_MSG_SIZE: %llu",(uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE);
+	debug("b->n:%d, b->m:%d, b->ku:%d, b->kl:%d, buff: %llu", b->n, b->m, b->ku, b->kl, (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE);
+
+	//MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
+	//MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Function for recive block_t from process p, p must send 
-/* .. this block with sendBlock function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Recive Block from process p, p must send 
+ * 				this matrix from sendBlock function.
+ * @param p 	From witch process.
+ */
 block_t* recvBlock (integer_t p){
 
 	integer_t t[6], recvCount;
@@ -217,32 +265,61 @@ block_t* recvBlock (integer_t p){
 	return b;
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Function for recive block_t from process p, p must send 
-/* .. this block with sendBlock function.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Recive Block from process p, p must send 
+ * 				this matrix from sendBlockPacked function.
+ * @param p 	From witch process.
+ * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ */
 block_t* recvBlockPacked (integer_t p, integer_t tag){
 
-	integer_t buffSize=0, position = 0;
+	MPI_Datatype BIG;
+	MPI_Type_contiguous( BIG_MSG_SIZE, MPI_PACKED, &BIG );
+	MPI_Type_commit(&BIG);
+
+	integer_t position = 0;
+	integer_t bigSize = 0;
+	uLong_t buffSize = 0;
 	MPI_Status  status;
 	integer_t t[6];
 
 	MPI_Probe(p, tag, MPI_COMM_WORLD, &status);
-	MPI_Get_count(&status, MPI_PACKED, &buffSize);
-	char* buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));	
+	integer_t err = MPI_Get_count(&status, BIG, &bigSize);
+	//debug("err:%d, MPI_UNDEFINED: %d", err, MPI_UNDEFINED);
+	debug("BigSize: %d", bigSize);
 
-	MPI_Recv(buff, buffSize, MPI_INT, p, tag, MPI_COMM_WORLD, &status);
+	uLong_t total = (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE;
 
-	MPI_Unpack(buff, buffSize, &position, t, 6, MPI_INT, MPI_COMM_WORLD);
+	debug("BuffSize: %llu", total);
+
+	char* buff = (char*) spike_malloc(ALIGN_INT, total, sizeof(char));
+	
+	MPI_Recv(buff, bigSize, BIG, p, tag, MPI_COMM_WORLD, &status);
+
+	memcpy (t, buff, 6*sizeof(integer_t) );
+
+	//MPI_Unpack(buff, total, &position, t, 6, MPI_INT, MPI_COMM_WORLD);
+	debug("t: %d, %d, %d, %d, %d, %d", t[0], t[1], t[2], t[3], t[4], t[5]);
 
 	block_t *b = block_CreateEmptyBlock(t[2], t[3], t[4], t[5], t[0], t[1]);
-	integer_t recvCount = (b->n)*(b->m)*_MPI_COUNT_;
-	MPI_Unpack(buff, buffSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD);
-	debug("b->n:%d, b->m:%d, b->ku:%d, b->kl:%d", b->n, b->m, b->ku, b->kl);
+	//integer_t recvCount = (b->n)*(b->m)*_MPI_COUNT_;
+
+	//MPI_Unpack(buff, bigSize, &position, b->aij, recvCount , _MPI_COMPLEX_T_ , MPI_COMM_WORLD);
+	uLong_t sendCount = ((uLong_t)b->n)*((uLong_t)b->m)*(uLong_t)sizeof(complex_t);
+	memcpy (b->aij, &buff[6*sizeof(integer_t)], sendCount*sizeof(char) );
+	
+
+	debug("b->n:%d, b->m:%d, b->ku:%d, b->kl:%d, buffSize: %d", b->n, b->m, b->ku, b->kl, buffSize);
+	spike_free(buff);
 
 	return b;
 }
 
+/**
+ * @brief 		Send schedule to process p, p must recive 
+ * 				this schedule with recvSchedulePacked function.
+ * @param p 	Destination.
+ */
 void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 
 	integer_t buffSize;
@@ -260,6 +337,11 @@ void sendSchedulePacked(sm_schedule_t* S, integer_t p){
 	
 }
 
+/**
+ * @brief 		Recive schedule from process p, p must send 
+ * 				this schedule from sendSchedulePacked function.
+ * @param p 	From witch process.
+ */
 sm_schedule_t* recvSchedulePacked(integer_t p){
 	
 	integer_t buffSize=0, position = 0, t[5];
@@ -298,9 +380,11 @@ sm_schedule_t* recvSchedulePacked(integer_t p){
 
 ##########################################################################################################################*/
 
-/* -------------------------------------------------------------------- 
-	Send schedule to all nodes.
- -------------------------------------------------------------------- */
+
+/**
+ * @brief 		Send schedule to all nodes.
+ * @param S		Schedule to send.
+ */
 void scatterSchedule(sm_schedule_t* S){
 
 	integer_t i, size;
@@ -309,9 +393,19 @@ void scatterSchedule(sm_schedule_t* S){
 	for(p=1; p < size; p++) sendSchedulePacked(S, p);
 }
 
-/* -------------------------------------------------------------------- 
-	Asyncronous Send of Aij, Bi, Ci and fi to all nodes
- -------------------------------------------------------------------- */
+/**
+ * @brief 		Asyncronous send matrix Aij, Bi, Ci and block fi to all nodes
+
+				Its only needed to send Bi to the first process and Ci to the last process,
+				it will send Ci and Bi to all others process. It change when the Master
+				process is working because its supose to be the first partiton, in this case
+				the process number 1 (master = 0) will recive Bi and Ci.
+
+				This function use sendMatrixPacked and sendBlockPacked that are Asyncronous.
+ * @param S		Schedule of spike.
+ * @param A		Original spike matrix.
+ * @param f		Rhs of the spike system.
+ */
 void scatterAijBiCiFi(sm_schedule_t* S, matrix_t* A, block_t* f){
 
 	integer_t i, size;
@@ -365,10 +459,18 @@ void scatterAijBiCiFi(sm_schedule_t* S, matrix_t* A, block_t* f){
 	}
 }
 
-/* -------------------------------------------------------------------- 
-	Asyncronous Recv of Aij, Bi, Ci and Fi from all nodes and
-	prepare the Reduced System to be solved.
- -------------------------------------------------------------------- */
+/**
+ * @brief 		Gather all the tips and insert them to the Reduced System.
+
+				This functions is an Asycronous function to recive all the tips,
+				depending on the tag it will insert the tips on the Reduced System (R)
+				or on the solution (xr).
+								
+				This function use recvBlockPacked dynamicaly to recive Asyncronous.
+ * @param S		Schedule of spike.
+ * @param R		Reduced System (empty).
+ * @param xr	Solution of the reduced system (empty).
+ */
 void gatherReducedSystem(sm_schedule_t* S, matrix_t* R, block_t* xr){
 
 	integer_t i, size;
@@ -406,9 +508,20 @@ void gatherReducedSystem(sm_schedule_t* S, matrix_t* R, block_t* xr){
 	}
 }
 
-/* -------------------------------------------------------------------- 
-	Asyncronous Send of Aij, Bi, Ci and fi to all nodes
- -------------------------------------------------------------------- */
+/**
+ * @brief 		Asyncronous send matrix xi, fi and fi to all nodes.
+
+				Its only needed to send xt_next to the first process and xb_prev to the last process,
+				it will send xt_next and xb_prev to all others process. It change when the Master
+				process is working because its supose to be the first partiton, in this case
+				the process number 1 (master = 0) will recive xt_next and xb_prev.
+
+				This function use sendBlockPacked that is Asyncronous.
+ * @param S		Schedule of spike.
+ * @param f		f after solving Reduced System.
+ * @param yr	yr after solving Reduced System.
+ */
+
 void scatterXiFi(sm_schedule_t* S, block_t* x, block_t* f, block_t* yr){
 	
 	integer_t i, size;
@@ -499,7 +612,8 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
 	MPI_Status  status;
-	if(MASTER_WORKING){
+
+	if(MASTER_WORKING){	
 		if(rank == 0 || rank == size-1) max_work = 2;
 		else max_work = 3;
 		p = rank;
@@ -515,7 +629,7 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 	debug("Max Work %d", max_work);
 	for(i=0; i<max_work; i+=1){
 		MPI_Probe(master, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-		printf("MPI_STATUS.TAG: %d, rank: %d, FI_TAG: %d\n", status.MPI_TAG, rank, CI_TAG);
+		debug("MPI_STATUS.TAG: %d", status.MPI_TAG, rank);
 		switch(status.MPI_TAG) {
 			case FI_TAG:
 			{
@@ -525,6 +639,7 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 				block_t* yib;
 
 				if(!BLOCKING){
+
 					block_t*  yi = block_CreateEmptyBlock( rf - r0, nrhs, 0, 0, _RHS_BLOCK_, _WHOLE_SECTION_ );
 					block_SetBandwidthValues( yi, S->ku[p], S->kl[p] );
 
@@ -538,7 +653,7 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 	
 					yit = block_CreateEmptyBlock( S->kl[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _TOP_SECTION_ );
 					yib = block_CreateEmptyBlock( S->ku[p], nrhs, S->ku[p], S->kl[p], _RHS_BLOCK_, _BOTTOM_SECTION_ );
-					blockingFi(S, fi, yit, yib, nrhs, master, p, handler);
+					blockingFi(S, fi, yit, yib, nrhs, p, handler);
 				}
 
 				sendBlockPacked(yit, master, YI_TAG);
@@ -555,6 +670,7 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 			case BI_TAG:
 			{
 				matrix_t* BiTmp = recvMatrixPacked(master, BI_TAG);
+				debug("Recive Matrix Done");
 				block_t* Vit;
 				block_t* Vib;
 
@@ -564,19 +680,21 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 
 					/* solve Ai * Vi = Bi */
 					directSolver_SolveForRHS( handler, Vi->m, Vi->aij, Bi->aij);
+					debug("Solving Done");
 
 					Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 					Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
 					Bib2 = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
 					block_Deallocate( Bi);
 					block_Deallocate( Vi);
+					debug("All Done");
 				}
 
 				else{
 
 					Vit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 					Vib = block_CreateEmptyBlock( S->ku[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _BOTTOM_SECTION_ );
-					Bib2 = blockingBi(S, BiTmp, Vit, Vib, master, p, handler);
+					Bib2 = blockingBi(S, BiTmp, Vit, Vib, p, handler);
 				}
 
 				sendBlockPacked(Vit, master, VIWI_TAG);
@@ -611,7 +729,7 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 				else{
 					Wit = block_CreateEmptyBlock( S->kl[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _TOP_SECTION_ );
 					Wib = block_CreateEmptyBlock( S->ku[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _BOTTOM_SECTION_ );
-					Cit2 = blockingCi(S, CiTmp, Wit, Wib, master, p, handler);
+					Cit2 = blockingCi(S, CiTmp, Wit, Wib, p, handler);
 				}
 
 				sendBlockPacked(Wit, master, VIWI_TAG);

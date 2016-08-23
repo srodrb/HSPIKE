@@ -79,8 +79,12 @@ typedef double   timer_t;
 #define YI_TAG		205
 #define XI_TAG		210
 
-#define BLOCKING 		0
+//Configuration 
+
+#define BLOCKING 		1
 #define MASTER_WORKING 	0
+
+#define BIG_MSG_SIZE 	1000
 
 /*----------------------------------------------------
 -	Send and Recive Matrix Functions
