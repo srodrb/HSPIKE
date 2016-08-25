@@ -3,7 +3,7 @@ BACKEND  =pardiso
 DEBUG    =no
 
 # Data type definition
-DEFINES +=-D_MPI_SUPPORT_ -D_DATATYPE_D_ -D_NDEBUG
+DEFINES +=-D_MPI_SUPPORT_ -D_DATATYPE_Z_ -D_NDEBUG
 
 OBJS = spike_datatypes.o spike_matrix.o \
        spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o \
@@ -132,6 +132,13 @@ generalTest: generalTest.o $(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
 
 generalTest.o: generalTest.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+# LU SIZE TEST
+testSizeLU: testSizeLU.o $(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -o $@ $(CLIBS)
+
+testSizeLU.o: testSizeLU.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 # bandwidth test

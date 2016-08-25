@@ -17,6 +17,47 @@
  */
 #include "spike_mpi.h"
 #include <unistd.h>
+#define MS 50
+
+MPI_Request	arrayRequest[MS];
+char* arrayBuffer[MS];
+integer_t isFree[MS];
+integer_t reqCount = 0;
+
+integer_t findAvailReq(){
+	integer_t i;
+	integer_t flag;
+	for(i=0; i<reqCount; i++){
+		MPI_Request_get_status(arrayRequest[i], &flag, MPI_STATUS_IGNORE);
+		if(flag){
+			if(!isFree[i]){
+					free(arrayBuffer[i]);
+				}
+			else isFree[i] = 0;
+			return i;
+		}
+	}
+	reqCount++;
+	return reqCount-1;
+}
+
+integer_t checkAndFreeRequest(){
+
+	integer_t i;
+	integer_t flag = 0;
+	integer_t notFree = 0;
+	get_maximum_av_host_memory();
+	for(i=0; i<reqCount; i++){
+		MPI_Request_get_status(arrayRequest[i], &flag, MPI_STATUS_IGNORE);
+		if(flag && !isFree[i]){
+			isFree[i] = 1;
+			free(arrayBuffer[i]);
+		}
+		else if(!flag)notFree++;
+	}
+	get_maximum_av_host_memory();
+	return notFree;
+}
 
 /* -------------------------------------------------------------------- */
 /* .. Error Check for MPI.
@@ -80,10 +121,13 @@ void IsendMatrix (matrix_t *Aij, integer_t p){
  */
 void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 
-	MPI_Request request;	
+	checkAndFreeRequest();
+	int req = findAvailReq();
 	integer_t position = 0, i;
 	integer_t buffSize = (Aij->n+1 + Aij->nnz + 4)*sizeof(integer_t) + Aij->nnz*sizeof(complex_t) + sizeof(uLong_t);
-	char *buff = (char*) malloc(buffSize*sizeof(char));
+
+	arrayBuffer[req] = (char*) malloc(buffSize*sizeof(char));
+	char *buff = arrayBuffer[req];
 	
 	MPI_Pack(&Aij->n	, 1		  			  , MPI_INT		   , buff, buffSize, &position, MPI_COMM_WORLD);
 	MPI_Pack(&Aij->nnz	, 1		  			  ,_MPI_ULONG_	   , buff, buffSize, &position, MPI_COMM_WORLD);
@@ -93,7 +137,8 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
 	MPI_Pack(Aij->aij	, Aij->nnz*_MPI_COUNT_,_MPI_COMPLEX_T_ , buff, buffSize, &position, MPI_COMM_WORLD);
 	debug("Aij->n:%d, Aij->nnz:%llu, Aij->ku:%d, Aij->kl:%d, Aij->type:%d", Aij->n, Aij->nnz, Aij->ku, Aij->kl, Aij->type);
 
-	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &request);
+	MPI_Isend(buff, position, MPI_PACKED, p, tag, MPI_COMM_WORLD, &arrayRequest[req]);
+	
 };
 
 /**
@@ -195,6 +240,8 @@ void IsendBlock (block_t *b, integer_t p){
 /**
  * @brief 		Send block b to process p, p must recive 
  * 				this matrix with recvBlockPacked function.
+ *				This function can send more than 2³¹ bytes.
+
  * @param b 	Block to send.
  * @param p 	Destination.
  * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
@@ -204,44 +251,27 @@ void sendBlockPacked (block_t *b, integer_t p, integer_t tag){
 	MPI_Datatype BIG;
 	MPI_Type_contiguous( BIG_MSG_SIZE, MPI_PACKED, &BIG );
 	MPI_Type_commit(&BIG);
-	MPI_Request request;
+
+	checkAndFreeRequest();
+	int req = findAvailReq();
 
 	uLong_t sendCount = ((uLong_t)b->n)*((uLong_t)b->m)*(uLong_t)sizeof(complex_t) ;
 
 	integer_t bigSize = (sendCount / BIG_MSG_SIZE)+1;
 	uLong_t total = (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE;
 
-	debug("SendCount: %llu bigSize: %d, Total: %llu", sendCount, bigSize, total);
-
-	char *buff = (char*) malloc (total*sizeof(char) + 6*sizeof(integer_t));
+	arrayBuffer[req] = (char*) malloc (total*sizeof(char) + 6*sizeof(integer_t));
+	//char *buff = (char*) malloc (total*sizeof(char) + 6*sizeof(integer_t));
 
 	integer_t position = 0;
-	memcpy (&buff[position], b, 6*sizeof(integer_t) );
+	memcpy (&arrayBuffer[req][position], b, 6*sizeof(integer_t) );
 	position = 6*sizeof(integer_t);
 
-	memcpy (&buff[position], b->aij, sendCount*sizeof(char));
-	debug("Sure3");
+	memcpy (&arrayBuffer[req][position], b->aij, sendCount*sizeof(char));
 
-	//MPI_Pack(b, 6, MPI_INT , buff, bigSize, &position, MPI_COMM_WORLD);
-	//position = 6*(sizeof(int));
-	//MPI_Pack(b->aij, bigSize, BIG, buff, bigSize, &position, MPI_COMM_WORLD);
-	
+	MPI_Isend(arrayBuffer[req], bigSize, BIG, p, tag, MPI_COMM_WORLD, &arrayRequest[req]);
 
-	MPI_Isend(buff, bigSize, BIG, p, tag, MPI_COMM_WORLD, &request);
-
-	//uLong_t buffSize = 6*sizeof(integer_t) + sendCount*sizeof(complex_t);
-
-	//debug("BuffSize: %llu", buffSize);
-
-	//integer_t bigSize = (buffSize / BIG_MSG_SIZE);
-	//debug("bigSize: %d", bigSize);
-
-	//char* buff = (char*) spike_malloc(ALIGN_INT, (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE, sizeof(char));
-	//debug("BigSize*BIG_MSG_SIZE: %llu",(uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE);
 	debug("b->n:%d, b->m:%d, b->ku:%d, b->kl:%d, buff: %llu", b->n, b->m, b->ku, b->kl, (uLong_t)bigSize*(uLong_t)BIG_MSG_SIZE);
-
-	//MPI_Pack(b	   , 6		  ,  MPI_INT	   , buff, buffSize, &position, MPI_COMM_WORLD);
-	//MPI_Pack(b->aij, sendCount, _MPI_COMPLEX_T_, buff, buffSize, &position, MPI_COMM_WORLD);
 
 }
 
@@ -404,7 +434,7 @@ void scatterSchedule(sm_schedule_t* S){
 				This function use sendMatrixPacked and sendBlockPacked that are Asyncronous.
  * @param S		Schedule of spike.
  * @param A		Original spike matrix.
- * @param f		Rhs of the spike system.
+ * @param f		Number of right hand sides of the spike system.
  */
 void scatterAijBiCiFi(sm_schedule_t* S, matrix_t* A, block_t* f){
 
@@ -588,6 +618,14 @@ void scatterXiFi(sm_schedule_t* S, block_t* x, block_t* f, block_t* yr){
 	}
 }
 
+/**
+ * @brief 		Asyncronous recive of all xi blocks from the other process and add it 
+				to the final solution vector.
+				This function use recvBlockPacked that is Asyncronous.
+
+ * @param S		Spike Schedule.
+ * @param x		block xi part of the final solution.
+ */
 void gatherXi(sm_schedule_t* S, block_t* x){
 	integer_t i, size;
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -603,6 +641,25 @@ void gatherXi(sm_schedule_t* S, block_t* x){
 	}
 }
 
+
+/**
+ * @brief 		Worker recive Bi, Ci and fi Asyncronous and send the solution
+				to master.
+
+				Before this function you need to factorize Aij and during the factorization 
+				the master is sending the blocks Bi, Ci, and fi, and it recive this blocks 
+				in asyncronous way. When this function recive a block (Bi, Ci or fi) it 
+				process this block and send to the master the top and the bottom part of the
+				solution.
+
+ * @param S			Spike Schedule.
+ * @param master	Master node id.
+ * @param nrhs		Number of right hand sides of the spike system.
+ * @param Aij		Factorized Aij Matrix
+ * @param Bib		Store the bottom part of Bi (it will be needed later).
+ * @param Cit		Store the top part of Ci (it will be needed later).
+ * @param handler 	Direct solver.
+ */
 void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler){
 
 	block_t* Bib2;
@@ -747,6 +804,22 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
 	}
 }
 
+
+/**
+ * @brief 			Asyncronous: Worker recive the top part of the next section and/or the bottom part
+					of the previous section.
+
+					This function solve the backward solution of the system, every node  need to use
+				 	Bib and Cit, however the first partiton and the last partition of the spike system
+					only need one, Bib for the first partition and Cit for the last partition. When the
+					master is working the master take the first partiton.
+
+ * @param S			Spike Schedule.
+ * @param Bib		Bottom part of Bi, its possible to get it from workerSolveAndSendTips.
+ * @param Cit		Top part of Ci, its possible to get it from workerSolveAndSendTips.
+ * @param master	Master node id.
+ * @param handler 	Direct solver.
+ */
 void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t master, DirectSolverHander_t *handler){
 
 	integer_t max_work, i, p, rank, size;
@@ -830,6 +903,26 @@ void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t
 	block_Deallocate (fi);
 }
 
+
+/**
+ * @brief 			Master work for the first partition of spike system. (Factoritzation
+					part).
+
+					This function does the same than what the workers do in workerSolveAndSendTips
+					but with some optimizations because the master have already the data on memory
+					and its not needed to send this data. Also this function will insert the tips
+					to the reduced system like the gatherReducedSystem does for the rest of the 
+					system.
+
+ * @param handler 	Direct solver.
+ * @param S			Spike Schedule.
+ * @param A			Original Matrix.
+ * @param f			Block with the right hand sides.
+ * @param R			Reduced system.
+ * @param Bib		Bottom part of Bi.
+ * @param xr		Solution of the Reduced system.
+ * @param nrhs		Number of right hand sides of the spike system.
+ */
 void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix_t* A, block_t* f, matrix_t* R, block_t* Bib, block_t* xr, integer_t nrhs){
 
 	integer_t rank, size;
@@ -890,6 +983,23 @@ void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix
 	block_Deallocate (Bib2);
 }
 
+
+/**
+ * @brief 			Master work for the first partition of spike system. (Backward part).
+
+					This function does the same than what the workers do in workerSolveAndSendTips
+					but with some optimizations because the master have already the data on memory
+					and its not needed to send this data. Also this function will insert the tips
+					to the reduced system like the gatherReducedSystem does for the rest of the 
+					system.
+
+ * @param S			Spike Schedule.
+ * @param yr		Block with the right hand sides.
+ * @param f			Block with the right hand sides.
+ * @param x			Reduced system.
+ * @param Bib		Bottom part of Bi.
+ * @param handler 	Direct solver.
+ */
 void masterWorkBackward(sm_schedule_t* S, block_t* yr, block_t* f, block_t* x, block_t* Bib, DirectSolverHander_t *handler){
 
 	integer_t rank, size;

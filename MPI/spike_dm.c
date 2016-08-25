@@ -76,6 +76,7 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 
 		//Sincronization of all nodes.
 		MPI_Barrier(MPI_COMM_WORLD);
+		matrix_SaveCSR("ReducedSystem.bsit", R);
 
 		/* -------------------------------------------------------------------- */
 		/* .. Solution of the reduced system.                                   */

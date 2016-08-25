@@ -43,9 +43,9 @@ int main(int argc, char *argv[])
 	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
-	//matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
+	matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
 	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
+	//matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	integer_t  p     = size - 1;
 	integer_t  ku[3] = {2, 1, 1};
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 			matrix_Deallocate(Aij);
 
 		}*/
-		/*
+		
 		for(integer_t p=0; p<schedule->p-1; p++){
 
 			r0 = schedule->n[0];
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
-		*/
+		
 		/*
 		for(integer_t p=0; p<schedule->p; p++){
 
@@ -182,8 +182,9 @@ int main(int argc, char *argv[])
 		//Matrix Testing
 		//matrix_t* Aij = recvMatrix(master);
 		//sendMatrix(Aij, master);
-		//matrix_t* Aij = recvMatrixPacked(master, 0);
-		//sendMatrixPacked(Aij, master, 0);
+		matrix_t* Aij = recvMatrixPacked(master, 0);
+		sendMatrixPacked(Aij, master, 0);
+		MPI_Barrier(MPI_COMM_WORLD);
 		//Aij = recvMatrix(master);
 		//IsendMatrix(Aij, master);
 		//matrix_Deallocate(Aij);

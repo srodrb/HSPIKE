@@ -77,6 +77,8 @@
 
 	matrix_t*         matrix_LoadCSR                (const char* filename);
 
+	void 			  matrix_SaveCSR				(const char* filename, matrix_t* M);
+
 
 	integer_t*        vector_LoadPermutationArray   (const integer_t n, const char* filename);
 
