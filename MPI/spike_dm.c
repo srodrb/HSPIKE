@@ -42,11 +42,12 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 
 		/* compute an optimal solving strategy */
 		debug("Solving analisis and generating schedule");
-		sm_schedule_t* S = spike_solve_analysis( A, nrhs );
+		dm_schedule_t* S = spike_solve_analysis( A, nrhs );
 
 		/* create the reduced sytem in advanced, based on the solving strategy */
 		debug("Creating Reduced System");
 		matrix_t* R  = matrix_CreateEmptyReducedSystem ( S->p, S->n, S->ku, S->kl);
+		debug("Creating Reduced System");
 		block_t*  xr = block_CreateReducedRHS( S->p, S->ku, S->kl, nrhs );
 
 		/* Set up solver handler */
@@ -138,7 +139,7 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 			p = rank -1;
 		}
 		debug("Reciving schedule");
-		sm_schedule_t* S = recvSchedulePacked(master);
+		dm_schedule_t* S = recvSchedulePacked(master);
 		block_t* Bib = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 		block_t* Cit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 
@@ -163,6 +164,8 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 		//Solving Backward Solution.
 		debug("Solving Backward solution");
 		workerSolveBackward(S, Bib, Cit, master, handler);
+		block_Deallocate(Bib);
+		block_Deallocate(Cit);
 
 		/* Show statistics and clean up solver internal memory */
 		directSolver_ShowStatistics(handler);

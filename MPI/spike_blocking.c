@@ -18,13 +18,14 @@
 
 /** 
  *	@file spike_blocking.c 
- *  @brief Library for use blocking on blocks when the size of this blocks is to large.
+ *  @brief Library for use blocking on Bi, Ci and Fi when the size of this blocks is to large.
  */
 
 #include "spike_blocking.h"
 
 /**
  * @brief Blocking of block FI return yit and yib prepared to send.
+
  * @param S Schedule of the initial System.
  * @param fi Block fi where we are going to appy blocking.
  * @param yit OUTPUT block with the top values of yi after blocking.
@@ -33,7 +34,7 @@
  * @param p Spike partition number id.
  * @param handler direct solver.
  */
-void blockingFi(sm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integer_t nrhs, integer_t p, DirectSolverHander_t *handler)
+void blockingFi(dm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integer_t nrhs, integer_t p, DirectSolverHander_t *handler)
 {
 	integer_t size, rank;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
@@ -110,6 +111,7 @@ void blockingFi(sm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integ
 
 /**
  * @brief Blocking of block Bi return Vit and Vib prepared to send.
+
  * @param S Schedule of the initial System.
  * @param BiTmp Sparse matrix Bi where we are going to appy blocking.
  * @param Vit OUTPUT block with the top values of Bi after blocking.
@@ -118,7 +120,7 @@ void blockingFi(sm_schedule_t* S, block_t* fi, block_t* yit, block_t* yib, integ
  * @param handler direct solver.
  * @return Bib Bottom part of Bi, it's needed later on the Backward solution.
  */
-block_t* blockingBi(sm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vib, integer_t p, DirectSolverHander_t *handler)
+block_t* blockingBi(dm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vib, integer_t p, DirectSolverHander_t *handler)
 {
 	integer_t size, rank;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
@@ -205,6 +207,7 @@ block_t* blockingBi(sm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vi
 
 /**
  * @brief Blocking of block Ci return Vit and Vib prepared to send.
+
  * @param S Schedule of the initial System.
  * @param CiTmp Sparse matrix Bi where we are going to appy blocking.
  * @param Wit OUTPUT block with the top values of Bi after blocking.
@@ -213,7 +216,7 @@ block_t* blockingBi(sm_schedule_t* S, matrix_t* BiTmp, block_t* Vit, block_t* Vi
  * @param handler direct solver.
  * @return Cit Top part of Ci, it's needed later on the Backward solution.
  */
-block_t* blockingCi(sm_schedule_t* S, matrix_t* CiTmp, block_t* Wit, block_t* Wib, integer_t p, DirectSolverHander_t *handler){
+block_t* blockingCi(dm_schedule_t* S, matrix_t* CiTmp, block_t* Wit, block_t* Wib, integer_t p, DirectSolverHander_t *handler){
 
 	integer_t size, rank;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	

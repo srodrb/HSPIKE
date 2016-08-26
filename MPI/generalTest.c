@@ -16,7 +16,7 @@
  * =====================================================================================
  */
 
-#include "spike_analysis.h"
+#include "spike_analysis_dm.h"
 #include "spike_datatypes.h"
 #include "spike_mpi.h"
 #include <stdio.h>
@@ -43,9 +43,9 @@ int main(int argc, char *argv[])
 	//matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
 	//matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
-	matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
+	//matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
 	//matrix_t* A = matrix_LoadCSR("../Tests/pentadiagonal/large.bin");
-	//matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
+	matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
 
 	integer_t  p     = size - 1;
 	integer_t  ku[3] = {2, 1, 1};
@@ -53,17 +53,22 @@ int main(int argc, char *argv[])
 	integer_t  n [4] = {0, 5, 10, 15};
 
 
-	sm_schedule_t* schedule;
+	dm_schedule_t* schedule;
+	printf("Testing Send / Recv Schedule:\n");
 	if(rank == master){ //MASTER
 		start_t = GetReferenceTime();
 		schedule = spike_solve_analysis( A, nrhs); //Number of partitions
+		if(schedule->p != size){
+			printf("Partitons and number of process must be equal, to fix this set MASTER_WORKING to 1\n");
+			return 0;
+		}
 		//matrix_t* R = matrix_CreateEmptyReducedSystem( schedule->p, schedule->n, schedule->ku, schedule->kl);
 		integer_t r0,rf,c0,cf;
 		
 		for(integer_t p=0; p<schedule->p-1; p++){
 			int i, check = 0;
 			sendSchedulePacked(schedule, p+1);
-			sm_schedule_t* sTest = recvSchedulePacked(p+1);
+			dm_schedule_t* sTest = recvSchedulePacked(p+1);
 			check += schedule->p - sTest->p;
 			check += schedule->max_m - sTest->max_m;
 			check += schedule->max_n - sTest->max_n;
@@ -94,6 +99,7 @@ int main(int argc, char *argv[])
 
 		}*/
 		
+		printf("Testing Send / Recv Matrix:\n");
 		for(integer_t p=0; p<schedule->p-1; p++){
 
 			r0 = schedule->n[0];
@@ -113,33 +119,7 @@ int main(int argc, char *argv[])
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 		
-		/*
-		for(integer_t p=0; p<schedule->p; p++){
-
-			r0 = schedule->n[p];
-			rf = schedule->n[p+1];
-
-			matrix_t* Aij3 = matrix_ExtractMatrix(A, r0, rf, r0, rf);
-			
-			IsendMatrix(Aij3, p+1);
-			matrix_t* test3 = recvMatrix(p+1);
-		
-			if(matrix_AreEqual (test3, Aij3))printf("TEST Isend Matrix Packed: \t%d PASSED\n", p+1);
-			matrix_Deallocate(Aij3);
-
-		}
-		*/
-		//Block Test
-		/*
-		for(integer_t p=0; p<schedule->p-1; p++){
-			block_t *V0Test = block_Synthetic( 5, 2, ku[0], kl[0], 2.0, _V_BLOCK_, _WHOLE_SECTION_ );
-			block_t *V0 = recvBlock(p+1);
-			
-			if(block_AreEqual (V0Test, V0))printf("TEST Send Block: \t\t%d PASSED\n", p+1);
-			block_Deallocate (V0Test);
-			block_Deallocate (V0);
-		}
-		*/
+		printf("Testing Send / Recv Block:\n");
 		for(integer_t p=0; p<schedule->p-1; p++){
 			int r0 = schedule->n[p];
 			int rf = schedule->n[p+1];
@@ -175,20 +155,15 @@ int main(int argc, char *argv[])
 		
 	}
 	else{
-		sm_schedule_t* sTest = recvSchedulePacked(master);
+		//Schedule Testing
+		dm_schedule_t* sTest = recvSchedulePacked(master);
 		sendSchedulePacked(sTest, master);
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		//Matrix Testing
-		//matrix_t* Aij = recvMatrix(master);
-		//sendMatrix(Aij, master);
 		matrix_t* Aij = recvMatrixPacked(master, 0);
 		sendMatrixPacked(Aij, master, 0);
 		MPI_Barrier(MPI_COMM_WORLD);
-		//Aij = recvMatrix(master);
-		//IsendMatrix(Aij, master);
-		//matrix_Deallocate(Aij);
-		//MPI_Barrier(MPI_COMM_WORLD);		
 
 		//Block Testing
 		block_t *V0 = recvBlockPacked(master,0);

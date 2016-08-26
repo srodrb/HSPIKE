@@ -16,11 +16,22 @@
  * =====================================================================================
  */
 
+/** 
+ *	@file main.c 
+ */
+
+/*! \mainpage Spike summary
+ *
+ * \section intro_sec Introduction
+ *
+ * This is an implementation of spike in distributed memory system.
+ * For more information go to spike_mpi.c documentation.
+ *
+ * \section org_sec Organization
+ * Barcelona Supercomputing Center
+ */
 
 #include "spike_dm.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 const integer_t nrhs = 1;
 
@@ -70,7 +81,7 @@ int main(int argc, char *argv[])
 			block_InitializeToValue( f, __punit ); // rhs of the system
 
 			/* compute an optimal solving strategy */
-			sm_schedule_t* S = spike_solve_analysis( A, nrhs );
+			dm_schedule_t* S = spike_solve_analysis( A, nrhs );
 			
 			/* call MPI solver */
 			spike_dm ( A, x, f, nrhs );

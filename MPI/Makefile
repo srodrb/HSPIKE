@@ -6,8 +6,8 @@ DEBUG    =no
 DEFINES +=-D_MPI_SUPPORT_ -D_DATATYPE_Z_ -D_NDEBUG
 
 OBJS = spike_datatypes.o spike_matrix.o \
-       spike_algebra.o spike_analysis.o spike_common.o spike_mpi.o \
-	   spike_dm.o spike_blocking.o
+       spike_algebra.o spike_analysis_dm.o spike_common.o spike_mpi.o \
+	   spike_dm.o spike_blocking.o 
 
 ifeq ($(COMPILER),intel)
 	CC      =mpiicc
@@ -99,6 +99,9 @@ spike_algebra.o:../OpenMP/spike_algebra.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_analysis.o:../OpenMP/spike_analysis.c
+	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
+
+spike_analysis_dm.o:spike_analysis_dm.c
 	$(CC) $(CFLAGS) $(DEFINES) $(CINCS) $+ -c
 
 spike_common.o:../OpenMP/spike_common.c

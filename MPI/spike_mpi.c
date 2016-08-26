@@ -15,8 +15,12 @@
  *
  * =====================================================================================
  */
+
+/** 
+ *	@file spike_mpi.c 
+ *  @brief Distributed memory spike library.
+ */
 #include "spike_mpi.h"
-#include <unistd.h>
 #define MS 50
 
 MPI_Request	arrayRequest[MS];
@@ -24,6 +28,7 @@ char* arrayBuffer[MS];
 integer_t isFree[MS];
 integer_t reqCount = 0;
 
+//TODO Optmize the acces.
 integer_t findAvailReq(){
 	integer_t i;
 	integer_t flag;
@@ -350,20 +355,23 @@ block_t* recvBlockPacked (integer_t p, integer_t tag){
  * 				this schedule with recvSchedulePacked function.
  * @param p 	Destination.
  */
-void sendSchedulePacked(sm_schedule_t* S, integer_t p){
+void sendSchedulePacked(dm_schedule_t* S, integer_t p){
 
+	checkAndFreeRequest();
+	int req = findAvailReq();
 	integer_t buffSize;
 	buffSize = (5 + 2 + S->p*4)*sizeof(integer_t);
-	char *buff = (char*) spike_malloc(ALIGN_INT, buffSize, sizeof(char));
+	
+	arrayBuffer[req] = (char*) malloc (buffSize*sizeof(char));
 	
 	integer_t position = 0;
-	MPI_Pack(S, 	5, 		MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(S->n,  S->p+1, MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(S->r, 	S->p+1, MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(S->ku, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
-	MPI_Pack(S->kl, S->p,   MPI_INT, buff, buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S, 	5, 		MPI_INT, arrayBuffer[req], buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->n,  S->p+1, MPI_INT, arrayBuffer[req], buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->r, 	S->p+1, MPI_INT, arrayBuffer[req], buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->ku, S->p,   MPI_INT, arrayBuffer[req], buffSize, &position, MPI_COMM_WORLD);
+	MPI_Pack(S->kl, S->p,   MPI_INT, arrayBuffer[req], buffSize, &position, MPI_COMM_WORLD);
 	
-	MPI_Send(buff, position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
+	MPI_Send(arrayBuffer[req], position, MPI_PACKED, p, 0, MPI_COMM_WORLD);
 	
 }
 
@@ -372,11 +380,11 @@ void sendSchedulePacked(sm_schedule_t* S, integer_t p){
  * 				this schedule from sendSchedulePacked function.
  * @param p 	From witch process.
  */
-sm_schedule_t* recvSchedulePacked(integer_t p){
+dm_schedule_t* recvSchedulePacked(integer_t p){
 	
 	integer_t buffSize=0, position = 0, t[5];
 	MPI_Status  status;
-	sm_schedule_t* S = (sm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(sm_schedule_t));
+	dm_schedule_t* S = (dm_schedule_t*) spike_malloc(ALIGN_INT, 1, sizeof(dm_schedule_t));
 
 	MPI_Probe(p, 0, MPI_COMM_WORLD, &status);
 	MPI_Get_count(&status, MPI_PACKED, &buffSize);
@@ -400,14 +408,14 @@ sm_schedule_t* recvSchedulePacked(integer_t p){
 	MPI_Unpack(buff, buffSize, &position, S->r,  S->p+1, MPI_INT, MPI_COMM_WORLD);
 	MPI_Unpack(buff, buffSize, &position, S->ku, S->p  , MPI_INT, MPI_COMM_WORLD);
 	MPI_Unpack(buff, buffSize, &position, S->kl, S->p  , MPI_INT, MPI_COMM_WORLD);
+
+	spike_free(buff);
 	
 	return S;
 }
 
 /*#########################################################################################################################
-
 												COMPLEX SEND AND RECV FUNCTIONS
-
 ##########################################################################################################################*/
 
 
@@ -415,7 +423,7 @@ sm_schedule_t* recvSchedulePacked(integer_t p){
  * @brief 		Send schedule to all nodes.
  * @param S		Schedule to send.
  */
-void scatterSchedule(sm_schedule_t* S){
+void scatterSchedule(dm_schedule_t* S){
 
 	integer_t i, size;
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -436,7 +444,7 @@ void scatterSchedule(sm_schedule_t* S){
  * @param A		Original spike matrix.
  * @param f		Number of right hand sides of the spike system.
  */
-void scatterAijBiCiFi(sm_schedule_t* S, matrix_t* A, block_t* f){
+void scatterAijBiCiFi(dm_schedule_t* S, matrix_t* A, block_t* f){
 
 	integer_t i, size;
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -501,7 +509,7 @@ void scatterAijBiCiFi(sm_schedule_t* S, matrix_t* A, block_t* f){
  * @param R		Reduced System (empty).
  * @param xr	Solution of the reduced system (empty).
  */
-void gatherReducedSystem(sm_schedule_t* S, matrix_t* R, block_t* xr){
+void gatherReducedSystem(dm_schedule_t* S, matrix_t* R, block_t* xr){
 
 	integer_t i, size;
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -552,7 +560,7 @@ void gatherReducedSystem(sm_schedule_t* S, matrix_t* R, block_t* xr){
  * @param yr	yr after solving Reduced System.
  */
 
-void scatterXiFi(sm_schedule_t* S, block_t* x, block_t* f, block_t* yr){
+void scatterXiFi(dm_schedule_t* S, block_t* x, block_t* f, block_t* yr){
 	
 	integer_t i, size;
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -626,7 +634,7 @@ void scatterXiFi(sm_schedule_t* S, block_t* x, block_t* f, block_t* yr){
  * @param S		Spike Schedule.
  * @param x		block xi part of the final solution.
  */
-void gatherXi(sm_schedule_t* S, block_t* x){
+void gatherXi(dm_schedule_t* S, block_t* x){
 	integer_t i, size;
 	MPI_Comm_size (MPI_COMM_WORLD, &size);
 	integer_t p, offset;
@@ -660,7 +668,7 @@ void gatherXi(sm_schedule_t* S, block_t* x){
  * @param Cit		Store the top part of Ci (it will be needed later).
  * @param handler 	Direct solver.
  */
-void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler){
+void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler){
 
 	block_t* Bib2;
 	block_t* Cit2;
@@ -820,7 +828,7 @@ void workerSolveAndSendTips(sm_schedule_t* S, integer_t master, integer_t nrhs, 
  * @param master	Master node id.
  * @param handler 	Direct solver.
  */
-void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t master, DirectSolverHander_t *handler){
+void workerSolveBackward(dm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t master, DirectSolverHander_t *handler){
 
 	integer_t max_work, i, p, rank, size;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
@@ -866,7 +874,6 @@ void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t
 				/* Solve Ai * xi = fi */
 				directSolver_SolveForRHS(handler, xi->m, xi->aij, fi->aij);
 
-				block_Deallocate ( Bib );
 				block_Deallocate ( xt_next);
 
 				break;
@@ -892,7 +899,6 @@ void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t
 				/* Solve Ai * xi = fi */
 				directSolver_SolveForRHS(handler, xi->m, xi->aij, fi->aij);
 
-				block_Deallocate ( Cit );
 				block_Deallocate ( xb_prev);
 				break;
 			}
@@ -923,7 +929,7 @@ void workerSolveBackward(sm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t
  * @param xr		Solution of the Reduced system.
  * @param nrhs		Number of right hand sides of the spike system.
  */
-void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix_t* A, block_t* f, matrix_t* R, block_t* Bib, block_t* xr, integer_t nrhs){
+void masterWorkFactorize(DirectSolverHander_t *handler, dm_schedule_t* S, matrix_t* A, block_t* f, matrix_t* R, block_t* Bib, block_t* xr, integer_t nrhs){
 
 	integer_t rank, size;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
@@ -981,6 +987,7 @@ void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix
 	block_Deallocate( Vib);
 	block_Deallocate( fi);
 	block_Deallocate (Bib2);
+	//matrix_Deallocate(Aij);
 }
 
 
@@ -1000,7 +1007,7 @@ void masterWorkFactorize(DirectSolverHander_t *handler, sm_schedule_t* S, matrix
  * @param Bib		Bottom part of Bi.
  * @param handler 	Direct solver.
  */
-void masterWorkBackward(sm_schedule_t* S, block_t* yr, block_t* f, block_t* x, block_t* Bib, DirectSolverHander_t *handler){
+void masterWorkBackward(dm_schedule_t* S, block_t* yr, block_t* f, block_t* x, block_t* Bib, DirectSolverHander_t *handler){
 
 	integer_t rank, size;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
