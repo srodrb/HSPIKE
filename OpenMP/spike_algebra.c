@@ -114,8 +114,7 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 
 	complex_t *Ax = (complex_t*) spike_malloc( ALIGN_COMPLEX, n, sizeof(complex_t));
 
-	for( integer_t rhs = 0; rhs < nrhs; rhs++){
-		if ( rhs < 5 ){
+	for( integer_t rhs = 0; rhs < 5 && rhs < nrhs; rhs++){
 			fprintf(stderr, "\n\tProcessing residual for "_I_"-th RHS vector", rhs + 1);
 
 			/* set buffer array to zero */
@@ -143,7 +142,6 @@ Error_t ComputeResidualOfLinearSystem ( integer_t *restrict colind,
 			fprintf(stderr, "\n\t\tAbsolute residual                     %E", absres);
 			fprintf(stderr, "\n\t\tRelative residual                     %E", absres / bnorm );
 			fprintf(stderr, "\n");
-		}
 	}
 
 	/* clean up */

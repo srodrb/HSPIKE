@@ -27,6 +27,7 @@
 	//Configuration
 	#define BLOCKING 		1
 	#define MASTER_WORKING 	0
+	#define IMPLICIT_VW_USE 0
 
 	/*
 	 * Shared memory version of the schedule structure

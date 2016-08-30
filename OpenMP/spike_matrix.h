@@ -232,6 +232,9 @@ Error_t block_ExtractTip_blocking_mpi ( block_t *dst,
 													block_t            *RHS,
 													block_t            *B);
 
+	void block_SaveCSR(const char* filename, block_t* B);
+	block_t* block_loadCSR(const char* filename);
+
 
 	/* -------------------------------------------------------------------- */
 	/* .. Functions for reduced sytem assembly.                             */

@@ -3,19 +3,18 @@
  *
  *       Filename:  main.c
  *
- *    Description:  SPIKE usage demonstration
+ *    Description:  Parallel spike with MPI
  *
  *        Version:  1.0
  *        Created:  21/06/16 10:32:39
  *       Revision:  none
- *       Compiler:  icc
+ *       Compiler:  mpiicc
  *
- *         Author:  Samuel Rodriguez Bernabeu
+ *         Author:  Albert Coca Abelló
  *   Organization:  Barcelona Supercomputing Center
  *
  * =====================================================================================
  */
-
 /** 
  *	@file main.c 
  */
@@ -66,8 +65,8 @@ int main(int argc, char *argv[])
 			// matrix_t* A = matrix_LoadCSR("ReducedSystem.bsit");
 			// matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 			// matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
-			 matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
-			// matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
+			// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
+			 matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
 			// matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
 			// matrix_PrintAsDense( A, "Original coeffient matrix" );
 

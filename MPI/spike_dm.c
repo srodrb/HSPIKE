@@ -3,14 +3,14 @@
  *
  *       Filename:  main.c
  *
- *    Description:  SPIKE usage demonstration
+ *    Description:  Parallel spike with MPI
  *
  *        Version:  1.0
  *        Created:  21/06/16 10:32:39
  *       Revision:  none
- *       Compiler:  icc
+ *       Compiler:  mpiicc
  *
- *         Author:  Samuel Rodriguez Bernabeu
+ *         Author:  Albert Coca Abelló
  *   Organization:  Barcelona Supercomputing Center
  *
  * =====================================================================================
@@ -87,6 +87,15 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 
 		fprintf(stderr, "\nSolving reduced linear system\n");
 		directSolver_Host_Solve ( R->n, R->nnz, xr->m, R->colind, R->rowptr, R->aij, yr->aij, xr->aij);
+
+		fprintf(stderr, "\nResidual of reduced system:\n");
+		ComputeResidualOfLinearSystem( R->colind, R->rowptr, R->aij, yr->aij, xr->aij, R->n, nrhs);
+
+		matrix_SaveCSR("ReducedSystem.bsit", R);
+		block_SaveCSR("RS-Solution.bsit", xr);
+		block_t* test = block_loadCSR("RS-Solution.bsit");
+		block_AreEqual(test, xr);
+		block_Print(test, "Test");
 
 		matrix_PrintAsDense(R, "Reduced System");
 		block_Print(xr, "X Reduced System");

@@ -23,12 +23,21 @@
 #include "spike_mpi.h"
 #define MS 50
 
-MPI_Request	arrayRequest[MS];
-char* arrayBuffer[MS];
-integer_t isFree[MS];
-integer_t reqCount = 0;
+MPI_Request	arrayRequest[MS]; /**< Array of requests for asyncronous MPI functions */
+char* arrayBuffer[MS];		  /**< Pointers to buffers to allocate when asyncronous MPI functions need it */
+integer_t isFree[MS];		  /**< Bool array: 1 arrayBuffer has been free, 0 no. */
+integer_t reqCount = 0;		  /**< Maximum allocated buffers for asyncronous MPI. */
 
-//TODO Optmize the acces.
+
+/**
+ * @brief 		Get the position of the first avaiable buffer.
+
+				This function search for the first avaiable postion on the buffers
+				to send asyncronous messages with MPI.
+
+ * @return		Index of the first avaiable buffer. 
+ */
+//TODO Optimize the acces.
 integer_t findAvailReq(){
 	integer_t i;
 	integer_t flag;
@@ -46,6 +55,15 @@ integer_t findAvailReq(){
 	return reqCount-1;
 }
 
+/**
+ * @brief 		Free Isend buffers.
+
+				This function check all the MPI buffers for asyncronous send
+				and if the send data is delivered then it will free the memory.
+
+ * @param err	MPI error code.
+ * @return 		Number of nonfree buffers.
+ */
 integer_t checkAndFreeRequest(){
 
 	integer_t i;
@@ -64,9 +82,11 @@ integer_t checkAndFreeRequest(){
 	return notFree;
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Error Check for MPI.
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Print the error string to the logfile.
+
+ * @param err	MPI error code.
+ */
 static void MPI_CheckCall( int err )
 {
 	integer_t len;
@@ -150,7 +170,7 @@ void sendMatrixPacked (matrix_t *Aij, integer_t p, integer_t tag){
  * @brief 		Recive Matrix from process p, p must send 
  * 				this matrix from sendMatrix function.
  * @param p 	From witch process.
- * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ * @return		Recived Matrix.
  */
 matrix_t* recvMatrix (integer_t p){
 	
@@ -177,6 +197,7 @@ matrix_t* recvMatrix (integer_t p){
  * 				this matrix from sendMatrixPacked function.
  * @param p 	From witch process.
  * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ * @return		Recived Matrix.
  */
 matrix_t* recvMatrixPacked (integer_t p, integer_t tag){
 	
@@ -284,6 +305,7 @@ void sendBlockPacked (block_t *b, integer_t p, integer_t tag){
  * @brief 		Recive Block from process p, p must send 
  * 				this matrix from sendBlock function.
  * @param p 	From witch process.
+ * @return		Recived Block.
  */
 block_t* recvBlock (integer_t p){
 
@@ -305,6 +327,7 @@ block_t* recvBlock (integer_t p){
  * 				this matrix from sendBlockPacked function.
  * @param p 	From witch process.
  * @param tag 	Tag of the message, we will need it later to recive it asyncronous.
+ * @return		Recived Block.
  */
 block_t* recvBlockPacked (integer_t p, integer_t tag){
 
@@ -379,6 +402,7 @@ void sendSchedulePacked(dm_schedule_t* S, integer_t p){
  * @brief 		Recive schedule from process p, p must send 
  * 				this schedule from sendSchedulePacked function.
  * @param p 	From witch process.
+ * @return		Recived Schedule.
  */
 dm_schedule_t* recvSchedulePacked(integer_t p){
 	
@@ -710,6 +734,7 @@ void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, 
 
 					/* Solve Ai * yi = fi */
 					directSolver_SolveForRHS( handler, nrhs, yi->aij, fi->aij);
+
 					yit = block_ExtractTip( yi, _TOP_SECTION_   , _COLMAJOR_ );
 					yib = block_ExtractTip( yi, _BOTTOM_SECTION_, _COLMAJOR_ );
 					block_Deallocate (yi );
@@ -1047,9 +1072,16 @@ void masterWorkBackward(dm_schedule_t* S, block_t* yr, block_t* f, block_t* x, b
 	block_Deallocate(xt_next);
 }
 
-/* -------------------------------------------------------------------- */
-/* .. Debug function for MPI. 
-/* -------------------------------------------------------------------- */
+/**
+ * @brief 		Debuging functions for MPI.
+
+ * @param file	File name of the logfile.
+ * @param func	Name of the function who call this function.
+ * @param type	DEBUG, ERROR, STAT.
+ * @param fmt	String format of the output like "printf".
+ * @param ...	Other parameters to fit in fmt string.
+
+ */
 void my_debug(char *file, integer_t line, const char *func, char *type, const char *fmt, ...){
 
 	FILE *fp;

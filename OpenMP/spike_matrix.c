@@ -61,26 +61,94 @@ void matrix_SaveCSR(const char* filename, matrix_t* M)
 	/* open file */
 	FILE* f = spike_fopen( filename, "wb");
 
-	/* load number of rows /columns */
+	/* save number of rows /columns */
 	spike_fwrite( &M->n, sizeof(integer_t), 1, f );
 
-	/* load number of nnz elements */
+	/* save number of nnz elements */
 	spike_fwrite( &M->nnz, sizeof(integer_t), 1, f );
 
 	// TODO read data type, just to check everything is fine
 	spike_fwrite( &M->type, sizeof(integer_t), 1, f );
 
-	/* allocate space for matrix coefficients and load them */
+	/* allocate space for matrix coefficients and save them */
 	spike_fwrite( M->aij, sizeof(complex_t), M->nnz, f );
 
-	/* allocate space for matrix indices and load them */
+	/* allocate space for matrix indices and save them */
 	spike_fwrite( M->colind, sizeof(integer_t), M->nnz, f );
 
-	/* allocate space for matrix row pointers and load them */
+	/* allocate space for matrix row pointers and save them */
 	spike_fwrite( M->rowptr, sizeof(integer_t), M->n + 1, f );
 
 	/* clean up and resume */
 	spike_fclose(f);
+
+};
+
+/*
+	Save a CSR matrix stored in our binary format specification.
+*/
+void block_SaveCSR(const char* filename, block_t* B)
+{
+
+	/* open file */
+	FILE* f = spike_fopen( filename, "wb");
+
+	/* save type of block */
+	spike_fwrite( &B->type, sizeof(integer_t), 1, f );
+
+	/* save section of block */
+	spike_fwrite( &B->section, sizeof(integer_t), 1, f );
+
+	/* save section of block */
+	spike_fwrite( &B->n, sizeof(integer_t), 1, f );
+
+	/* save section of block */
+	spike_fwrite( &B->m, sizeof(integer_t), 1, f );
+
+	/* save section of block */
+	spike_fwrite( &B->ku, sizeof(integer_t), 1, f );
+
+	/* save section of block */
+	spike_fwrite( &B->kl, sizeof(integer_t), 1, f );
+
+	/* allocate space for matrix coefficients and save them */
+	spike_fwrite( B->aij, sizeof(complex_t), B->n*B->m, f );
+
+	/* clean up and resume */
+	spike_fclose(f);
+
+};
+
+/*
+	Load a CSR matrix stored in our binary format specification.
+*/
+block_t* block_loadCSR(const char* filename)
+{
+
+	/* allocate matrix structure */
+	block_t* B = (block_t*) spike_malloc( ALIGN_INT, 1, sizeof(block_t));
+
+	/* open file */
+	FILE* f = spike_fopen( filename, "rb");
+
+	/* Load block configuration */
+	spike_fread( &B->type, 	  sizeof(integer_t), 1, f );
+	spike_fread( &B->section, sizeof(integer_t), 1, f );
+	spike_fread( &B->n, 	  sizeof(integer_t), 1, f );
+	spike_fread( &B->m, 	  sizeof(integer_t), 1, f );
+	spike_fread( &B->ku, 	  sizeof(integer_t), 1, f );
+	spike_fread( &B->kl,	  sizeof(integer_t), 1, f );
+
+	/* allocate space for block  data*/
+	B->aij    = (complex_t*) spike_malloc( ALIGN_COMPLEX, B->n*B->m , sizeof(complex_t));
+
+	/* load block data */
+	spike_fread( B->aij, sizeof(complex_t), B->n*B->m, f );
+
+	/* clean up and resume */
+	spike_fclose(f);
+
+	return B;
 
 };
 
