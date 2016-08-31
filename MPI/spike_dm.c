@@ -93,6 +93,7 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 
 		matrix_SaveCSR("ReducedSystem.bsit", R);
 		block_SaveCSR("RS-Solution.bsit", xr);
+		printf("xr->m:%d, xr->n:%d\n", xr->m, xr->n);
 		block_t* test = block_loadCSR("RS-Solution.bsit");
 		block_AreEqual(test, xr);
 		block_Print(test, "Test");
@@ -143,14 +144,11 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 		if(MASTER_WORKING){
 			p = rank;
 		}
-		else
-		{	
+		else{	
 			p = rank -1;
 		}
 		debug("Reciving schedule");
 		dm_schedule_t* S = recvSchedulePacked(master);
-		block_t* Bib = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
-		block_t* Cit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 
 		//Set up solver handler
 		DirectSolverHander_t *handler = directSolver_CreateHandler();
@@ -163,7 +161,13 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 		
 		//Solve Aij*Bi, Aij*Ci and Aij*fi
 		debug("Solving AIJ Aij*Bi, Aij*Ci and Aij*fi");
-		workerSolveAndSendTips(S, master, nrhs, Aij, Bib, Cit, handler);
+
+		block_t* Bib; //need when blocking 
+		block_t* Cit; //need when blocking
+		workerSolveAndSendTips(S, master, nrhs, Aij, &Bib, &Cit, handler);
+
+		//block_Print(Bib,"Bib");
+		//block_Print(Cit,"Cit");
 
 		//Master Solving Reduced System.
 	
@@ -173,9 +177,16 @@ Error_t spike_dm( matrix_t *A, block_t *x, block_t *f, const integer_t nrhs)
 		//Solving Backward Solution.
 		debug("Solving Backward solution");
 		workerSolveBackward(S, Bib, Cit, master, handler);
-		block_Deallocate(Bib);
-		block_Deallocate(Cit);
 
+		//Cleaning up
+		if (rank == 1 && !MASTER_WORKING)
+			block_Deallocate(Bib);
+		else if ( rank == size-1)
+			block_Deallocate(Cit);
+		else{
+			block_Deallocate(Bib);	
+			block_Deallocate(Cit);
+		}
 		/* Show statistics and clean up solver internal memory */
 		directSolver_ShowStatistics(handler);
 		directSolver_Finalize(handler);

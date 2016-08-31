@@ -65,8 +65,9 @@ int main(int argc, char *argv[])
 			// matrix_t* A = matrix_LoadCSR("ReducedSystem.bsit");
 			// matrix_t* A = matrix_LoadCSR("../Tests/dummy/tridiagonal.bin");
 			// matrix_t* A = matrix_LoadCSR("../Tests/heptadiagonal/medium.bin");
+			matrix_t* A = matrix_LoadCSR("../Tests/spike/moreReal.d");
 			// matrix_t* A = matrix_LoadCSR("../Tests/complex16/penta_1k.z");
-			 matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
+			// matrix_t* A = matrix_LoadCSR("../Tests/spike/15e10Matrix.bin");
 			// matrix_t* A = matrix_LoadCSR("../Tests/spike/permuted.bsit");
 			// matrix_PrintAsDense( A, "Original coeffient matrix" );
 

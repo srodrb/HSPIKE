@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#ifdef NDEBUG
+#if defined (_NDEBUG)
 	#define debug(M, ...)
 	#define stat(M, ...)
 #else		
@@ -114,8 +114,10 @@ void gatherReducedSystem(dm_schedule_t* S, matrix_t* R, block_t* xr);
 void scatterXiFi		(dm_schedule_t* S, block_t* x, block_t* f, block_t* yr);
 void gatherXi			(dm_schedule_t* S, block_t* x);
 
-void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler);
+void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t **Bib, block_t **Cit, DirectSolverHander_t *handler);
+void workerSolveAndSendTipsV2(dm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t** Vi, block_t** Wi, DirectSolverHander_t *handler);
 void workerSolveBackward(dm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t master, DirectSolverHander_t *handler);
+void workerSolveBackwardV2(dm_schedule_t* S, block_t* Vi, block_t* Wi, integer_t master, DirectSolverHander_t *handler);
 
 void masterWorkFactorize(DirectSolverHander_t *handler, dm_schedule_t* S, matrix_t* A, block_t* f, matrix_t* R, block_t* Bib, block_t* xr, integer_t nrhs);
 void masterWorkBackward(dm_schedule_t* S, block_t* yr, block_t* f, block_t* x, block_t* Bib, DirectSolverHander_t *handler);

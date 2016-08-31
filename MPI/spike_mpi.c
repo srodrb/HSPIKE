@@ -69,7 +69,7 @@ integer_t checkAndFreeRequest(){
 	integer_t i;
 	integer_t flag = 0;
 	integer_t notFree = 0;
-	get_maximum_av_host_memory();
+	//get_maximum_av_host_memory();
 	for(i=0; i<reqCount; i++){
 		MPI_Request_get_status(arrayRequest[i], &flag, MPI_STATUS_IGNORE);
 		if(flag && !isFree[i]){
@@ -78,7 +78,7 @@ integer_t checkAndFreeRequest(){
 		}
 		else if(!flag)notFree++;
 	}
-	get_maximum_av_host_memory();
+	//get_maximum_av_host_memory();
 	return notFree;
 }
 
@@ -692,10 +692,10 @@ void gatherXi(dm_schedule_t* S, block_t* x){
  * @param Cit		Store the top part of Ci (it will be needed later).
  * @param handler 	Direct solver.
  */
-void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t *Bib, block_t *Cit, DirectSolverHander_t *handler){
+void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, matrix_t* Aij, block_t **Bib, block_t **Cit, DirectSolverHander_t *handler){
 
-	block_t* Bib2;
-	block_t* Cit2;
+	//block_t* Bib2;
+	//block_t* Cit2;
 	
 	integer_t rank, size, i, max_work, p;
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);	
@@ -774,7 +774,7 @@ void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, 
 
 					Vit = block_ExtractTip( Vi, _TOP_SECTION_, _ROWMAJOR_ );
 					Vib = block_ExtractTip( Vi, _BOTTOM_SECTION_, _ROWMAJOR_ );
-					Bib2 = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
+					*Bib = block_ExtractTip( Bi, _BOTTOM_SECTION_, _COLMAJOR_ );
 					block_Deallocate( Bi);
 					block_Deallocate( Vi);
 					debug("All Done");
@@ -784,13 +784,14 @@ void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, 
 
 					Vit = block_CreateEmptyBlock( S->kl[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _TOP_SECTION_ );
 					Vib = block_CreateEmptyBlock( S->ku[p], S->ku[p], S->ku[p], S->kl[p], _V_BLOCK_, _BOTTOM_SECTION_ );
-					Bib2 = blockingBi(S, BiTmp, Vit, Vib, p, handler);
+					*Bib = blockingBi(S, BiTmp, Vit, Vib, p, handler);
 				}
 
 				sendBlockPacked(Vit, master, VIWI_TAG);
 				sendBlockPacked(Vib, master, VIWI_TAG);
+				block_Print(*Bib,"Bib2");
 
-				memcpy(Bib->aij, Bib2->aij, Bib->n*Bib->m*sizeof(complex_t));
+				//memcpy(Bib->aij, Bib2->aij, Bib->n*Bib->m*sizeof(complex_t));
 
 				block_Deallocate( Vit);
 				block_Deallocate( Vib);
@@ -812,21 +813,21 @@ void workerSolveAndSendTips(dm_schedule_t* S, integer_t master, integer_t nrhs, 
 		
 					Wit = block_ExtractTip( Wi, _TOP_SECTION_, _ROWMAJOR_ );
 					Wib = block_ExtractTip( Wi, _BOTTOM_SECTION_, _ROWMAJOR_ );
-					Cit2 = block_ExtractTip(Ci, _TOP_SECTION_, _COLMAJOR_ );					
+					*Cit = block_ExtractTip(Ci, _TOP_SECTION_, _COLMAJOR_ );					
 					block_Deallocate( Ci );
 					block_Deallocate( Wi );					
 				}
 				else{
 					Wit = block_CreateEmptyBlock( S->kl[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _TOP_SECTION_ );
 					Wib = block_CreateEmptyBlock( S->ku[p], S->kl[p], S->ku[p], S->kl[p], _W_BLOCK_, _BOTTOM_SECTION_ );
-					Cit2 = blockingCi(S, CiTmp, Wit, Wib, p, handler);
+					*Cit = blockingCi(S, CiTmp, Wit, Wib, p, handler);
 				}
 
 				sendBlockPacked(Wit, master, VIWI_TAG);
 				sendBlockPacked(Wib, master, VIWI_TAG);
 
-				memcpy(Cit->aij, Cit2->aij, Cit->n*Cit->m*sizeof(complex_t));
-				block_Print(Cit, "Cit");
+				//memcpy(Cit->aij, Cit2->aij, Cit->n*Cit->m*sizeof(complex_t));
+				block_Print(*Cit, "Cit2");
 	
 				block_Deallocate( Wit);
 				block_Deallocate( Wib);
@@ -934,6 +935,79 @@ void workerSolveBackward(dm_schedule_t* S, block_t* Bib, block_t* Cit, integer_t
 	block_Deallocate (fi);
 }
 
+/**
+ * @brief 			Asyncronous: Worker recive the top part of the next section and/or the bottom part
+					of the previous section.
+
+					This function solve the backward solution of the system, every node  need to use
+				 	Bib and Cit, however the first partiton and the last partition of the spike system
+					only need one, Bib for the first partition and Cit for the last partition. When the
+					master is working the master take the first partiton.
+
+ * @param S			Spike Schedule.
+ * @param Vi		
+ * @param Wi		
+ * @param master	Master node id.
+ * @param handler 	Direct solver.
+ */
+void workerSolveBackwardV2(dm_schedule_t* S, block_t* Vi, block_t* Wi, integer_t master, DirectSolverHander_t *handler){
+
+	integer_t max_work, i, p, rank, size;
+	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+	MPI_Comm_size (MPI_COMM_WORLD, &size);
+	MPI_Status  status;
+
+	if(MASTER_WORKING){
+		p = rank;
+		if(rank == 0 || rank == size-1) max_work = 1;
+		else max_work = 2;
+	}
+	else{
+		p = rank - 1;
+		if(rank == 1 || rank == size-1) max_work = 1;
+		else max_work = 2;
+	}
+	const integer_t ni  = S->n[p+1] - S->n[p]; 	/* number of rows in the block  */
+
+	block_t* xi = recvBlockPacked(master, XI_TAG);
+	block_t* fi = recvBlockPacked(master, FI_TAG);
+
+	for(i=0; i<max_work; i++){
+		MPI_Probe(master, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		switch(status.MPI_TAG) {
+			case XT_NEXT_TAG:
+			{
+				block_t* xt_next = recvBlockPacked(master, XT_NEXT_TAG);
+
+				printf("Do something HERE!!!\n");
+				block_Print(Vi, "Vi");
+		
+				/* Solve Ai * xi = fi */
+				//directSolver_SolveForRHS(handler, xi->m, xi->aij, fi->aij);
+
+				block_Deallocate ( xt_next);
+
+				break;
+			}
+			case XT_PREV_TAG:
+			{
+				block_t* xb_prev = recvBlockPacked(master, XT_PREV_TAG);
+
+				printf("Do something HERE!!!\n");
+				block_Print(Wi, "Wi");
+
+				/* Solve Ai * xi = fi */
+				//directSolver_SolveForRHS(handler, xi->m, xi->aij, fi->aij);
+
+				block_Deallocate ( xb_prev);
+				break;
+			}
+		}
+	}
+	sendBlockPacked(xi, master, XI_TAG);
+	block_Deallocate (xi);
+	block_Deallocate (fi);
+}
 
 /**
  * @brief 			Master work for the first partition of spike system. (Factoritzation
